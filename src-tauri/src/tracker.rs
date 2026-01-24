@@ -50,6 +50,10 @@ impl Tracker {
             let mut current_process: Option<String> = None;
             let mut current_title: Option<String> = None;
             let mut app_start_time = std::time::Instant::now();
+            
+            // Gamification accumulators
+            let mut xp_seconds_accumulator = 0;
+            let mut last_streak_check = String::new(); // Date string
 
             loop {
                 // Check if we should stop
@@ -138,6 +142,32 @@ impl Tracker {
                                     current_title = Some(window.window_title.clone());
                                 }
                             }
+                        }
+                    
+                        // Gamification Logic: XP & Leveling
+                        xp_seconds_accumulator += 1;
+                        if xp_seconds_accumulator >= 60 {
+                            // Award 10 XP per minute of active time
+                            let _ = database::add_xp(&conn, 10);
+                            xp_seconds_accumulator = 0;
+
+                            // Check level up (Simple formula: Level * 100 XP required for next level)
+                            // Or cumulative: Level = floor(sqrt(total_xp / 100)) + 1
+                            if let Ok(stats) = database::get_user_stats(&conn) {
+                                let calculated_level = ((stats.total_xp as f64 / 100.0).sqrt().floor() as u32) + 1;
+                                if calculated_level > stats.current_level {
+                                    let _ = database::update_level(&conn, calculated_level);
+                                    log::info!("Level Up! New Level: {}", calculated_level);
+                                    // Could emit an event here if we had the window handle
+                                }
+                            }
+                        }
+
+                        // Gamification Logic: Streak
+                        // Check once per tick if date changed (or on startup)
+                        if today != last_streak_check {
+                            let _ = database::update_streak(&conn, &today);
+                            last_streak_check = today.clone();
                         }
                     }
                 }
@@ -253,4 +283,32 @@ impl Tracker {
     pub fn get_idle_seconds(&self) -> u32 {
         windows_api::get_idle_seconds()
     }
+    /// Get user gamification stats
+    pub fn get_user_stats(&self) -> Option<database::UserStats> {
+        if let Ok(conn) = self.db.lock() {
+            database::get_user_stats(&conn).ok()
+        } else {
+            None
+        }
+    }
+
+    /// Get unlocked achievements
+    pub fn get_unlocked_achievements(&self) -> Vec<String> {
+        if let Ok(conn) = self.db.lock() {
+            database::get_unlocked_achievements(&conn).unwrap_or_default()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Unlock an achievement manually (for testing/future logic)
+    pub fn unlock_achievement(&self, code: &str) -> bool {
+        if let Ok(conn) = self.db.lock() {
+            let timestamp = windows_api::get_timestamp();
+            database::unlock_achievement(&conn, code, &timestamp).is_ok()
+        } else {
+            false
+        }
+    }
 }
+

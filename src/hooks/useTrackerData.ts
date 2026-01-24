@@ -21,6 +21,9 @@ import {
     type TimelineSegment,
     type WindowEvent,
     formatDuration,
+    getUserStats,
+    getUnlockedAchievements,
+    type UserStats,
 } from '../api/tauri';
 
 // ============ Mock Data for Browser Mode ============
@@ -56,6 +59,15 @@ const MOCK_EVENTS: WindowEvent[] = [
     { timestamp: new Date().toISOString(), process_name: 'Code.exe', window_title: 'Dashboard.tsx', duration_seconds: 300 },
     { timestamp: new Date(Date.now() - 300000).toISOString(), process_name: 'Chrome.exe', window_title: 'Google Search', duration_seconds: 120 },
 ];
+
+const MOCK_USER_STATS: UserStats = {
+    total_xp: 450,
+    current_level: 2,
+    current_streak: 3,
+    last_activity_date: new Date().toISOString().split('T')[0],
+};
+
+const MOCK_ACHIEVEMENTS: string[] = ['early_bird'];
 
 // ============ Hooks ============
 
@@ -243,6 +255,43 @@ export function useIdleStatus() {
         },
         refetchInterval: 1000,
         staleTime: 500,
+    });
+}
+
+
+/**
+ * Get user stats (gamification) with auto-refresh
+ */
+export function useUserStats() {
+    return useQuery({
+        queryKey: ['userStats'],
+        queryFn: async () => {
+            if (isTauri()) {
+                const data = await getUserStats();
+                return data;
+            }
+            return MOCK_USER_STATS;
+        },
+        refetchInterval: 10000,
+        staleTime: 5000,
+    });
+}
+
+/**
+ * Get unlocked achievements
+ */
+export function useUnlockedAchievements() {
+    return useQuery({
+        queryKey: ['unlockedAchievements'],
+        queryFn: async () => {
+            if (isTauri()) {
+                const data = await getUnlockedAchievements();
+                return data;
+            }
+            return MOCK_ACHIEVEMENTS;
+        },
+        refetchInterval: 30000,
+        staleTime: 10000,
     });
 }
 

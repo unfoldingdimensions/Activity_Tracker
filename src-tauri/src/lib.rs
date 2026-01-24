@@ -66,6 +66,9 @@ pub fn run() {
             commands::start_tracking,
             commands::stop_tracking,
             commands::clear_data,
+            commands::get_user_stats,
+            commands::get_unlocked_achievements,
+            commands::unlock_achievement,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

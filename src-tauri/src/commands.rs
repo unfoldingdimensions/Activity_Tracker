@@ -2,7 +2,7 @@
 
 use crate::tracker::Tracker;
 use crate::windows_api::ActiveWindow;
-use crate::database::{DailyStats, TimelineSegment, WindowEvent};
+use crate::database::{DailyStats, TimelineSegment, WindowEvent, UserStats};
 use std::sync::Mutex;
 use tauri::State;
 use chrono::{Local, Duration, NaiveDateTime};
@@ -167,3 +167,22 @@ pub struct InputHistoryBucket {
     pub keystrokes: u32,
     pub mouse_clicks: u32,
 }
+
+/// Get user stats
+#[tauri::command]
+pub fn get_user_stats(state: State<AppState>) -> Option<UserStats> {
+    state.tracker.lock().unwrap().get_user_stats()
+}
+
+/// Get unlocked achievements
+#[tauri::command]
+pub fn get_unlocked_achievements(state: State<AppState>) -> Vec<String> {
+    state.tracker.lock().unwrap().get_unlocked_achievements()
+}
+
+/// Unlock achievement (debug/manual)
+#[tauri::command]
+pub fn unlock_achievement(state: State<AppState>, code: String) -> bool {
+    state.tracker.lock().unwrap().unlock_achievement(&code)
+}
+

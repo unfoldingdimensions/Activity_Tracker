@@ -1,3 +1,4 @@
+
 import { GlassCard } from '../components/GlassCard';
 import {
     AreaChart,
@@ -27,6 +28,15 @@ import { AnimatedNumber } from '../components/ui/AnimatedNumber';
 import { ChartTooltip } from '../components/charts/ChartTooltip';
 import { ChartGradients } from '../components/charts/ChartGradients';
 import { Skeleton } from '../components/ui/Skeleton';
+import { LevelSystem } from '../components/gamification/LevelSystem';
+import { StreakCounter } from '../components/gamification/StreakCounter';
+import { Achievements } from '../components/gamification/Achievements';
+import { FlowStateMetrics } from '../components/insights/FlowStateMetrics';
+import { WorkPatterns } from '../components/insights/WorkPatterns';
+import { ErgonomicMetrics } from '../components/wellbeing/ErgonomicMetrics';
+import { BreathingWidget } from '../components/wellbeing/BreathingWidget';
+import { GoalSetter } from '../components/tools/GoalSetter';
+import { PomodoroTimer } from '../components/tools/PomodoroTimer';
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -46,6 +56,7 @@ const itemVariants = {
 export function Dashboard() {
     // Local state
     const [showInputModal, setShowInputModal] = useState(false);
+    const [showBreathing, setShowBreathing] = useState(false);
 
     // Fetch live data from backend
     const { data: appUsageRaw, isLoading: appLoading } = useAppUsage();
@@ -67,7 +78,6 @@ export function Dashboard() {
         };
     }) || [];
 
-    // Stats cards configuration
     const stats = [
         {
             label: 'Screen Time',
@@ -79,20 +89,20 @@ export function Dashboard() {
             clickable: false,
         },
         {
-            label: 'Mouse Clicks',
-            value: formattedStats.mouseActivity,
-            numericValue: parseInt(formattedStats.mouseActivity.replace(/,/g, ''), 10) || 0,
-            icon: MousePointer,
-            change: 'clicks',
-            positive: true,
-            clickable: true,
-        },
-        {
             label: 'Keystrokes',
             value: formattedStats.keystrokes,
             numericValue: parseInt(formattedStats.keystrokes.replace(/,/g, ''), 10) || 0,
             icon: Keyboard,
             change: 'today',
+            positive: true,
+            clickable: true,
+        },
+        {
+            label: 'Mouse Clicks',
+            value: formattedStats.mouseActivity,
+            numericValue: parseInt(formattedStats.mouseActivity.replace(/,/g, ''), 10) || 0,
+            icon: MousePointer,
+            change: 'clicks',
             positive: true,
             clickable: true,
         },
@@ -111,25 +121,32 @@ export function Dashboard() {
 
     return (
         <div className="flex flex-col min-h-full">
+            {/* Breathing Widget Overlay */}
+            <BreathingWidget isOpen={showBreathing} onClose={() => setShowBreathing(false)} />
+
             {/* Sticky Header */}
             <div className="sticky top-0 z-20 backdrop-blur-md bg-[var(--background)]/80 p-8 pb-6 border-b border-[var(--border)]/50 transition-all">
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5 }}
+                    className="flex justify-between items-center"
                 >
-                    <h2 className="font-display text-3xl font-bold text-[var(--foreground)]">
-                        The Pulse
-                    </h2>
-                    <p className="text-[var(--muted-foreground)] mt-1">
-                        Your productivity overview for today
-                    </p>
+                    <div>
+                        <h2 className="font-display text-3xl font-bold text-[var(--foreground)]">
+                            The Pulse
+                        </h2>
+                        <p className="text-[var(--muted-foreground)] mt-1">
+                            Your productivity overview for today
+                        </p>
+                    </div>
+                    <StreakCounter />
                 </motion.div>
             </div>
 
             {/* Content */}
-            <div className="p-8 pt-6 space-y-8 flex-1">
-                {/* Stats Grid */}
+            <div className="p-8 pt-6 space-y-12 flex-1">
+                {/* 1. Primary Metrics (Restored to Top) */}
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
@@ -175,12 +192,7 @@ export function Dashboard() {
                     ))}
                 </motion.div>
 
-                {/* Input History Modal */}
-                {showInputModal && (
-                    <InputHistoryModal onClose={() => setShowInputModal(false)} />
-                )}
-
-                {/* Charts Row */}
+                {/* 2. Core Visual Analytics */}
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
@@ -328,37 +340,58 @@ export function Dashboard() {
                     </motion.div>
                 </motion.div>
 
-                {/* Focus Score */}
+                {/* 3. Deep Analytical Insights (Intelligence) */}
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
+                    variants={containerVariants}
+                    initial="hidden"
+                    whileInView="show"
                     viewport={{ once: true }}
-                    transition={{ delay: 0.4 }}
+                    className="space-y-6"
                 >
-                    <GlassCard className="p-6" hover={false} spotlight>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="font-display text-lg font-semibold text-[var(--foreground)]">
-                                    Today's Focus Score
-                                </h3>
-                                <p className="text-[var(--muted-foreground)] text-sm mt-1">
-                                    Based on your active vs idle time ratio
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-5xl font-bold font-display text-gradient flex items-center justify-end">
-                                    {isLoading ? (
-                                        <Skeleton variant="text" className="h-12 w-20" />
-                                    ) : (
-                                        <AnimatedNumber value={formattedStats.focusScore} />
-                                    )}
-                                </div>
-                                <p className="text-[var(--muted-foreground)] text-sm">out of 100</p>
-                            </div>
-                        </div>
-                    </GlassCard>
+                    <h3 className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Cognitive Performance</h3>
+                    <FlowStateMetrics />
+                    <WorkPatterns />
+                </motion.div>
+
+                {/* 4. Wellbeing & Utility Section */}
+                <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={{ once: true }}
+                    className="space-y-6"
+                >
+                    <h3 className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Focus & Wellbeing</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <ErgonomicMetrics onStartBreathing={() => setShowBreathing(true)} />
+                        <GoalSetter />
+                        <PomodoroTimer />
+                    </div>
+                </motion.div>
+
+                {/* 5. Progression & Achievements */}
+                <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={{ once: true }}
+                    className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+                >
+                    <motion.div variants={itemVariants}>
+                        <h3 className="text-sm font-semibold text-[var(--muted-foreground)] mb-3 uppercase tracking-wider">Progression</h3>
+                        <LevelSystem />
+                    </motion.div>
+                    <motion.div variants={itemVariants}>
+                        <h3 className="text-sm font-semibold text-[var(--muted-foreground)] mb-3 uppercase tracking-wider">Recent Achievements</h3>
+                        <Achievements />
+                    </motion.div>
                 </motion.div>
             </div>
-        </div >
+
+            {/* Input History Modal */}
+            {showInputModal && (
+                <InputHistoryModal onClose={() => setShowInputModal(false)} />
+            )}
+        </div>
     );
 }

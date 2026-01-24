@@ -43,6 +43,13 @@ export interface InputHistoryBucket {
     mouse_clicks: number;
 }
 
+export interface UserStats {
+    total_xp: number;
+    current_level: number;
+    current_streak: number;
+    last_activity_date: string | null;
+}
+
 // API Functions
 
 /**
@@ -142,6 +149,27 @@ export async function stopTracking(): Promise<void> {
  */
 export async function clearData(): Promise<void> {
     return invoke<void>('clear_data');
+}
+
+/**
+ * Get user stats (gamification)
+ */
+export async function getUserStats(): Promise<UserStats | null> {
+    return invoke<UserStats | null>('get_user_stats');
+}
+
+/**
+ * Get unlocked achievements
+ */
+export async function getUnlockedAchievements(): Promise<string[]> {
+    return invoke<string[]>('get_unlocked_achievements');
+}
+
+/**
+ * Unlock achievement (manual/debug)
+ */
+export async function unlockAchievement(code: string): Promise<boolean> {
+    return invoke<boolean>('unlock_achievement', { code });
 }
 
 // Utility functions
