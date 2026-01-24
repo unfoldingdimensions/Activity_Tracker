@@ -1,7 +1,5 @@
 # Activity Tracker 🕒
 
-![Activity Tracker Cover](./cover.png)
-
 A premium, privacy-first activity and productivity tracker for Windows. Built with **Tauri**, **Rust**, and **React**, this application provides deep insights into your digital habits without ever compromising your data.
 
 ## ✨ Key Features
