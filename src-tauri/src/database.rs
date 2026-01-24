@@ -6,6 +6,9 @@ pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
     let db_path = app_data_dir.join("activity.db");
     let conn = Connection::open(&db_path)?;
 
+    // Enable WAL mode for better concurrency
+    conn.pragma_update(None, "journal_mode", "WAL")?;
+
     // Create tables for activity tracking
     conn.execute_batch(
         "
@@ -151,7 +154,10 @@ pub fn get_daily_stats(conn: &Connection, date: &str) -> Result<Option<DailyStat
          FROM input_activity WHERE timestamp LIKE ?1",
         [&today_prefix],
         |row| Ok((row.get(0)?, row.get(1)?))
-    ).unwrap_or((0, 0));
+    ).map_err(|e| {
+        log::error!("Error getting input stats: {:?}", e);
+        e
+    }).unwrap_or((0, 0));
 
     // If no data yet, return None
     if total_active == 0 && idle_count == 0 && total_keystrokes == 0 {
@@ -191,7 +197,7 @@ pub fn get_activity_timeline(conn: &Connection, date: &str) -> Result<Vec<Timeli
     rows.collect()
 }
 
-/// Get recent window events (limit 50)
+/// Get recent window events (limit 50) - Deprecated-ish in favor of range
 pub fn get_recent_window_events(conn: &Connection) -> Result<Vec<WindowEvent>> {
     let mut stmt = conn.prepare(
         "SELECT timestamp, process_name, window_title, duration_seconds 
@@ -205,6 +211,91 @@ pub fn get_recent_window_events(conn: &Connection) -> Result<Vec<WindowEvent>> {
             process_name: row.get(1)?,
             window_title: row.get(2)?,
             duration_seconds: row.get(3)?,
+        })
+    })?;
+    
+    rows.collect()
+}
+
+/// Get window events in range
+pub fn get_window_events_in_range(conn: &Connection, start_iso: &str, end_iso: &str) -> Result<Vec<WindowEvent>> {
+    let mut stmt = conn.prepare(
+        "SELECT timestamp, process_name, window_title, duration_seconds 
+         FROM window_events 
+         WHERE timestamp >= ?1 AND timestamp <= ?2
+         ORDER BY timestamp DESC"
+    )?;
+    
+    let rows = stmt.query_map([start_iso, end_iso], |row| {
+        Ok(WindowEvent {
+            timestamp: row.get(0)?,
+            process_name: row.get(1)?,
+            window_title: row.get(2)?,
+            duration_seconds: row.get(3)?,
+        })
+    })?;
+    
+    rows.collect()
+}
+
+/// Get window events for a specific process in range
+pub fn get_window_events_for_process_in_range(
+    conn: &Connection, 
+    process_name: &str, 
+    start_iso: &str, 
+    end_iso: &str
+) -> Result<Vec<WindowEvent>> {
+    let mut stmt = conn.prepare(
+        "SELECT timestamp, process_name, window_title, duration_seconds 
+         FROM window_events 
+         WHERE process_name = ?1 AND timestamp >= ?2 AND timestamp <= ?3
+         ORDER BY timestamp DESC"
+    )?;
+    
+    let rows = stmt.query_map([process_name, start_iso, end_iso], |row| {
+        Ok(WindowEvent {
+            timestamp: row.get(0)?,
+            process_name: row.get(1)?,
+            window_title: row.get(2)?,
+            duration_seconds: row.get(3)?,
+        })
+    })?;
+    
+    rows.collect()
+}
+
+/// Get app usage aggregated in range
+pub fn get_app_usage_in_range(conn: &Connection, start_date: &str, end_date: &str) -> Result<Vec<(String, u32)>> {
+    let mut stmt = conn.prepare(
+        "SELECT process_name, SUM(total_seconds) as total
+         FROM app_usage 
+         WHERE date >= ?1 AND date <= ?2
+         GROUP BY process_name
+         ORDER BY total DESC"
+    )?;
+    
+    let rows = stmt.query_map([start_date, end_date], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, u32>(1)?))
+    })?;
+    
+    rows.collect()
+}
+
+
+/// Get raw input activity since a specific timestamp
+pub fn get_input_history_since(conn: &Connection, since_iso: &str) -> Result<Vec<InputHistoryEntry>> {
+    let mut stmt = conn.prepare(
+        "SELECT timestamp, keystrokes, mouse_clicks 
+         FROM input_activity 
+         WHERE timestamp >= ?1 
+         ORDER BY timestamp ASC"
+    )?;
+    
+    let rows = stmt.query_map([since_iso], |row| {
+        Ok(InputHistoryEntry {
+            timestamp: row.get(0)?,
+            keystrokes: row.get(1)?,
+            mouse_clicks: row.get(2)?,
         })
     })?;
     
@@ -245,4 +336,11 @@ pub struct WindowEvent {
     pub process_name: String,
     pub window_title: Option<String>,
     pub duration_seconds: u32,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct InputHistoryEntry {
+    pub timestamp: String,
+    pub keystrokes: u32,
+    pub mouse_clicks: u32,
 }

@@ -137,9 +137,9 @@ pub fn is_system_idle() -> bool {
     get_idle_seconds() > 60
 }
 
-/// Get the current timestamp in ISO 8601 format
+/// Get the current timestamp in ISO 8601 format (Local)
 pub fn get_timestamp() -> String {
-    chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
+    chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f").to_string()
 }
 
 /// Get today's date in YYYY-MM-DD format

@@ -11,11 +11,16 @@ import {
     getIdleSeconds,
     getTimeline,
     getRecentEvents,
+    getInputHistory,
+    getTimelineRange,
+    getTimelineRangeForApp,
+    getAppUsageRange,
     type AppUsageEntry,
     type DailyStats,
     type ActiveWindow,
     type TimelineSegment,
     type WindowEvent,
+    type InputHistoryBucket,
     formatDuration,
 } from '../api/tauri';
 
@@ -124,6 +129,79 @@ export function useRecentEvents() {
         },
         refetchInterval: 2000,
         staleTime: 1000,
+    });
+}
+
+/**
+ * Get events in range
+ */
+export function useTimelineEventsRange(startIso: string, endIso: string, enabled: boolean) {
+    return useQuery({
+        queryKey: ['timelineEventsRange', startIso, endIso],
+        queryFn: async () => {
+            if (isTauri()) {
+                return await getTimelineRange(startIso, endIso);
+            }
+            return MOCK_EVENTS; // Reuse mock
+        },
+        enabled,
+        refetchInterval: 5000 // Still refresh periodically as new data might come in
+    });
+}
+
+/**
+ * Get events for specific app in range
+ */
+export function useTimelineRangeForApp(processName: string | null, startIso: string, endIso: string, enabled: boolean) {
+    return useQuery({
+        queryKey: ['timelineRangeForApp', processName, startIso, endIso],
+        queryFn: async () => {
+            if (isTauri() && processName) {
+                return await getTimelineRangeForApp(processName, startIso, endIso);
+            }
+            return [];
+        },
+        enabled: enabled && !!processName
+    });
+}
+
+/**
+ * Get app usage in range
+ */
+export function useAppUsageRange(startDate: string, endDate: string, enabled: boolean) {
+    return useQuery({
+        queryKey: ['appUsageRange', startDate, endDate],
+        queryFn: async () => {
+            if (isTauri()) {
+                return await getAppUsageRange(startDate, endDate);
+            }
+            return MOCK_APP_USAGE;
+        },
+        enabled,
+        refetchInterval: 5000
+    });
+}
+
+/**
+ * Get input history bucketed
+ */
+export function useInputHistory(interval: number, enabled: boolean) {
+    return useQuery({
+        queryKey: ['inputHistory', interval],
+        queryFn: async () => {
+            if (isTauri()) {
+                const data = await getInputHistory(interval);
+                return data;
+            }
+            // Mock data for browser testing
+            return Array.from({ length: 24 }, (_, i) => ({
+                time: `${i}:00`,
+                keystrokes: Math.floor(Math.random() * 500),
+                mouse_clicks: Math.floor(Math.random() * 100)
+            }));
+        },
+        enabled: enabled,
+        refetchInterval: 10000,
     });
 }
 

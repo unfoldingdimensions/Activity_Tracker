@@ -8,6 +8,7 @@ interface CardProps {
     spotlight?: boolean;
     glass?: boolean;
     style?: CSSProperties;
+    onClick?: () => void;
 }
 
 export function GlassCard({
@@ -17,6 +18,7 @@ export function GlassCard({
     spotlight = false,
     glass = false,
     style,
+    onClick,
 }: CardProps) {
     const cardRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +37,7 @@ export function GlassCard({
         <div
             ref={cardRef}
             onMouseMove={handleMouseMove}
+            onClick={onClick}
             style={style}
             className={`
         ${glass ? 'card-glass' : 'card'}

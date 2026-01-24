@@ -85,6 +85,7 @@ impl Tracker {
 
                     // Record input activity if any
                     if input_counts.keystrokes > 0 || input_counts.mouse_clicks > 0 {
+                        log::info!("Tracker: Recording input - Keys: {}, Clicks: {}", input_counts.keystrokes, input_counts.mouse_clicks);
                         let _ = database::insert_input_activity(
                             &conn, 
                             &timestamp, 
@@ -197,7 +198,43 @@ impl Tracker {
             Vec::new()
         }
     }
+
+    /// Get input history
+    pub fn get_input_history(&self, since_iso: &str) -> Vec<database::InputHistoryEntry> {
+        if let Ok(conn) = self.db.lock() {
+             database::get_input_history_since(&conn, since_iso).unwrap_or_default()
+        } else {
+            Vec::new()
+        }
+    }
     
+    /// Get window events in range
+    pub fn get_events_range(&self, start: &str, end: &str) -> Vec<database::WindowEvent> {
+         if let Ok(conn) = self.db.lock() {
+             database::get_window_events_in_range(&conn, start, end).unwrap_or_default()
+         } else {
+             Vec::new()
+         }
+    }
+
+    /// Get window events for process in range
+    pub fn get_events_for_process_range(&self, process_name: &str, start: &str, end: &str) -> Vec<database::WindowEvent> {
+         if let Ok(conn) = self.db.lock() {
+             database::get_window_events_for_process_in_range(&conn, process_name, start, end).unwrap_or_default()
+         } else {
+             Vec::new()
+         }
+    }
+
+    /// Get app usage in range
+    pub fn get_app_usage_range(&self, start: &str, end: &str) -> Vec<(String, u32)> {
+         if let Ok(conn) = self.db.lock() {
+             database::get_app_usage_in_range(&conn, start, end).unwrap_or_default()
+         } else {
+             Vec::new()
+         }
+    }
+
     /// Clear all data
     pub fn clear_data(&self) -> Result<(), rusqlite::Error> {
         if let Ok(conn) = self.db.lock() {

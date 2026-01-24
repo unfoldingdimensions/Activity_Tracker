@@ -26,7 +26,7 @@ export function Layout() {
     const isIdle = idleStatus?.isIdle || false;
 
     return (
-        <div className="flex min-h-screen overflow-hidden relative bg-[var(--background)]">
+        <div className="flex h-screen overflow-hidden relative bg-[var(--background)]">
             {/* Background Orbs */}
             <div className="landing-orb landing-orb-1" />
             <div className="landing-orb landing-orb-2" />
@@ -97,10 +97,8 @@ export function Layout() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto p-8 z-10">
-                <div className="animate-fade-in-up">
-                    <Outlet />
-                </div>
+            <main className="flex-1 overflow-y-auto relative z-10 scroll-smooth">
+                <Outlet />
             </main>
         </div>
     );

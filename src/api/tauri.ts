@@ -37,6 +37,12 @@ export interface WindowEvent {
     duration_seconds: number;
 }
 
+export interface InputHistoryBucket {
+    time: string;
+    keystrokes: number;
+    mouse_clicks: number;
+}
+
 // API Functions
 
 /**
@@ -72,6 +78,35 @@ export async function getTimeline(): Promise<TimelineSegment[]> {
  */
 export async function getRecentEvents(): Promise<WindowEvent[]> {
     return invoke<WindowEvent[]>('get_recent_events');
+}
+
+/**
+ * Get window events in range
+ */
+export async function getTimelineRange(startIso: string, endIso: string): Promise<WindowEvent[]> {
+    return invoke<WindowEvent[]>('get_timeline_range', { startIso, endIso });
+}
+
+/**
+ * Get window events for specific app in range
+ */
+export async function getTimelineRangeForApp(processName: string, startIso: string, endIso: string): Promise<WindowEvent[]> {
+    return invoke<WindowEvent[]>('get_timeline_range_for_app', { processName, startIso, endIso });
+}
+
+/**
+ * Get app usage aggregated in range
+ */
+export async function getAppUsageRange(startDate: string, endDate: string): Promise<AppUsageEntry[]> {
+    return invoke<AppUsageEntry[]>('get_app_usage_range', { startDate, endDate });
+}
+
+/**
+ * Get input history for last 24h
+ * @param intervalMinutes Bucket size in minutes
+ */
+export async function getInputHistory(intervalMinutes: number): Promise<InputHistoryBucket[]> {
+    return invoke<InputHistoryBucket[]>('get_input_history', { intervalMinutes });
 }
 
 /**
@@ -121,7 +156,10 @@ export function formatDuration(seconds: number): string {
     if (hours > 0) {
         return `${hours}h ${minutes}m`;
     }
-    return `${minutes}m`;
+    if (minutes > 0) {
+        return `${minutes}m`;
+    }
+    return `${Math.floor(seconds)}s`;
 }
 
 /**

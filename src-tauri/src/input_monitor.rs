@@ -19,20 +19,25 @@ impl InputMonitor {
         let counts_clone = counts.clone();
 
         thread::spawn(move || {
+            log::info!("InputMonitor: Starting global input listener thread");
             if let Err(error) = listen(move |event| {
                 if let Ok(mut c) = counts_clone.lock() {
                     match event.event_type {
-                        EventType::KeyPress(_) => c.keystrokes += 1,
-                        EventType::ButtonPress(_) => c.mouse_clicks += 1,
-                        // Mouse move is extremely high frequency, ignore for performance for now
-                        // or sample it.
-                        // EventType::MouseMove { .. } => c.mouse_distance += 1, 
+                        EventType::KeyPress(_) => {
+                            c.keystrokes += 1;
+                            // log::info!("Key pressed! Total: {}", c.keystrokes);
+                        },
+                        EventType::ButtonPress(_) => {
+                            c.mouse_clicks += 1;
+                            // log::info!("Mouse clicked! Total: {}", c.mouse_clicks);
+                        },
                         _ => {}
                     }
                 }
             }) {
-                log::error!("Input listener error: {:?}", error);
+                log::error!("InputMonitor: Listener error: {:?}", error);
             }
+            log::info!("InputMonitor: Thread exited");
         });
 
         Self { counts }
