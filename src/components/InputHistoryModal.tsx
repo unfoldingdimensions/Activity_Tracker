@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { GlassCard } from './GlassCard';
 import { X } from 'lucide-react';
 import { useInputHistory } from '../hooks/useTrackerData';
 import {
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend
+    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid
 } from 'recharts';
 
 interface InputHistoryModalProps {
@@ -12,7 +12,15 @@ interface InputHistoryModalProps {
 
 export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
     const [interval, setInterval] = useState(60); // Default 1 hour
+    const [metric, setMetric] = useState<'keystrokes' | 'clicks'>('keystrokes');
     const { data: history, isLoading } = useInputHistory(interval, true);
+    const filteredHistory = useMemo(() => {
+        if (!history) return [];
+        // Assuming backend returns 24h of data for any interval
+        if (interval === 10) return history.slice(-18); // Last 3 hours (18 * 10min)
+        if (interval === 30) return history.slice(-12); // Last 6 hours (12 * 30min)
+        return history; // Last 24 hours
+    }, [history, interval]);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in p-4">
@@ -27,7 +35,7 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                             Input Activity History
                         </h2>
                         <p className="text-sm text-[var(--muted-foreground)]">
-                            Keystrokes and mouse clicks over the last 24 hours
+                            Keystrokes and mouse clicks over time
                         </p>
                     </div>
                     <button
@@ -39,19 +47,38 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                 </div>
 
                 {/* Controls */}
-                <div className="flex gap-2 mb-6">
-                    {[10, 30, 60].map((m) => (
-                        <button
-                            key={m}
-                            onClick={() => setInterval(m)}
-                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${interval === m
-                                    ? 'bg-[var(--foreground)] text-[var(--background)] shadow-lg scale-105'
-                                    : 'bg-[var(--secondary)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--border)]'
-                                }`}
-                        >
-                            {m === 60 ? '1 Hour' : `${m} Mins`}
-                        </button>
-                    ))}
+                <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-between items-start sm:items-center">
+                    {/* Interval Toggle */}
+                    <div className="flex gap-2 bg-[var(--surface)] p-1 rounded-full border border-[var(--border)]">
+                        {[10, 30, 60].map((m) => (
+                            <button
+                                key={m}
+                                onClick={() => setInterval(m)}
+                                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${interval === m
+                                    ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
+                                    : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)]'
+                                    }`}
+                            >
+                                {m === 60 ? '1h' : `${m}m`}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Metric Toggle */}
+                    <div className="flex gap-2 bg-[var(--surface)] p-1 rounded-full border border-[var(--border)]">
+                        {(['keystrokes', 'clicks'] as const).map((m) => (
+                            <button
+                                key={m}
+                                onClick={() => setMetric(m)}
+                                className={`px-4 py-1.5 rounded-full text-xs font-medium capitalize transition-all duration-200 ${metric === m
+                                    ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
+                                    : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)]'
+                                    }`}
+                            >
+                                {m}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Chart */}
@@ -63,20 +90,23 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                         </div>
                     ) : (
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={history || []} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                            <BarChart data={filteredHistory} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.2} />
                                 <XAxis
                                     dataKey="time"
                                     stroke="var(--muted-foreground)"
                                     fontSize={12}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    interval={history ? Math.floor(history.length / 8) : 0}
+                                    tickLine={true}
+                                    axisLine={true}
+                                    interval={filteredHistory.length > 20 ? 'preserveStartEnd' : 0}
+                                    style={{ fontFamily: 'var(--font-body)' }}
                                 />
                                 <YAxis
                                     stroke="var(--muted-foreground)"
                                     fontSize={12}
-                                    tickLine={false}
-                                    axisLine={false}
+                                    tickLine={true}
+                                    axisLine={true}
+                                    style={{ fontFamily: 'var(--font-body)' }}
                                 />
                                 <Tooltip
                                     contentStyle={{
@@ -88,26 +118,35 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                                     }}
                                     cursor={{ fill: 'var(--secondary)', opacity: 0.5 }}
                                 />
-                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                <Bar
-                                    dataKey="keystrokes"
-                                    name="Keystrokes"
-                                    fill="#0f766e"
-                                    radius={[4, 4, 0, 0]}
-                                    maxBarSize={50}
+                                <Legend
+                                    wrapperStyle={{ paddingTop: '20px' }}
+                                    formatter={(value) => <span style={{ fontFamily: 'var(--font-body)' }}>{value}</span>}
                                 />
-                                <Bar
-                                    dataKey="mouse_clicks"
-                                    name="Clicks"
-                                    fill="#7c3aed"
-                                    radius={[4, 4, 0, 0]}
-                                    maxBarSize={50}
-                                />
+                                {metric === 'keystrokes' && (
+                                    <Bar
+                                        dataKey="keystrokes"
+                                        name="Keystrokes"
+                                        fill="#0f766e"
+                                        radius={[4, 4, 0, 0]}
+                                        maxBarSize={50}
+                                        animationDuration={1000}
+                                    />
+                                )}
+                                {metric === 'clicks' && (
+                                    <Bar
+                                        dataKey="mouse_clicks"
+                                        name="Clicks"
+                                        fill="#7c3aed"
+                                        radius={[4, 4, 0, 0]}
+                                        maxBarSize={50}
+                                        animationDuration={1000}
+                                    />
+                                )}
                             </BarChart>
                         </ResponsiveContainer>
                     )}
                 </div>
-            </GlassCard>
-        </div>
+            </GlassCard >
+        </div >
     );
 }

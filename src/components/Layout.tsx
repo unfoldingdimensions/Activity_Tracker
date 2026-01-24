@@ -7,6 +7,7 @@ import {
     Clock,
 } from 'lucide-react';
 import { useActiveWindow, useIdleStatus } from '../hooks/useTrackerData';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -97,8 +98,19 @@ export function Layout() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto relative z-10 scroll-smooth">
-                <Outlet />
+            <main className="flex-1 overflow-y-auto relative z-10 scroll-smooth h-screen">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={location.pathname}
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        transition={{ duration: 0.2 }}
+                        className="min-h-full"
+                    >
+                        <Outlet />
+                    </motion.div>
+                </AnimatePresence>
             </main>
         </div>
     );

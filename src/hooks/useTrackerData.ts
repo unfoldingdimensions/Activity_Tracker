@@ -20,7 +20,6 @@ import {
     type ActiveWindow,
     type TimelineSegment,
     type WindowEvent,
-    type InputHistoryBucket,
     formatDuration,
 } from '../api/tauri';
 

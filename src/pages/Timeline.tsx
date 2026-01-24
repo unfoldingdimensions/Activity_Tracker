@@ -3,9 +3,26 @@ import { useTimelineEventsRange, useAppUsageRange, useTimelineRangeForApp } from
 import { formatDuration } from '../api/tauri';
 import { Clock, Calendar, CheckCircle2, LayoutList, List, ArrowLeft, ArrowUpRight } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Skeleton } from '../components/ui/Skeleton';
 
 type TimeRange = 'today' | 'yesterday' | 'week' | 'prev_week' | 'month';
 type ViewMode = 'all' | 'apps';
+
+const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.05
+        }
+    }
+};
+
+const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: { opacity: 1, y: 0 }
+};
 
 export function Timeline() {
     const [range, setRange] = useState<TimeRange>('today');
@@ -103,18 +120,26 @@ export function Timeline() {
     const isLoading = selectedApp ? appEventsLoading : (viewMode === 'all' ? eventsLoading : appsLoading);
 
     return (
-        <div className="flex flex-col min-h-full animate-fade-in relative">
+        <div className="flex flex-col min-h-full relative">
             {/* Sticky Header */}
             <header className="sticky top-0 z-30 backdrop-blur-md bg-[var(--background)]/80 p-8 pb-6 border-b border-[var(--border)]/50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
+                <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center gap-3"
+                >
                     {selectedApp && (
-                        <button
+                        <motion.button
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
                             onClick={() => setSelectedApp(null)}
                             className="p-2 rounded-full bg-[var(--secondary)] hover:bg-[var(--border)] transition-colors text-[var(--foreground)]"
                             aria-label="Back to App List"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
                         >
                             <ArrowLeft size={20} />
-                        </button>
+                        </motion.button>
                     )}
                     <div>
                         <h2 className="font-display text-3xl font-bold text-[var(--foreground)] flex items-center gap-2">
@@ -124,9 +149,14 @@ export function Timeline() {
                             {selectedApp ? `Activity logs for ${rangeLabel}` : 'Detailed activity log'}
                         </p>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="flex items-center gap-3">
+                <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="flex items-center gap-3"
+                >
                     {/* View Switcher - Hidden if drilling down */}
                     {!selectedApp && (
                         <div className="flex p-1 bg-[var(--secondary)] rounded-lg">
@@ -163,127 +193,176 @@ export function Timeline() {
                             {rangeLabel}
                         </button>
 
-                        {showRangePicker && (
-                            <>
-                                <div className="fixed inset-0 z-10" onClick={() => setShowRangePicker(false)} />
-                                <div className="absolute right-0 mt-2 w-48 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl z-20 py-1 animate-fade-in-up">
-                                    {[
-                                        { id: 'today', label: 'Today' },
-                                        { id: 'yesterday', label: 'Yesterday' },
-                                        { id: 'week', label: 'This Week' },
-                                        { id: 'prev_week', label: 'Last Week' },
-                                        { id: 'month', label: 'This Month' },
-                                    ].map((opt) => (
-                                        <button
-                                            key={opt.id}
-                                            onClick={() => {
-                                                setRange(opt.id as TimeRange);
-                                                setShowRangePicker(false);
-                                            }}
-                                            className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--secondary)] transition-colors flex items-center justify-between ${range === opt.id ? 'text-[var(--primary)] font-medium' : 'text-[var(--foreground)]'
-                                                }`}
-                                        >
-                                            {opt.label}
-                                            {range === opt.id && <CheckCircle2 size={14} />}
-                                        </button>
-                                    ))}
-                                </div>
-                            </>
-                        )}
+                        <AnimatePresence>
+                            {showRangePicker && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setShowRangePicker(false)} />
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="absolute right-0 mt-2 w-48 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl z-20 py-1"
+                                    >
+                                        {[
+                                            { id: 'today', label: 'Today' },
+                                            { id: 'yesterday', label: 'Yesterday' },
+                                            { id: 'week', label: 'This Week' },
+                                            { id: 'prev_week', label: 'Last Week' },
+                                            { id: 'month', label: 'This Month' },
+                                        ].map((opt) => (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => {
+                                                    setRange(opt.id as TimeRange);
+                                                    setShowRangePicker(false);
+                                                }}
+                                                className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--secondary)] transition-colors flex items-center justify-between ${range === opt.id ? 'text-[var(--primary)] font-medium' : 'text-[var(--foreground)]'
+                                                    }`}
+                                            >
+                                                {opt.label}
+                                                {range === opt.id && <CheckCircle2 size={14} />}
+                                            </button>
+                                        ))}
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
                     </div>
-                </div>
+                </motion.div>
             </header>
 
             {/* Content Area */}
             <div className="p-8 pt-6 space-y-6 flex-1">
-                {(viewMode === 'all' || selectedApp) ? (
-                    <div className="space-y-6">
-                        {isLoading ? (
-                            <div className="text-center py-10 text-[var(--muted-foreground)]">Loading events...</div>
-                        ) : groupedEvents.length > 0 ? (
-                            groupedEvents.map((group) => (
-                                <div key={group.time} className="animate-fade-in">
-                                    <div className="flex items-center gap-2 mb-3 text-[var(--muted-foreground)] text-sm font-medium sticky top-[132px] bg-[var(--background)]/90 backdrop-blur-sm py-2 z-10 border-b border-[var(--border)]/30 w-fit px-3 rounded-r-full shadow-sm">
-                                        <Clock size={14} />
-                                        {group.time}
-                                    </div>
-                                    <div className="space-y-3 pl-4 border-l-2 border-[var(--border)]">
-                                        {group.items.map((event, idx) => (
-                                            <GlassCard
-                                                key={`${event.timestamp}-${idx}`}
-                                                className="p-4 flex items-center justify-between group"
-                                                hover
-                                            >
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-semibold text-[var(--foreground)]">
-                                                            {event.process_name?.replace('.exe', '')}
-                                                        </span>
-                                                        <span className="text-xs text-[var(--muted-foreground)] bg-[var(--secondary)] px-2 py-0.5 rounded-full">
-                                                            {event.timestamp.split('T')[1].substring(0, 8)}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-[var(--muted-foreground)] mt-1 truncate max-w-md">
-                                                        {event.window_title || 'No Title'}
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="font-mono text-sm font-medium text-[var(--foreground)]">
-                                                        {formatDuration(event.duration_seconds)}
-                                                    </span>
-                                                </div>
-                                            </GlassCard>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-10">
-                                <p className="text-[var(--muted-foreground)]">No activity recorded for this period.</p>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    /* App Wise View */
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {isLoading ? (
-                            <div className="col-span-full text-center py-10 text-[var(--muted-foreground)]">Loading usage...</div>
-                        ) : appUsage && appUsage.length > 0 ? (
-                            appUsage.map((app, idx) => (
-                                <GlassCard
-                                    key={app.name}
-                                    className="p-5 relative group cursor-pointer active:scale-95 transition-all"
-                                    spotlight
-                                    onClick={() => handleAppClick(app.name)}
-                                    style={{ animationDelay: `${idx * 50}ms` }}
-                                >
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white shadow-sm transition-transform group-hover:scale-110"
-                                                style={{ backgroundColor: ['#be185d', '#a16207', '#0f766e', '#7c3aed', '#1c1917'][idx % 5] }}
-                                            >
-                                                {app.name.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-[var(--foreground)]">{app.name.replace('.exe', '')}</p>
-                                                <p className="text-xs text-[var(--muted-foreground)]">Application</p>
+                <AnimatePresence mode="wait">
+                    {(viewMode === 'all' || selectedApp) ? (
+                        <motion.div
+                            key="timeline-list"
+                            variants={containerVariants}
+                            initial="hidden"
+                            animate="show"
+                            exit={{ opacity: 0 }}
+                            className="space-y-6"
+                        >
+                            {isLoading ? (
+                                <div className="space-y-6">
+                                    {[1, 2, 3].map(i => (
+                                        <div key={i} className="animate-pulse">
+                                            <Skeleton variant="text" className="w-24 h-6 mb-3" />
+                                            <div className="space-y-3 pl-4 border-l-2 border-[var(--border)]">
+                                                <Skeleton className="h-20 w-full rounded-xl" />
+                                                <Skeleton className="h-20 w-full rounded-xl" />
                                             </div>
                                         </div>
-                                        <ArrowUpRight className="text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100 transition-opacity" size={20} />
-                                    </div>
-                                    <div className="text-right border-t border-[var(--border)] pt-4">
-                                        <p className="text-xs text-[var(--muted-foreground)] mb-1">Total Time</p>
-                                        <p className="font-mono font-bold text-2xl text-[var(--foreground)]">{formatDuration(app.seconds)}</p>
-                                    </div>
-                                </GlassCard>
-                            ))
-                        ) : (
-                            <div className="col-span-full text-center py-10 text-[var(--muted-foreground)]">
-                                No app usage data for this period.
-                            </div>
-                        )}
-                    </div>
-                )}
+                                    ))}
+                                </div>
+                            ) : groupedEvents.length > 0 ? (
+                                groupedEvents.map((group) => (
+                                    <motion.div key={group.time} variants={itemVariants}>
+                                        <div className="flex items-center gap-2 mb-3 text-[var(--muted-foreground)] text-sm font-medium sticky top-[132px] bg-[var(--background)]/90 backdrop-blur-sm py-2 z-10 border-b border-[var(--border)]/30 w-fit px-3 rounded-r-full shadow-sm ring-1 ring-[var(--border)]/50">
+                                            <Clock size={14} />
+                                            {group.time}
+                                        </div>
+                                        <div className="space-y-3 pl-4 border-l-2 border-[var(--border)]">
+                                            {group.items.map((event, idx) => (
+                                                <motion.div
+                                                    key={`${event.timestamp}-${idx}`}
+                                                    whileHover={{ x: 4 }}
+                                                >
+                                                    <GlassCard
+                                                        className="p-4 flex items-center justify-between group"
+                                                        hover
+                                                        spotlight
+                                                    >
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-semibold text-[var(--foreground)]">
+                                                                    {event.process_name?.replace('.exe', '')}
+                                                                </span>
+                                                                <span className="text-xs text-[var(--muted-foreground)] bg-[var(--secondary)] px-2 py-0.5 rounded-full font-mono">
+                                                                    {event.timestamp.split('T')[1].substring(0, 8)}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-sm text-[var(--muted-foreground)] mt-1 truncate max-w-md">
+                                                                {event.window_title || 'No Title'}
+                                                            </p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="font-mono text-sm font-medium text-[var(--foreground)]">
+                                                                {formatDuration(event.duration_seconds)}
+                                                            </span>
+                                                        </div>
+                                                    </GlassCard>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                ))
+                            ) : (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="text-center py-20"
+                                >
+                                    <p className="text-[var(--muted-foreground)]">No activity recorded for this period.</p>
+                                </motion.div>
+                            )}
+                        </motion.div>
+                    ) : (
+                        /* App Wise View */
+                        <motion.div
+                            key="app-grid"
+                            variants={containerVariants}
+                            initial="hidden"
+                            animate="show"
+                            exit={{ opacity: 0 }}
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                        >
+                            {isLoading ? (
+                                Array(6).fill(0).map((_, i) => (
+                                    <Skeleton key={i} className="h-32 w-full rounded-xl" />
+                                ))
+                            ) : appUsage && appUsage.length > 0 ? (
+                                appUsage.map((app, idx) => (
+                                    <motion.div
+                                        key={app.name}
+                                        variants={itemVariants}
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                        <GlassCard
+                                            className="p-5 relative group cursor-pointer"
+                                            spotlight
+                                            onClick={() => handleAppClick(app.name)}
+                                        >
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white shadow-sm transition-transform group-hover:scale-110"
+                                                        style={{ backgroundColor: ['#be185d', '#a16207', '#0f766e', '#7c3aed', '#1c1917'][idx % 5] }}
+                                                    >
+                                                        {app.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-[var(--foreground)]">{app.name.replace('.exe', '')}</p>
+                                                        <p className="text-xs text-[var(--muted-foreground)]">Application</p>
+                                                    </div>
+                                                </div>
+                                                <ArrowUpRight className="text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100 transition-opacity" size={20} />
+                                            </div>
+                                            <div className="text-right border-t border-[var(--border)] pt-4">
+                                                <p className="text-xs text-[var(--muted-foreground)] mb-1">Total Time</p>
+                                                <p className="font-mono font-bold text-2xl text-[var(--foreground)]">{formatDuration(app.seconds)}</p>
+                                            </div>
+                                        </GlassCard>
+                                    </motion.div>
+                                ))
+                            ) : (
+                                <div className="col-span-full text-center py-20 text-[var(--muted-foreground)]">
+                                    No app usage data for this period.
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );
