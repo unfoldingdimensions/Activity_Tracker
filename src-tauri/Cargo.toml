@@ -15,7 +15,7 @@ name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.5.3" }
+tauri-build = { version = "2.5.3", features = [] }
 
 [dependencies]
 # Tauri
@@ -37,6 +37,9 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # SQLite database
 rusqlite = { version = "0.35", features = ["bundled"] }
+
+# Input monitoring
+rdev = "0.5"
 
 # Windows API bindings
 [target.'cfg(windows)'.dependencies]

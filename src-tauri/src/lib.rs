@@ -7,6 +7,7 @@ mod commands;
 mod database;
 mod tracker;
 mod windows_api;
+mod input_monitor;
 
 use commands::AppState;
 use std::sync::Mutex;
@@ -54,10 +55,13 @@ pub fn run() {
             commands::get_active_window,
             commands::get_app_usage,
             commands::get_daily_stats,
+            commands::get_activity_timeline,
+            commands::get_recent_events,
             commands::is_idle,
             commands::get_idle_seconds,
             commands::start_tracking,
             commands::stop_tracking,
+            commands::clear_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

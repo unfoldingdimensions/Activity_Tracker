@@ -1,14 +1,61 @@
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
-import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2, Play, Pause } from 'lucide-react';
 import { useState } from 'react';
 import { useTheme } from '../context/useTheme';
+import { isTauri } from '../utils/isTauri';
+import { startTracking, stopTracking, clearData } from '../api/tauri';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function Settings() {
     const { theme, toggleTheme } = useTheme();
     const [trackTitles, setTrackTitles] = useState(true);
+    const [isTracking, setIsTracking] = useState(true);
+    const [isToggling, setIsToggling] = useState(false);
+    const [isClearing, setIsClearing] = useState(false);
+    const queryClient = useQueryClient();
 
     const isDarkMode = theme === 'dark';
+
+    const handleTrackingToggle = async () => {
+        if (!isTauri()) {
+            setIsTracking(!isTracking);
+            return;
+        }
+
+        setIsToggling(true);
+        try {
+            if (isTracking) {
+                await stopTracking();
+            } else {
+                await startTracking();
+            }
+            setIsTracking(!isTracking);
+        } catch (error) {
+            console.error('Failed to toggle tracking:', error);
+        } finally {
+            setIsToggling(false);
+        }
+    };
+
+    const handleClearData = async () => {
+        if (!isTauri()) return;
+
+        if (confirm('Are you sure you want to delete all activity history? This cannot be undone.')) {
+            setIsClearing(true);
+            try {
+                await clearData();
+                // Invalidate all queries to refresh UI
+                await queryClient.invalidateQueries();
+                alert('Data cleared successfully.');
+            } catch (error) {
+                console.error('Failed to clear data:', error);
+                alert('Failed to clear data');
+            } finally {
+                setIsClearing(false);
+            }
+        }
+    };
 
     return (
         <div className="space-y-8">
@@ -22,8 +69,57 @@ export function Settings() {
                 </p>
             </div>
 
-            {/* Appearance */}
+            {/* Tracking Control */}
             <GlassCard className="p-6 animate-fade-in-up" hover={false} spotlight>
+                <div className="flex items-center gap-3 mb-6">
+                    {isTracking ? (
+                        <Play size={20} className="text-[#0f766e]" />
+                    ) : (
+                        <Pause size={20} className="text-[var(--muted-foreground)]" />
+                    )}
+                    <h3 className="font-display text-lg font-semibold text-[var(--foreground)]">
+                        Tracking
+                    </h3>
+                </div>
+
+                <div className="space-y-4">
+                    {/* Tracking Toggle */}
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-[var(--secondary)] hover-lift group">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg transition-transform duration-[var(--duration-fast)] group-hover:scale-110 ${isTracking ? 'bg-[#0f766e]/20' : 'bg-[var(--muted)]'
+                                }`}>
+                                {isTracking ? (
+                                    <Play size={18} className="text-[#0f766e]" />
+                                ) : (
+                                    <Pause size={18} className="text-[var(--muted-foreground)]" />
+                                )}
+                            </div>
+                            <div>
+                                <p className="font-medium text-[var(--foreground)]">
+                                    {isTracking ? 'Tracking Active' : 'Tracking Paused'}
+                                </p>
+                                <p className="text-sm text-[var(--muted-foreground)]">
+                                    {isTracking
+                                        ? 'Recording your activity in the background'
+                                        : 'Activity tracking is currently paused'
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                        <Button
+                            variant={isTracking ? 'secondary' : 'primary'}
+                            size="sm"
+                            onClick={handleTrackingToggle}
+                            loading={isToggling}
+                        >
+                            {isTracking ? 'Pause' : 'Resume'}
+                        </Button>
+                    </div>
+                </div>
+            </GlassCard>
+
+            {/* Appearance */}
+            <GlassCard className="p-6 animate-fade-in-up" hover={false} spotlight style={{ animationDelay: '50ms' }}>
                 <div className="flex items-center gap-3 mb-6">
                     <SettingsIcon size={20} className="text-[var(--foreground)]" />
                     <h3 className="font-display text-lg font-semibold text-[var(--foreground)]">
@@ -72,7 +168,7 @@ export function Settings() {
             </GlassCard>
 
             {/* Privacy */}
-            <GlassCard className="p-6 animate-fade-in-up" hover={false} spotlight style={{ animationDelay: '50ms' } as React.CSSProperties}>
+            <GlassCard className="p-6 animate-fade-in-up" hover={false} spotlight style={{ animationDelay: '100ms' }}>
                 <div className="flex items-center gap-3 mb-6">
                     <Eye size={20} className="text-[var(--foreground)]" />
                     <h3 className="font-display text-lg font-semibold text-[var(--foreground)]">
@@ -131,7 +227,12 @@ export function Settings() {
                                 </p>
                             </div>
                         </div>
-                        <Button variant="destructive" size="sm">
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleClearData}
+                            loading={isClearing}
+                        >
                             Clear
                         </Button>
                     </div>
@@ -139,7 +240,7 @@ export function Settings() {
             </GlassCard>
 
             {/* About */}
-            <GlassCard className="p-6 animate-fade-in-up" hover={false} style={{ animationDelay: '100ms' } as React.CSSProperties}>
+            <GlassCard className="p-6 animate-fade-in-up" hover={false} style={{ animationDelay: '150ms' }}>
                 <h3 className="font-display text-lg font-semibold mb-4 text-[var(--foreground)]">
                     About
                 </h3>

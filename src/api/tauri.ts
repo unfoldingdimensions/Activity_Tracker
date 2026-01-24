@@ -24,6 +24,19 @@ export interface DailyStats {
     total_mouse_distance: number;
 }
 
+export interface TimelineSegment {
+    time: string; // HH:MM
+    active_seconds: number;
+    idle_seconds: number;
+}
+
+export interface WindowEvent {
+    timestamp: string;
+    process_name: string;
+    window_title: string | null;
+    duration_seconds: number;
+}
+
 // API Functions
 
 /**
@@ -45,6 +58,20 @@ export async function getAppUsage(): Promise<AppUsageEntry[]> {
  */
 export async function getDailyStats(): Promise<DailyStats | null> {
     return invoke<DailyStats | null>('get_daily_stats');
+}
+
+/**
+ * Get activity timeline for today
+ */
+export async function getTimeline(): Promise<TimelineSegment[]> {
+    return invoke<TimelineSegment[]>('get_activity_timeline');
+}
+
+/**
+ * Get recent window events
+ */
+export async function getRecentEvents(): Promise<WindowEvent[]> {
+    return invoke<WindowEvent[]>('get_recent_events');
 }
 
 /**
@@ -73,6 +100,13 @@ export async function startTracking(): Promise<void> {
  */
 export async function stopTracking(): Promise<void> {
     return invoke<void>('stop_tracking');
+}
+
+/**
+ * Clear all tracking data
+ */
+export async function clearData(): Promise<void> {
+    return invoke<void>('clear_data');
 }
 
 // Utility functions

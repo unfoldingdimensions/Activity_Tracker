@@ -1,17 +1,7 @@
 import { GlassCard } from '../components/GlassCard';
 import { Clock, Calendar, TrendingUp } from 'lucide-react';
-
-// Mock timeline data representing activity blocks throughout the day
-const timelineBlocks = [
-    { start: '09:00', end: '10:30', app: 'VS Code', category: 'productive', project: 'Activity Tracker' },
-    { start: '10:30', end: '10:45', app: 'Slack', category: 'communication', project: null },
-    { start: '10:45', end: '12:00', app: 'VS Code', category: 'productive', project: 'Activity Tracker' },
-    { start: '12:00', end: '13:00', app: 'Idle', category: 'break', project: null },
-    { start: '13:00', end: '13:30', app: 'Chrome', category: 'distraction', project: null },
-    { start: '13:30', end: '15:00', app: 'VS Code', category: 'productive', project: 'Client Project' },
-    { start: '15:00', end: '15:15', app: 'Slack', category: 'communication', project: null },
-    { start: '15:15', end: '17:00', app: 'VS Code', category: 'productive', project: 'Activity Tracker' },
-];
+import { useRecentEvents } from '../hooks/useTrackerData';
+import { formatDuration } from '../api/tauri';
 
 // Monochrome category colors
 const categoryColors: Record<string, string> = {
@@ -21,7 +11,17 @@ const categoryColors: Record<string, string> = {
     break: '#e4e4e7',
 };
 
+const getCategory = (name: string): string => {
+    const n = name.toLowerCase();
+    if (n.includes('code') || n.includes('studio') || n.includes('terminal') || n.includes('git')) return 'productive';
+    if (n.includes('slack') || n.includes('discord') || n.includes('teams') || n.includes('outlook')) return 'communication';
+    if (n.includes('chrome') || n.includes('edge') || n.includes('firefox') || n.includes('brave')) return 'distraction';
+    return 'break';
+}
+
 export function Timeline() {
+    const { data: events, isLoading } = useRecentEvents();
+
     return (
         <div className="space-y-8 animate-fade-in">
             {/* Header */}
@@ -31,7 +31,7 @@ export function Timeline() {
                         Timeline
                     </h2>
                     <p className="text-[var(--muted-foreground)] mt-1">
-                        Your activity breakdown by time
+                        Recent activity breakdown
                     </p>
                 </div>
                 <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
@@ -40,7 +40,7 @@ export function Timeline() {
                 </div>
             </div>
 
-            {/* Summary Stats */}
+            {/* Summary Stats (Placeholder for now until we aggregate) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <GlassCard className="p-5">
                     <div className="flex items-center gap-3">
@@ -48,8 +48,10 @@ export function Timeline() {
                             <TrendingUp size={20} className="text-[var(--foreground)]" />
                         </div>
                         <div>
-                            <p className="text-sm text-[var(--muted-foreground)]">Productive Time</p>
-                            <p className="text-xl font-bold font-display text-[var(--foreground)]">5h 15m</p>
+                            <p className="text-sm text-[var(--muted-foreground)]">Most Used</p>
+                            <p className="text-xl font-bold font-display text-[var(--foreground)]">
+                                {events && events.length > 0 ? events[0].process_name : '-'}
+                            </p>
                         </div>
                     </div>
                 </GlassCard>
@@ -59,8 +61,10 @@ export function Timeline() {
                             <Clock size={20} className="text-[var(--foreground)]" />
                         </div>
                         <div>
-                            <p className="text-sm text-[var(--muted-foreground)]">Communication</p>
-                            <p className="text-xl font-bold font-display text-[var(--foreground)]">45m</p>
+                            <p className="text-sm text-[var(--muted-foreground)]">Events</p>
+                            <p className="text-xl font-bold font-display text-[var(--foreground)]">
+                                {events?.length || 0}
+                            </p>
                         </div>
                     </div>
                 </GlassCard>
@@ -70,8 +74,10 @@ export function Timeline() {
                             <Clock size={20} className="text-[var(--muted-foreground)]" />
                         </div>
                         <div>
-                            <p className="text-sm text-[var(--muted-foreground)]">Distractions</p>
-                            <p className="text-xl font-bold font-display text-[var(--foreground)]">30m</p>
+                            <p className="text-sm text-[var(--muted-foreground)]">Status</p>
+                            <p className="text-xl font-bold font-display text-[var(--foreground)]">
+                                {isLoading ? 'Loading...' : 'Active'}
+                            </p>
                         </div>
                     </div>
                 </GlassCard>
@@ -80,37 +86,56 @@ export function Timeline() {
             {/* Timeline Visualization */}
             <GlassCard className="p-6" hover={false}>
                 <h3 className="font-display text-lg font-semibold mb-6 text-[var(--foreground)]">
-                    Activity Blocks
+                    Recent Activity Blocks
                 </h3>
                 <div className="space-y-3">
-                    {timelineBlocks.map((block, index) => (
-                        <div key={index} className="flex items-center gap-4">
-                            {/* Time */}
-                            <div className="w-24 text-sm text-[var(--muted-foreground)] font-mono">
-                                {block.start}
-                            </div>
-                            {/* Block */}
-                            <div
-                                className="flex-1 p-4 rounded-lg transition-all duration-250 interactive-hover"
-                                style={{
-                                    backgroundColor: 'var(--secondary)',
-                                    borderLeft: `3px solid ${categoryColors[block.category]}`,
-                                }}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="font-medium text-[var(--foreground)]">{block.app}</p>
-                                        {block.project && (
-                                            <p className="text-sm text-[var(--muted-foreground)]">{block.project}</p>
-                                        )}
-                                    </div>
-                                    <span className="text-sm text-[var(--muted-foreground)]">
-                                        {block.start} - {block.end}
-                                    </span>
-                                </div>
-                            </div>
+                    {isLoading ? (
+                        <div className="text-center py-8 text-[var(--muted-foreground)]">
+                            Loading timeline...
                         </div>
-                    ))}
+                    ) : events && events.length > 0 ? (
+                        events.map((event, index) => {
+                            const category = getCategory(event.process_name);
+                            const startTime = new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                            return (
+                                <div key={index} className="flex items-center gap-4">
+                                    {/* Time */}
+                                    <div className="w-24 text-sm text-[var(--muted-foreground)] font-mono">
+                                        {startTime}
+                                    </div>
+                                    {/* Block */}
+                                    <div
+                                        className="flex-1 p-4 rounded-lg transition-all duration-250 interactive-hover"
+                                        style={{
+                                            backgroundColor: 'var(--secondary)',
+                                            borderLeft: `3px solid ${categoryColors[category]}`,
+                                        }}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="font-medium text-[var(--foreground)]">
+                                                    {event.process_name}
+                                                </p>
+                                                {event.window_title && (
+                                                    <p className="text-sm text-[var(--muted-foreground)] truncate max-w-md">
+                                                        {event.window_title}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <span className="text-sm text-[var(--muted-foreground)]">
+                                                {formatDuration(event.duration_seconds)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="text-center py-8 text-[var(--muted-foreground)]">
+                            No recent activity recorded.
+                        </div>
+                    )}
                 </div>
             </GlassCard>
 

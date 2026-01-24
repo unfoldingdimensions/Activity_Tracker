@@ -6,6 +6,7 @@ import {
     Settings,
     Clock,
 } from 'lucide-react';
+import { useActiveWindow, useIdleStatus } from '../hooks/useTrackerData';
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -17,6 +18,12 @@ const navItems = [
 
 export function Layout() {
     const location = useLocation();
+    const { data: activeWindow } = useActiveWindow();
+    const { data: idleStatus } = useIdleStatus();
+
+    // Get current app name (strip .exe)
+    const currentApp = activeWindow?.process_name?.replace('.exe', '') || 'Unknown';
+    const isIdle = idleStatus?.isIdle || false;
 
     return (
         <div className="flex min-h-screen overflow-hidden relative bg-[var(--background)]">
@@ -67,16 +74,24 @@ export function Layout() {
                     })}
                 </nav>
 
-                {/* Footer */}
+                {/* Footer - Live Status */}
                 <div className="p-4 border-t border-[var(--border)]">
-                    <div className="card p-3 flex items-center gap-3">
-                        <div className="status-indicator">
-                            <div className="status-dot" />
-                            <div className="status-ring" />
+                    <div className="card p-3 space-y-2">
+                        <div className="flex items-center gap-3">
+                            <div className="status-indicator">
+                                <div
+                                    className="status-dot"
+                                    style={{ backgroundColor: isIdle ? 'var(--muted-foreground)' : undefined }}
+                                />
+                                {!isIdle && <div className="status-ring" />}
+                            </div>
+                            <span className="text-xs text-[var(--muted-foreground)]">
+                                {isIdle ? 'Idle' : 'Tracking Active'}
+                            </span>
                         </div>
-                        <span className="text-xs text-[var(--muted-foreground)]">
-                            Tracking Active
-                        </span>
+                        <div className="text-xs text-[var(--muted-foreground)] truncate">
+                            <span className="text-[var(--foreground)] font-medium">{currentApp}</span>
+                        </div>
                     </div>
                 </div>
             </aside>

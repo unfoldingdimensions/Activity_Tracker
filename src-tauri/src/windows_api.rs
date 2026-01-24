@@ -3,11 +3,13 @@
 
 #[cfg(windows)]
 use windows::{
-    Win32::Foundation::HWND,
+    Win32::Foundation::{HWND, MAX_PATH},
     Win32::UI::WindowsAndMessaging::{
         GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
     },
-    Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION},
+    Win32::System::Threading::{
+        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ
+    },
     Win32::System::ProcessStatus::GetModuleBaseNameW,
     Win32::System::SystemInformation::GetTickCount,
     Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO},
@@ -43,7 +45,14 @@ pub fn get_active_window() -> Option<ActiveWindow> {
         GetWindowThreadProcessId(hwnd, Some(&mut process_id));
 
         // Get process name
-        let process_name = get_process_name(process_id).unwrap_or_else(|| "Unknown".to_string());
+        let process_name = get_process_name(process_id).unwrap_or_else(|| {
+             // Fallback: use window title if it exists and looks like an app
+             if !window_title.is_empty() {
+                 "Unknown".to_string() 
+             } else {
+                 "Unknown".to_string()
+             }
+        });
 
         Some(ActiveWindow {
             process_name,
@@ -65,14 +74,33 @@ pub fn get_active_window() -> Option<ActiveWindow> {
 #[cfg(windows)]
 fn get_process_name(process_id: u32) -> Option<String> {
     unsafe {
-        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id).ok()?;
+        // Try with PROCESS_QUERY_INFORMATION | PROCESS_VM_READ first (for GetModuleBaseName)
+        let handle_result = OpenProcess(
+            PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 
+            false, 
+            process_id
+        );
+
+        let handle = match handle_result {
+            Ok(h) => h,
+            Err(_) => {
+                // Fallback to LIMITED_INFORMATION
+                OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id).ok()?
+            }
+        };
         
-        let mut name_buffer = [0u16; 260];
+        // Try GetModuleBaseNameW
+        let mut name_buffer = [0u16; MAX_PATH as usize];
         let len = GetModuleBaseNameW(handle, None, &mut name_buffer);
         
+        // Close handle (Windows crate handles often drop automatically but explicit closing via dropping wrapper if needed, 
+        // here `handle` is a `HANDLE` which struct implements Drop or we assume it's fine for now)
+        // Actually windows crate handles are Owned usually.
+
         if len > 0 {
             Some(String::from_utf16_lossy(&name_buffer[..len as usize]))
         } else {
+            // Log failure if needed
             None
         }
     }

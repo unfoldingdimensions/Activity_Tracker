@@ -2,7 +2,7 @@
 
 use crate::tracker::Tracker;
 use crate::windows_api::ActiveWindow;
-use crate::database::DailyStats;
+use crate::database::{DailyStats, TimelineSegment, WindowEvent};
 use std::sync::Mutex;
 use tauri::State;
 
@@ -36,6 +36,18 @@ pub fn get_daily_stats(state: State<AppState>) -> Option<DailyStats> {
     state.tracker.lock().unwrap().get_today_stats()
 }
 
+/// Get activity timeline
+#[tauri::command]
+pub fn get_activity_timeline(state: State<AppState>) -> Vec<TimelineSegment> {
+    state.tracker.lock().unwrap().get_today_timeline()
+}
+
+/// Get recent window events
+#[tauri::command]
+pub fn get_recent_events(state: State<AppState>) -> Vec<WindowEvent> {
+    state.tracker.lock().unwrap().get_recent_events()
+}
+
 /// Check if the system is idle
 #[tauri::command]
 pub fn is_idle(state: State<AppState>) -> bool {
@@ -58,6 +70,12 @@ pub fn start_tracking(state: State<AppState>) {
 #[tauri::command]
 pub fn stop_tracking(state: State<AppState>) {
     state.tracker.lock().unwrap().stop();
+}
+
+/// Clear all data
+#[tauri::command]
+pub fn clear_data(state: State<AppState>) -> Result<(), String> {
+    state.tracker.lock().unwrap().clear_data().map_err(|e| e.to_string())
 }
 
 /// App usage entry for frontend
