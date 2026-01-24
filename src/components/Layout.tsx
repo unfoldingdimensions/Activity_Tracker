@@ -1,0 +1,92 @@
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import {
+    LayoutDashboard,
+    Activity,
+    Zap,
+    Settings,
+    Clock,
+} from 'lucide-react';
+
+const navItems = [
+    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/timeline', icon: Clock, label: 'Timeline' },
+    { to: '/activity', icon: Activity, label: 'Activity' },
+    { to: '/power', icon: Zap, label: 'Power' },
+    { to: '/settings', icon: Settings, label: 'Settings' },
+];
+
+export function Layout() {
+    const location = useLocation();
+
+    return (
+        <div className="flex min-h-screen overflow-hidden relative bg-[var(--background)]">
+            {/* Background Orbs */}
+            <div className="landing-orb landing-orb-1" />
+            <div className="landing-orb landing-orb-2" />
+            <div className="noise-overlay" />
+
+            {/* Sidebar */}
+            <aside className="sidebar w-64 flex-shrink-0 flex flex-col z-10">
+                {/* Logo */}
+                <div className="p-6 border-b border-[var(--border)]">
+                    <h1 className="font-display text-xl font-bold text-[var(--foreground)] animate-fade-in">
+                        Activity Tracker
+                    </h1>
+                    <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                        Track • Visualize • Improve
+                    </p>
+                </div>
+
+                {/* Navigation */}
+                <nav className="flex-1 p-4 space-y-1 stagger-children">
+                    {navItems.map((item) => {
+                        const isActive = location.pathname === item.to;
+                        return (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                className={`
+                  group nav-item flex items-center gap-3 px-4 py-3 rounded-lg
+                  transition-colors duration-[var(--duration-fast)]
+                  ${isActive
+                                        ? 'bg-[var(--primary)] text-[var(--primary-foreground)] nav-active'
+                                        : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                                    }
+                `}
+                            >
+                                <item.icon
+                                    size={20}
+                                    className={`
+                    transition-transform duration-[var(--duration-fast)]
+                    ${isActive ? '' : 'group-hover:scale-110'}
+                  `}
+                                />
+                                <span className="font-medium">{item.label}</span>
+                            </NavLink>
+                        );
+                    })}
+                </nav>
+
+                {/* Footer */}
+                <div className="p-4 border-t border-[var(--border)]">
+                    <div className="card p-3 flex items-center gap-3">
+                        <div className="status-indicator">
+                            <div className="status-dot" />
+                            <div className="status-ring" />
+                        </div>
+                        <span className="text-xs text-[var(--muted-foreground)]">
+                            Tracking Active
+                        </span>
+                    </div>
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 overflow-y-auto p-8 z-10">
+                <div className="animate-fade-in-up">
+                    <Outlet />
+                </div>
+            </main>
+        </div>
+    );
+}
