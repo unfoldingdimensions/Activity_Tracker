@@ -74,6 +74,13 @@ export async function getDailyStats(): Promise<DailyStats | null> {
 }
 
 /**
+ * Get stats for custom range
+ */
+export async function getStatsRange(startIso: string, endIso: string): Promise<DailyStats> {
+    return invoke<DailyStats>('get_stats_range', { startIso, endIso });
+}
+
+/**
  * Get activity timeline for today
  */
 export async function getTimeline(): Promise<TimelineSegment[]> {
@@ -114,6 +121,13 @@ export async function getAppUsageRange(startDate: string, endDate: string): Prom
  */
 export async function getInputHistory(intervalMinutes: number): Promise<InputHistoryBucket[]> {
     return invoke<InputHistoryBucket[]>('get_input_history', { intervalMinutes });
+}
+
+/**
+ * Get input history in range
+ */
+export async function getInputHistoryRange(startIso: string, endIso: string, intervalMinutes: number): Promise<InputHistoryBucket[]> {
+    return invoke<InputHistoryBucket[]>('get_input_history_range', { startIso, endIso, intervalMinutes });
 }
 
 /**

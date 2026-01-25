@@ -149,28 +149,32 @@ pub fn get_app_usage(conn: &Connection, date: &str) -> Result<Vec<(String, u32)>
 }
 
 /// Get daily stats computed from app_usage table
-pub fn get_daily_stats(conn: &Connection, date: &str) -> Result<Option<DailyStats>> {
-    // Get total active seconds from app usage (sum of all app usage for the day)
+/// Get daily stats computed from app_usage, snapshots and input tables
+pub fn get_daily_stats(
+    conn: &Connection, 
+    date: &str, // Local date for app_usage (YYYY-MM-DD)
+    start_timestamp: &str, // UTC start (ISO 8601)
+    end_timestamp: &str    // UTC end (ISO 8601)
+) -> Result<Option<DailyStats>> {
+    // Get total active seconds from app usage (sum of all app usage for the local day)
     let total_active: u32 = conn.query_row(
         "SELECT COALESCE(SUM(total_seconds), 0) FROM app_usage WHERE date = ?1",
         [date],
         |row| row.get(0),
     ).unwrap_or(0);
 
-    let today_prefix = format!("{}%", date);
-    
-    // Get idle count from activity snapshots for today
+    // Get idle count from activity snapshots for the UTC range
     let idle_count: u32 = conn.query_row(
-        "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp LIKE ?1 AND is_idle = 1",
-        [&today_prefix],
+        "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 1",
+        [start_timestamp, end_timestamp],
         |row| row.get(0),
     ).unwrap_or(0);
     
-    // Get input totals
+    // Get input totals for the UTC range
     let (total_keystrokes, total_mouse_clicks): (u32, u32) = conn.query_row(
         "SELECT COALESCE(SUM(keystrokes), 0), COALESCE(SUM(mouse_clicks), 0) 
-         FROM input_activity WHERE timestamp LIKE ?1",
-        [&today_prefix],
+         FROM input_activity WHERE timestamp >= ?1 AND timestamp <= ?2",
+        [start_timestamp, end_timestamp],
         |row| Ok((row.get(0)?, row.get(1)?))
     ).map_err(|e| {
         log::error!("Error getting input stats: {:?}", e);
@@ -191,20 +195,61 @@ pub fn get_daily_stats(conn: &Connection, date: &str) -> Result<Option<DailyStat
     }))
 }
 
+/// Get stats for a specific UTC range (keystrokes, clicks, active time from snapshots)
+pub fn get_stats_range(
+    conn: &Connection,
+    start_timestamp: &str,
+    end_timestamp: &str
+) -> Result<DailyStats> {
+    // Active/Idle from snapshots
+    let active_count: u32 = conn.query_row(
+        "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 0",
+        [start_timestamp, end_timestamp],
+        |row| row.get(0)
+    ).unwrap_or(0);
+
+    let idle_count: u32 = conn.query_row(
+        "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 1",
+        [start_timestamp, end_timestamp],
+        |row| row.get(0)
+    ).unwrap_or(0);
+
+    // Inputs from input_activity
+    let (total_keystrokes, total_mouse_clicks): (u32, u32) = conn.query_row(
+        "SELECT COALESCE(SUM(keystrokes), 0), COALESCE(SUM(mouse_clicks), 0) 
+         FROM input_activity WHERE timestamp >= ?1 AND timestamp <= ?2",
+        [start_timestamp, end_timestamp],
+        |row| Ok((row.get(0)?, row.get(1)?))
+    ).unwrap_or((0, 0));
+
+    Ok(DailyStats {
+        total_active_seconds: active_count,
+        total_idle_seconds: idle_count,
+        total_keystrokes,
+        total_mouse_clicks,
+        total_mouse_distance: 0,
+    })
+}
+
 /// Get activity timeline grouped by hour for a specific date
-pub fn get_activity_timeline(conn: &Connection, date: &str) -> Result<Vec<TimelineSegment>> {
-    let today_prefix = format!("{}%", date);
+/// Get activity timeline grouped by hour for a specific range
+pub fn get_activity_timeline(
+    conn: &Connection, 
+    start_timestamp: &str, 
+    end_timestamp: &str
+) -> Result<Vec<TimelineSegment>> {
+    // subtsr(timestamp, 12, 2) works for "YYYY-MM-DDTHH:MM:SS"
     let mut stmt = conn.prepare(
         "SELECT substr(timestamp, 12, 2) || ':00' as hour,
                 COUNT(CASE WHEN is_idle = 0 THEN 1 END) as active_secs,
                 COUNT(CASE WHEN is_idle = 1 THEN 1 END) as idle_secs
          FROM activity_snapshots 
-         WHERE timestamp LIKE ?1
+         WHERE timestamp >= ?1 AND timestamp <= ?2
          GROUP BY hour
          ORDER BY hour ASC"
     )?;
     
-    let rows = stmt.query_map([&today_prefix], |row| {
+    let rows = stmt.query_map([start_timestamp, end_timestamp], |row| {
         Ok(TimelineSegment {
             time: row.get(0)?,
             active_seconds: row.get(1)?,
@@ -300,16 +345,16 @@ pub fn get_app_usage_in_range(conn: &Connection, start_date: &str, end_date: &st
 }
 
 
-/// Get raw input activity since a specific timestamp
-pub fn get_input_history_since(conn: &Connection, since_iso: &str) -> Result<Vec<InputHistoryEntry>> {
+/// Get raw input activity in a specific range
+pub fn get_input_history_range(conn: &Connection, start_iso: &str, end_iso: &str) -> Result<Vec<InputHistoryEntry>> {
     let mut stmt = conn.prepare(
         "SELECT timestamp, keystrokes, mouse_clicks 
          FROM input_activity 
-         WHERE timestamp >= ?1 
+         WHERE timestamp >= ?1 AND timestamp <= ?2
          ORDER BY timestamp ASC"
     )?;
     
-    let rows = stmt.query_map([since_iso], |row| {
+    let rows = stmt.query_map([start_iso, end_iso], |row| {
         Ok(InputHistoryEntry {
             timestamp: row.get(0)?,
             keystrokes: row.get(1)?,

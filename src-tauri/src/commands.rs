@@ -5,7 +5,8 @@ use crate::windows_api::ActiveWindow;
 use crate::database::{DailyStats, TimelineSegment, WindowEvent, UserStats};
 use std::sync::Mutex;
 use tauri::State;
-use chrono::{Local, Duration, NaiveDateTime};
+use chrono::{Duration, NaiveDateTime};
+use chrono::TimeZone;
 
 /// App state managed by Tauri
 pub struct AppState {
@@ -35,6 +36,33 @@ pub fn get_app_usage(state: State<AppState>) -> Vec<AppUsageEntry> {
 #[tauri::command]
 pub fn get_daily_stats(state: State<AppState>) -> Option<DailyStats> {
     state.tracker.lock().unwrap().get_today_stats()
+}
+
+/// Get stats for custom range
+#[tauri::command]
+pub fn get_stats_range(state: State<AppState>, start_iso: String, end_iso: String) -> DailyStats {
+    let db = {
+        let tracker = state.tracker.lock().unwrap();
+        tracker.db.clone()
+    };
+    
+    if let Ok(conn) = db.lock() {
+        return crate::database::get_stats_range(&conn, &start_iso, &end_iso).unwrap_or(DailyStats {
+            total_active_seconds: 0,
+            total_idle_seconds: 0,
+            total_keystrokes: 0,
+            total_mouse_clicks: 0,
+            total_mouse_distance: 0,
+        });
+    }
+
+    DailyStats {
+        total_active_seconds: 0,
+        total_idle_seconds: 0,
+        total_keystrokes: 0,
+        total_mouse_clicks: 0,
+        total_mouse_distance: 0,
+    }
 }
 
 /// Get activity timeline
@@ -74,50 +102,69 @@ pub fn get_app_usage_range(state: State<AppState>, start_date: String, end_date:
         .collect()
 }
 
-/// Get input history bucketed by interval
+/// Get input history bucketed by interval (last 24h)
 #[tauri::command]
 pub fn get_input_history(state: State<AppState>, interval_minutes: u32) -> Vec<InputHistoryBucket> {
-    let now = Local::now();
+    let now = chrono::Utc::now();
     let start_time = now - Duration::hours(24);
-    // Format for SQL specific string comparison if needed, but here we just need a rough start time string
-    // Our DB function filters >= string. ISO string works for this.
-    let start_iso = start_time.format("%Y-%m-%dT%H:%M:%S").to_string();
+    let end_time = now;
     
-    let raw_data = state.tracker.lock().unwrap().get_input_history(&start_iso);
+    get_input_history_range(state, start_time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true), end_time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true), interval_minutes)
+}
+
+/// Get input history bucketed by interval in range
+#[tauri::command]
+pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_iso: String, interval_minutes: u32) -> Vec<InputHistoryBucket> {
+    let start_time = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&start_iso) {
+        dt.with_timezone(&chrono::Utc)
+    } else {
+        return Vec::new();
+    };
+
+    let end_time = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&end_iso) {
+        dt.with_timezone(&chrono::Utc)
+    } else {
+        chrono::Utc::now()
+    };
+
+    let raw_data = state.tracker.lock().unwrap().get_input_history_range(&start_iso, &end_iso);
     
     let mut buckets = Vec::new();
-    // Safety check for interval
     let interval = if interval_minutes == 0 { 60 } else { interval_minutes };
-    let num_buckets = (24 * 60) / interval + 1; // +1 to cover edge cases
+    
+    let diff_total = end_time.signed_duration_since(start_time);
+    let total_minutes = diff_total.num_minutes();
+    let num_buckets = (total_minutes / interval as i64) as u32 + 1;
     
     // Initialize buckets
     for i in 0..num_buckets {
         let bucket_time = start_time + Duration::minutes((i * interval) as i64);
         buckets.push(InputHistoryBucket {
-            time: bucket_time.format("%H:%M").to_string(),
+            time: bucket_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
             keystrokes: 0,
             mouse_clicks: 0,
         });
     }
 
-    let start_naive = start_time.naive_local();
-
     // Fill buckets
     for entry in raw_data {
-        // Try parsing with ms first
-        let parsed = NaiveDateTime::parse_from_str(&entry.timestamp, "%Y-%m-%dT%H:%M:%S%.3f");
-        
-        if let Ok(ts) = parsed {
-             let diff = ts.signed_duration_since(start_naive);
-             let minutes = diff.num_minutes();
+        let timestamp = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&entry.timestamp) {
+            dt.with_timezone(&chrono::Utc)
+        } else if let Ok(naive) = NaiveDateTime::parse_from_str(&entry.timestamp, "%Y-%m-%dT%H:%M:%S%.3f") {
+            chrono::Utc.from_utc_datetime(&naive)
+        } else {
+            continue;
+        };
+
+        let diff = timestamp.signed_duration_since(start_time);
+        let minutes = diff.num_minutes();
              
-             if minutes >= 0 {
-                 let bucket_idx = (minutes / interval as i64) as usize;
-                 if bucket_idx < buckets.len() {
-                     buckets[bucket_idx].keystrokes += entry.keystrokes;
-                     buckets[bucket_idx].mouse_clicks += entry.mouse_clicks;
-                 }
-             }
+        if minutes >= 0 {
+            let bucket_idx = (minutes / interval as i64) as usize;
+            if bucket_idx < buckets.len() {
+                buckets[bucket_idx].keystrokes += entry.keystrokes;
+                buckets[bucket_idx].mouse_clicks += entry.mouse_clicks;
+            }
         }
     }
     

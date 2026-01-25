@@ -62,15 +62,20 @@ export function formatStatsForCards(stats: DailyStats | null | undefined) {
         };
     }
 
-    const total = stats.total_active_seconds + stats.total_idle_seconds;
+    const active = stats.total_active_seconds || 0;
+    const idle = stats.total_idle_seconds || 0;
+    const clicks = stats.total_mouse_clicks || 0;
+    const keys = stats.total_keystrokes || 0;
+
+    const total = active + idle;
     const focusScore = total > 0
-        ? Math.round((stats.total_active_seconds / total) * 100)
+        ? Math.round((active / total) * 100)
         : 0;
 
     return {
-        screenTime: formatDuration(stats.total_active_seconds),
-        mouseActivity: stats.total_mouse_clicks.toLocaleString(),
-        keystrokes: stats.total_keystrokes.toLocaleString(),
+        screenTime: formatDuration(active),
+        mouseActivity: clicks.toLocaleString(),
+        keystrokes: keys.toLocaleString(),
         focusScore,
     };
 }

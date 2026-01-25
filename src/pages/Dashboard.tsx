@@ -1,26 +1,16 @@
-/**
- * Dashboard - Main productivity overview page
- * Refactored to use extracted components (was 386 lines, now ~120)
- */
-
 import { Monitor, MousePointer, Keyboard, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
-// Hooks
-import {
-    useAppUsage,
-    useDailyStats,
-    useTimeline,
-    formatStatsForCards,
-    formatAppUsageForChart,
-} from '../hooks/useTrackerData';
-
-// Shared components
+// Components
 import { PageHeader } from '../components/shared/PageHeader';
 import { StatCard } from '../components/dashboard/StatCard';
 import { FocusFlowChart } from '../components/dashboard/FocusFlowChart';
 import { AppUsageChart } from '../components/dashboard/AppUsageChart';
+import { TimeRangeFilter, type TimeRange } from '../components/dashboard/TimeRangeFilter';
+
+// Data Hook
+import { useDashboardData } from '../hooks/useDashboardData';
 
 // Feature components
 import { InputHistoryModal } from '../components/InputHistoryModal';
@@ -39,67 +29,50 @@ import { containerVariants, itemVariants } from '../constants/animations';
 
 export function Dashboard() {
     // Local state
+    const [timeRange, setTimeRange] = useState<TimeRange>('today');
     const [showInputModal, setShowInputModal] = useState(false);
     const [showBreathing, setShowBreathing] = useState(false);
 
-    // Fetch live data from backend
-    const { data: appUsageRaw, isLoading: appLoading } = useAppUsage();
-    const { data: dailyStats, isLoading: statsLoading } = useDailyStats();
-    const { data: timelineRaw } = useTimeline();
+    // Fetch unified data
+    const { stats, rawStats, appUsage, timelineData, isLoading } = useDashboardData(timeRange);
 
-    // Format data for display
-    const formattedStats = formatStatsForCards(dailyStats);
-    const appUsageData = formatAppUsageForChart(appUsageRaw);
-
-    // Transform timeline data for Focus Flow chart
-    const timelineData = useMemo(() => {
-        if (!timelineRaw) return [];
-        return timelineRaw.map((segment) => {
-            const total = segment.active_seconds + segment.idle_seconds;
-            const focus = total > 0 ? Math.round((segment.active_seconds / total) * 100) : 0;
-            return { time: segment.time, focus, distraction: 100 - focus };
-        });
-    }, [timelineRaw]);
-
-    // Build stats configuration
-    const stats = useMemo(() => [
+    // Build stats configuration for cards
+    const statCards = useMemo(() => [
         {
             label: 'Screen Time',
-            value: formattedStats.screenTime,
-            numericValue: dailyStats?.total_active_seconds || 0,
+            value: stats.screenTime,
+            numericValue: rawStats?.total_active_seconds || 0,
             icon: Monitor,
-            subtitle: 'today',
+            subtitle: timeRange === 'today' ? 'today' : 'in range',
             clickable: false,
             useStringValue: true,
         },
         {
             label: 'Keystrokes',
-            value: formattedStats.keystrokes,
-            numericValue: dailyStats?.total_keystrokes || 0,
+            value: stats.keystrokes,
+            numericValue: rawStats?.total_keystrokes || 0,
             icon: Keyboard,
-            subtitle: 'today',
+            subtitle: timeRange === 'today' ? 'today' : 'in range',
             clickable: true,
         },
         {
             label: 'Mouse Clicks',
-            value: formattedStats.mouseActivity,
-            numericValue: dailyStats?.total_mouse_clicks || 0,
+            value: stats.mouseActivity,
+            numericValue: rawStats?.total_mouse_clicks || 0,
             icon: MousePointer,
             subtitle: 'clicks',
             clickable: true,
         },
         {
             label: 'Focus Score',
-            value: `${formattedStats.focusScore}%`,
-            numericValue: formattedStats.focusScore,
+            value: `${stats.focusScore}%`,
+            numericValue: stats.focusScore,
             icon: Zap,
             subtitle: 'score',
             clickable: false,
             suffix: '%',
         },
-    ], [formattedStats, dailyStats]);
-
-    const isLoading = appLoading || statsLoading;
+    ], [stats, rawStats, timeRange]);
 
     return (
         <div className="flex flex-col min-h-full">
@@ -110,8 +83,13 @@ export function Dashboard() {
             {/* Header */}
             <PageHeader
                 title="The Pulse"
-                subtitle="Your productivity overview for today"
-                actions={<StreakCounter />}
+                subtitle="Your productivity overview"
+                actions={
+                    <div className="flex items-center gap-3">
+                        <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+                        <StreakCounter />
+                    </div>
+                }
             />
 
             {/* Content */}
@@ -123,7 +101,7 @@ export function Dashboard() {
                     animate="show"
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
                 >
-                    {stats.map((stat) => (
+                    {statCards.map((stat) => (
                         <motion.div key={stat.label} variants={itemVariants}>
                             <StatCard
                                 label={stat.label}
@@ -149,10 +127,10 @@ export function Dashboard() {
                     className="grid grid-cols-1 lg:grid-cols-3 gap-6"
                 >
                     <motion.div variants={itemVariants} className="lg:col-span-2">
-                        <FocusFlowChart data={timelineData} isLoading={isLoading} />
+                        <FocusFlowChart data={timelineData} isLoading={isLoading} title="Focus Flow" />
                     </motion.div>
                     <motion.div variants={itemVariants}>
-                        <AppUsageChart data={appUsageData} isLoading={isLoading} />
+                        <AppUsageChart data={appUsage} isLoading={isLoading} />
                     </motion.div>
                 </motion.div>
 

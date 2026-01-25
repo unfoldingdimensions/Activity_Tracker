@@ -6,10 +6,11 @@ use crate::input_monitor::InputMonitor;
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use chrono::TimeZone;
 
 /// The main tracker state
 pub struct Tracker {
-    db: Arc<Mutex<Connection>>,
+    pub db: Arc<Mutex<Connection>>,
     is_running: Arc<Mutex<bool>>,
     current_window: Arc<Mutex<Option<windows_api::ActiveWindow>>>,
     input_monitor: Arc<InputMonitor>,
@@ -200,21 +201,40 @@ impl Tracker {
         }
     }
 
-    /// Get daily stats
+    /// Get daily stats for today (from local midnight to now)
     pub fn get_today_stats(&self) -> Option<database::DailyStats> {
         let today = windows_api::get_today();
+        
+        // Calculate UTC boundaries for local "today"
+        let local_start = chrono::Local::now().date_naive().and_hms_opt(0, 0, 0).unwrap();
+        let local_end = chrono::Local::now().date_naive().and_hms_opt(23, 59, 59).unwrap();
+        
+        let start_utc = chrono::Local.from_local_datetime(&local_start).unwrap().with_timezone(&chrono::Utc);
+        let end_utc = chrono::Local.from_local_datetime(&local_end).unwrap().with_timezone(&chrono::Utc);
+
+        let start_iso = start_utc.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+        let end_iso = end_utc.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+
         if let Ok(conn) = self.db.lock() {
-            database::get_daily_stats(&conn, &today).unwrap_or(None)
+            database::get_daily_stats(&conn, &today, &start_iso, &end_iso).unwrap_or(None)
         } else {
             None
         }
     }
     
-    /// Get activity timeline for today
+    /// Get activity timeline for today (from local midnight to now)
     pub fn get_today_timeline(&self) -> Vec<database::TimelineSegment> {
-        let today = windows_api::get_today();
+        let local_start = chrono::Local::now().date_naive().and_hms_opt(0, 0, 0).unwrap();
+        let local_end = chrono::Local::now().date_naive().and_hms_opt(23, 59, 59).unwrap();
+        
+        let start_utc = chrono::Local.from_local_datetime(&local_start).unwrap().with_timezone(&chrono::Utc);
+        let end_utc = chrono::Local.from_local_datetime(&local_end).unwrap().with_timezone(&chrono::Utc);
+
+        let start_iso = start_utc.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+        let end_iso = end_utc.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+
         if let Ok(conn) = self.db.lock() {
-            database::get_activity_timeline(&conn, &today).unwrap_or_default()
+            database::get_activity_timeline(&conn, &start_iso, &end_iso).unwrap_or_default()
         } else {
             Vec::new()
         }
@@ -229,10 +249,10 @@ impl Tracker {
         }
     }
 
-    /// Get input history
-    pub fn get_input_history(&self, since_iso: &str) -> Vec<database::InputHistoryEntry> {
+    /// Get input history in range
+    pub fn get_input_history_range(&self, start_iso: &str, end_iso: &str) -> Vec<database::InputHistoryEntry> {
         if let Ok(conn) = self.db.lock() {
-             database::get_input_history_since(&conn, since_iso).unwrap_or_default()
+             database::get_input_history_range(&conn, start_iso, end_iso).unwrap_or_default()
         } else {
             Vec::new()
         }

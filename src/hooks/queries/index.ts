@@ -12,7 +12,7 @@
 export { useAppUsage, useAppUsageRange } from './useAppUsage';
 
 // Daily Stats
-export { useDailyStats } from './useDailyStats';
+export { useDailyStats, useStatsRange } from './useDailyStats';
 
 // Timeline & Events
 export {
