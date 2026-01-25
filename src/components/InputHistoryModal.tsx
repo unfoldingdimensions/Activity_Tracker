@@ -90,7 +90,7 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                         </div>
                     ) : (
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={filteredHistory} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                            <BarChart data={filteredHistory} margin={{ top: 20, right: 30, left: 10, bottom: interval === 10 ? 40 : 10 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.2} />
                                 <XAxis
                                     dataKey="time"
@@ -98,9 +98,12 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                                     fontSize={12}
                                     tickLine={true}
                                     axisLine={true}
-                                    interval={filteredHistory.length > 20 ? 'preserveStartEnd' : 0}
+                                    interval={0} // Show all ticks for high resolution
                                     tickFormatter={(time) => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     style={{ fontFamily: 'var(--font-body)' }}
+                                    angle={interval === 10 ? -45 : 0}
+                                    textAnchor={interval === 10 ? "end" : "middle"}
+                                    height={interval === 10 ? 60 : 30}
                                 />
                                 <YAxis
                                     stroke="var(--muted-foreground)"
