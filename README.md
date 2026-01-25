@@ -17,14 +17,55 @@ A premium, privacy-first activity and productivity tracker for Windows. Built wi
     -   **Energy Vampire**: AI-estimated power consumption based on application intensity.
 -   **🎨 Premium UI**: Sleek monochrome design with emerald accents, featuring glassmorphism, spotlight hover effects, and smooth transitions.
 
+## 🏗️ Architecture
+
+This project follows a **Domain-Driven, Feature-First** architecture to ensure scalability and maintainability.
+
+### Folder Structure
+```
+src/
+├── api/             # Tauri backend bindings
+├── components/      # UI Components
+│   ├── dashboard/   # Dashboard-specific widgets
+│   ├── gamification/ # Leveling, Streaks, Achievements
+│   ├── insights/    # Deep analytics visualization
+│   ├── tools/       # Productivity tools (Pomodoro, Goals)
+│   ├── wellbeing/   # Ergonomics & Health widgets
+│   ├── ui/          # Shared design system primitives (Button, Toast)
+│   └── shared/      # Layout components (PageHeader, Sidebar)
+├── constants/       # Design tokens, animations, config
+├── context/         # React Context (Theme, etc.)
+├── hooks/           # Custom React Hooks
+│   └── queries/     # React Query hooks for data fetching
+├── pages/           # Route components (Dashboard, Timeline, etc.)
+├── types/           # Shared TypeScript definitions
+└── utils/           # Helper functions (formatters, validation)
+```
+
+### Key Patterns
+-   **Composition**: UI components are built using composition (e.g., `GlassCard`, `StatCard`) rather than inheritance.
+-   **Data Access Layer**: All data fetching is centralized in custom hooks (`useAppUsage`, `useDailyStats`) wrapping TanStack Query for caching and state management.
+-   **Error Handling**: Global and component-level `ErrorBoundaries` ensure the app never crashes completely. Visual fallbacks are provided for failed charts.
+-   **Type Safety**: Full TypeScript integration with shared types mirroring Rust structs.
+
+## 🧪 Testing Strategy
+
+We rely on a robust testing pyramid using **Vitest** and **React Testing Library**.
+
+-   **Unit Tests**: Validate utility functions (`src/utils/__tests__`) and custom hooks (`src/hooks/__tests__`).
+-   **Component Tests**: Verify UI rendering and interaction logic for shared components.
+-   **Integration Tests**: Test full page flows (`src/test/integration`) using mocked API responses.
+    -   *Note*: We intentionally mock `isTauri` to force the API integration path during testing, ensuring the frontend handles data correctly.
+
 ## 🛠️ Technology Stack
 
 -   **Backend**: [Rust](https://www.rust-lang.org/) with [Tauri v2](https://v2.tauri.app/) for native performance.
 -   **Frontend**: [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/).
--   **Styling**: Vanilla CSS with a bespoke design system (Spotlight, Glassmorphism).
--   **Data Vis**: [Recharts](https://recharts.org/) for interactive, responsive charts.
--   **Database**: [SQLite](https://sqlite.org/) with `rusqlite` and WAL mode enabled.
--   **Input Hooks**: Global input monitoring via `rdev`.
+-   **State Management**: [TanStack Query](https://tanstack.com/query) (React Query).
+-   **Styling**: Vanilla CSS with a bespoke design system + Tailwind utility classes.
+-   **Data Vis**: [Recharts](https://recharts.org/) for interactive charts.
+-   **Database**: [SQLite](https://sqlite.org/) with `rusqlite`.
+-   **Testing**: [Vitest](https://vitest.dev/) + [React Testing Library](https://testing-library.com/).
 
 ## 🚀 Getting Started
 
@@ -52,7 +93,12 @@ A premium, privacy-first activity and productivity tracker for Windows. Built wi
     npm run tauri dev
     ```
 
-4.  **Build for production**:
+4.  **Run tests**:
+    ```bash
+    npm test
+    ```
+
+5.  **Build for production**:
     ```bash
     npm run tauri build
     ```

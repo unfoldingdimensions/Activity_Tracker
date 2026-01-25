@@ -7,26 +7,39 @@ import { Timeline } from './pages/Timeline';
 import { ActivityPage } from './pages/Activity';
 import { Power } from './pages/Power';
 import { Settings } from './pages/Settings';
+import { ErrorBoundary } from './components/errors/ErrorBoundary';
+import { ToastProvider } from './components/ui/Toast';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/timeline" element={<Timeline />} />
-              <Route path="/activity" element={<ActivityPage />} />
-              <Route path="/power" element={<Power />} />
-              <Route path="/settings" element={<Settings />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <ThemeProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route element={<Layout />}>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/timeline" element={<Timeline />} />
+                  <Route path="/activity" element={<ActivityPage />} />
+                  <Route path="/power" element={<Power />} />
+                  <Route path="/settings" element={<Settings />} />
+                </Route>
+              </Routes>
+            </BrowserRouter>
+          </ThemeProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

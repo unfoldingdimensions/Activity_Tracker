@@ -1,4 +1,10 @@
-import { GlassCard } from '../components/GlassCard';
+/**
+ * Activity Page - Detailed activity timeline and analytics
+ * Refactored to use shared components
+ */
+
+import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
     BarChart,
     Bar,
@@ -13,63 +19,52 @@ import {
     CartesianGrid,
 } from 'recharts';
 import { MousePointer, Keyboard, Activity as ActivityIcon } from 'lucide-react';
+
+// Hooks
 import { useTimeline, formatTimelineForChart } from '../hooks/useTrackerData';
-import { motion } from 'framer-motion';
+
+// Components
+import { GlassCard } from '../components/GlassCard';
+import { PageHeader } from '../components/shared/PageHeader';
+import { StatCard } from '../components/dashboard/StatCard';
 import { ChartTooltip } from '../components/charts/ChartTooltip';
 import { ChartGradients } from '../components/charts/ChartGradients';
-import { AnimatedNumber } from '../components/ui/AnimatedNumber';
-import { Skeleton } from '../components/ui/Skeleton';
+import { EmptyState } from '../components/shared/EmptyState';
+import { LoadingState } from '../components/shared/LoadingState';
 
-const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-        opacity: 1,
-        transition: {
-            staggerChildren: 0.1
-        }
-    }
-};
-
-const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-};
+// Constants
+import { containerVariants, itemVariants } from '../constants/animations';
 
 export function ActivityPage() {
     const { data: timelineData, isLoading } = useTimeline();
     const chartData = formatTimelineForChart(timelineData);
 
     // Calculate totals
-    const totalActive = timelineData?.reduce((acc, curr) => acc + curr.active_seconds, 0) || 0;
-    const totalIdle = timelineData?.reduce((acc, curr) => acc + curr.idle_seconds, 0) || 0;
+    const { totalActive, totalIdle, peakHour, scatterData } = useMemo(() => {
+        const active = timelineData?.reduce((acc, curr) => acc + curr.active_seconds, 0) || 0;
+        const idle = timelineData?.reduce((acc, curr) => acc + curr.idle_seconds, 0) || 0;
 
-    // Create scatter data from timeline
-    const scatterData = chartData.map(item => ({
-        time: parseInt(item.time.split(':')[0], 10),
-        intensity: Math.min(100, Math.round((item.active / 60) * 100)), // % active in hour
-        activity: item.active + item.idle,
-    })).filter(d => d.activity > 0);
+        const scatter = chartData.map((item) => ({
+            time: parseInt(item.time.split(':')[0], 10),
+            intensity: Math.min(100, Math.round((item.active / 60) * 100)),
+            activity: item.active + item.idle,
+        })).filter((d) => d.activity > 0);
 
-    const peakHour = chartData.reduce((max, curr) =>
-        curr.active > (max.active || 0) ? curr : max
-        , { time: '-', active: 0 });
+        const peak = chartData.reduce(
+            (max, curr) => (curr.active > (max.active || 0) ? curr : max),
+            { time: '-', active: 0 }
+        );
+
+        return { totalActive: active, totalIdle: idle, peakHour: peak, scatterData: scatter };
+    }, [timelineData, chartData]);
 
     return (
         <div className="flex flex-col min-h-full">
-            {/* Sticky Header */}
-            <div className="sticky top-0 z-20 backdrop-blur-md bg-[var(--background)]/80 p-8 pb-4 border-b border-[var(--border)]/50 transition-all">
-                <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                >
-                    <h2 className="font-display text-3xl font-bold text-[var(--foreground)]">
-                        Activity Timeline
-                    </h2>
-                    <p className="text-[var(--muted-foreground)] mt-1">
-                        Active usage patterns throughout the day
-                    </p>
-                </motion.div>
-            </div>
+            {/* Header */}
+            <PageHeader
+                title="Activity Timeline"
+                subtitle="Active usage patterns throughout the day"
+            />
 
             {/* Content */}
             <div className="p-8 pt-6 space-y-8 flex-1">
@@ -81,63 +76,34 @@ export function ActivityPage() {
                     className="grid grid-cols-1 md:grid-cols-3 gap-4"
                 >
                     <motion.div variants={itemVariants}>
-                        <GlassCard className="p-5" hover spotlight>
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--secondary)]">
-                                    <Keyboard size={20} className="text-[#0f766e]" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-[var(--muted-foreground)]">Active Duration</p>
-                                    <div className="text-2xl font-bold font-display text-[var(--foreground)] flex items-center">
-                                        {isLoading ? (
-                                            <Skeleton variant="text" className="h-8 w-20" />
-                                        ) : (
-                                            <>
-                                                <AnimatedNumber value={Math.round(totalActive / 60)} />m
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </GlassCard>
+                        <StatCard
+                            label="Active Duration"
+                            value={`${Math.round(totalActive / 60)}m`}
+                            numericValue={Math.round(totalActive / 60)}
+                            icon={Keyboard}
+                            isLoading={isLoading}
+                            suffix="m"
+                        />
                     </motion.div>
-
                     <motion.div variants={itemVariants}>
-                        <GlassCard className="p-5" hover spotlight>
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--secondary)]">
-                                    <MousePointer size={20} className="text-[#7c3aed]" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-[var(--muted-foreground)]">Idle Duration</p>
-                                    <div className="text-2xl font-bold font-display text-[var(--foreground)] flex items-center">
-                                        {isLoading ? (
-                                            <Skeleton variant="text" className="h-8 w-20" />
-                                        ) : (
-                                            <>
-                                                <AnimatedNumber value={Math.round(totalIdle / 60)} />m
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </GlassCard>
+                        <StatCard
+                            label="Idle Duration"
+                            value={`${Math.round(totalIdle / 60)}m`}
+                            numericValue={Math.round(totalIdle / 60)}
+                            icon={MousePointer}
+                            isLoading={isLoading}
+                            suffix="m"
+                        />
                     </motion.div>
-
                     <motion.div variants={itemVariants}>
-                        <GlassCard className="p-5" hover spotlight>
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--secondary)]">
-                                    <ActivityIcon size={20} className="text-[#a16207]" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-[var(--muted-foreground)]">Peak Hour</p>
-                                    <p className="text-2xl font-bold font-display text-[var(--foreground)]">
-                                        {isLoading ? <Skeleton variant="text" className="h-8 w-20" /> : peakHour.time}
-                                    </p>
-                                </div>
-                            </div>
-                        </GlassCard>
+                        <StatCard
+                            label="Peak Hour"
+                            value={isLoading ? '-' : peakHour.time}
+                            numericValue={0}
+                            icon={ActivityIcon}
+                            isLoading={isLoading}
+                            useStringValue
+                        />
                     </motion.div>
                 </motion.div>
 
@@ -156,12 +122,7 @@ export function ActivityPage() {
                             <div className="h-72">
                                 <ChartGradients />
                                 {isLoading ? (
-                                    <div className="h-full flex items-center justify-center">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <Skeleton className="w-full h-48 rounded-lg opacity-20" />
-                                            <p className="text-[var(--muted-foreground)]">Loading charts...</p>
-                                        </div>
-                                    </div>
+                                    <LoadingState message="Loading charts..." />
                                 ) : chartData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={chartData} barGap={4}>
@@ -170,56 +131,38 @@ export function ActivityPage() {
                                                 dataKey="time"
                                                 stroke="var(--muted-foreground)"
                                                 fontSize={12}
-                                                tickLine={true}
-                                                axisLine={true}
+                                                tickLine
+                                                axisLine
                                                 style={{ fontFamily: 'var(--font-body)' }}
                                             />
                                             <YAxis
                                                 stroke="var(--muted-foreground)"
                                                 fontSize={12}
-                                                tickLine={true}
-                                                axisLine={true}
+                                                tickLine
+                                                axisLine
                                                 style={{ fontFamily: 'var(--font-body)' }}
                                             />
                                             <Tooltip content={<ChartTooltip />} />
                                             <Legend
                                                 wrapperStyle={{ paddingTop: '16px' }}
                                                 formatter={(value) => (
-                                                    <span style={{ color: 'var(--foreground)', fontSize: '12px', fontWeight: 500, fontFamily: 'var(--font-body)' }}>
+                                                    <span style={{ color: 'var(--foreground)', fontSize: '12px', fontWeight: 500 }}>
                                                         {value === 'active' ? 'Active Time' : 'Idle Time'}
                                                     </span>
                                                 )}
                                             />
-                                            <Bar
-                                                dataKey="active"
-                                                fill="url(#emeraldGradient)"
-                                                stroke="#0f766e"
-                                                strokeWidth={1}
-                                                radius={[4, 4, 0, 0]}
-                                                name="active"
-                                                animationDuration={1500}
-                                            />
-                                            <Bar
-                                                dataKey="idle"
-                                                fill="url(#violetGradient)"
-                                                stroke="#7c3aed"
-                                                strokeWidth={1}
-                                                radius={[4, 4, 0, 0]}
-                                                name="idle"
-                                                animationDuration={1500}
-                                            />
+                                            <Bar dataKey="active" fill="url(#emeraldGradient)" stroke="#0f766e" strokeWidth={1} radius={[4, 4, 0, 0]} name="active" animationDuration={1500} />
+                                            <Bar dataKey="idle" fill="url(#violetGradient)" stroke="#7c3aed" strokeWidth={1} radius={[4, 4, 0, 0]} name="idle" animationDuration={1500} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 ) : (
-                                    <div className="h-full flex items-center justify-center text-[var(--muted-foreground)]">
-                                        No activity data for today
-                                    </div>
+                                    <EmptyState message="No activity data for today" />
                                 )}
                             </div>
                         </GlassCard>
                     </motion.div>
 
-                    {/* Intensity Scatter */}
+                    {/* Scatter Chart */}
                     <motion.div variants={itemVariants}>
                         <GlassCard className="p-6" hover={false}>
                             <h3 className="font-display text-lg font-semibold mb-4 text-[var(--foreground)]">
@@ -238,23 +181,17 @@ export function ActivityPage() {
                                                 name="Hour"
                                                 stroke="var(--muted-foreground)"
                                                 fontSize={12}
-                                                tickLine={true}
-                                                axisLine={true}
                                                 domain={[0, 24]}
                                                 type="number"
                                                 tickFormatter={(val) => `${val}:00`}
-                                                style={{ fontFamily: 'var(--font-body)' }}
                                             />
                                             <YAxis
                                                 dataKey="intensity"
                                                 name="Intensity"
                                                 stroke="var(--muted-foreground)"
                                                 fontSize={12}
-                                                tickLine={true}
-                                                axisLine={true}
                                                 domain={[0, 100]}
-                                                tickFormatter={(value) => `${value}%`}
-                                                style={{ fontFamily: 'var(--font-body)' }}
+                                                tickFormatter={(val) => `${val}%`}
                                             />
                                             <ZAxis dataKey="activity" range={[50, 400]} />
                                             <Tooltip content={<ChartTooltip />} />
@@ -270,9 +207,7 @@ export function ActivityPage() {
                                         </ScatterChart>
                                     </ResponsiveContainer>
                                 ) : (
-                                    <div className="h-full flex items-center justify-center text-[var(--muted-foreground)]">
-                                        No data available
-                                    </div>
+                                    <EmptyState message="No data available" />
                                 )}
                             </div>
                         </GlassCard>

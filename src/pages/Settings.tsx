@@ -6,9 +6,12 @@ import { useTheme } from '../context/useTheme';
 import { isTauri } from '../utils/isTauri';
 import { startTracking, stopTracking, clearData } from '../api/tauri';
 import { useQueryClient } from '@tanstack/react-query';
+import { PageHeader } from '../components/shared/PageHeader';
+import { useToast } from '../components/ui/Toast';
 
 export function Settings() {
     const { theme, toggleTheme } = useTheme();
+    const { showToast } = useToast();
     const [trackTitles, setTrackTitles] = useState(true);
     const [isTracking, setIsTracking] = useState(true);
     const [isToggling, setIsToggling] = useState(false);
@@ -20,6 +23,7 @@ export function Settings() {
     const handleTrackingToggle = async () => {
         if (!isTauri()) {
             setIsTracking(!isTracking);
+            showToast('info', isTracking ? 'Activity tracking has been paused.' : 'Activity tracking is now active.');
             return;
         }
 
@@ -27,19 +31,25 @@ export function Settings() {
         try {
             if (isTracking) {
                 await stopTracking();
+                showToast('info', 'Activity tracking has been paused.');
             } else {
                 await startTracking();
+                showToast('success', 'Activity tracking is now active.');
             }
             setIsTracking(!isTracking);
         } catch (error) {
             console.error('Failed to toggle tracking:', error);
+            showToast('error', 'Failed to toggle tracking state.');
         } finally {
             setIsToggling(false);
         }
     };
 
     const handleClearData = async () => {
-        if (!isTauri()) return;
+        if (!isTauri()) {
+            showToast('info', 'Data clearing is only available in the desktop app.');
+            return;
+        }
 
         if (confirm('Are you sure you want to delete all activity history? This cannot be undone.')) {
             setIsClearing(true);
@@ -47,10 +57,10 @@ export function Settings() {
                 await clearData();
                 // Invalidate all queries to refresh UI
                 await queryClient.invalidateQueries();
-                alert('Data cleared successfully.');
+                showToast('success', 'All activity history has been permanently deleted.');
             } catch (error) {
                 console.error('Failed to clear data:', error);
-                alert('Failed to clear data');
+                showToast('error', 'Failed to clear data. Please try again.');
             } finally {
                 setIsClearing(false);
             }
@@ -58,131 +68,137 @@ export function Settings() {
     };
 
     return (
-        <div className="flex flex-col min-h-full animate-fade-in">
-            {/* Sticky Header */}
-            <div className="sticky top-0 z-20 backdrop-blur-md bg-[var(--background)]/80 p-8 pb-4 border-b border-[var(--border)]/50 transition-all">
-                <h2 className="font-display text-3xl font-bold text-[var(--foreground)]">
-                    Settings
-                </h2>
-                <p className="text-[var(--muted-foreground)] mt-1">
-                    Configure your tracking preferences
-                </p>
-            </div>
+        <div className="flex flex-col min-h-full font-sans">
+            <PageHeader
+                title="Settings"
+                subtitle="Configure your tracking preferences and application settings"
+            />
 
-            {/* Content */}
-            <div className="p-8 pt-6 space-y-8 flex-1">
+            <div className="p-8 pt-6 space-y-6 flex-1 max-w-4xl">
                 {/* Tracking Control */}
-                <GlassCard className="p-6 animate-fade-in-up" hover={false} spotlight>
+                <GlassCard className="p-6" hover={false} spotlight>
                     <div className="flex items-center gap-3 mb-6">
-                        {isTracking ? (
-                            <Play size={20} className="text-[#0f766e]" />
-                        ) : (
-                            <Pause size={20} className="text-[var(--muted-foreground)]" />
-                        )}
-                        <h3 className="font-display text-lg font-semibold text-[var(--foreground)]">
-                            Tracking
-                        </h3>
+                        <div className={`p-2 rounded-lg ${isTracking ? 'bg-emerald-500/10' : 'bg-gray-500/10'}`}>
+                            {isTracking ? (
+                                <Play size={20} className="text-emerald-500" />
+                            ) : (
+                                <Pause size={20} className="text-[var(--muted-foreground)]" />
+                            )}
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
+                                Tracking Status
+                            </h3>
+                            <p className="text-sm text-[var(--muted-foreground)]">
+                                Control data collection
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="space-y-4">
-                        {/* Tracking Toggle */}
-                        <div className="flex items-center justify-between p-4 rounded-lg bg-[var(--secondary)] hover-lift group">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg transition-transform duration-[var(--duration-fast)] group-hover:scale-110 ${isTracking ? 'bg-[#0f766e]/20' : 'bg-[var(--muted)]'
-                                    }`}>
-                                    {isTracking ? (
-                                        <Play size={18} className="text-[#0f766e]" />
-                                    ) : (
-                                        <Pause size={18} className="text-[var(--muted-foreground)]" />
-                                    )}
-                                </div>
-                                <div>
-                                    <p className="font-medium text-[var(--foreground)]">
-                                        {isTracking ? 'Tracking Active' : 'Tracking Paused'}
-                                    </p>
-                                    <p className="text-sm text-[var(--muted-foreground)]">
-                                        {isTracking
-                                            ? 'Recording your activity in the background'
-                                            : 'Activity tracking is currently paused'
-                                        }
-                                    </p>
-                                </div>
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg transition-transform duration-200 group-hover:scale-110 ${isTracking ? 'bg-emerald-500/10' : 'bg-[var(--muted)]'}`}>
+                                {isTracking ? (
+                                    <Play size={18} className="text-emerald-500" />
+                                ) : (
+                                    <Pause size={18} className="text-[var(--muted-foreground)]" />
+                                )}
                             </div>
-                            <Button
-                                variant={isTracking ? 'secondary' : 'primary'}
-                                size="sm"
-                                onClick={handleTrackingToggle}
-                                loading={isToggling}
-                            >
-                                {isTracking ? 'Pause' : 'Resume'}
-                            </Button>
+                            <div>
+                                <p className="font-medium text-[var(--foreground)]">
+                                    {isTracking ? 'Tracking Active' : 'Tracking Paused'}
+                                </p>
+                                <p className="text-sm text-[var(--muted-foreground)]">
+                                    {isTracking
+                                        ? 'Recording your activity in the background'
+                                        : 'Activity tracking is currently paused'
+                                    }
+                                </p>
+                            </div>
                         </div>
+                        <Button
+                            variant={isTracking ? 'secondary' : 'primary'}
+                            size="sm"
+                            onClick={handleTrackingToggle}
+                            loading={isToggling}
+                            className="min-w-[100px]"
+                        >
+                            {isTracking ? 'Pause' : 'Resume'}
+                        </Button>
                     </div>
                 </GlassCard>
 
                 {/* Appearance */}
-                <GlassCard className="p-6 animate-fade-in-up" hover={false} spotlight style={{ animationDelay: '50ms' }}>
+                <GlassCard className="p-6" hover={false} spotlight>
                     <div className="flex items-center gap-3 mb-6">
-                        <SettingsIcon size={20} className="text-[var(--foreground)]" />
-                        <h3 className="font-display text-lg font-semibold text-[var(--foreground)]">
-                            Appearance
-                        </h3>
+                        <div className="p-2 rounded-lg bg-blue-500/10">
+                            <SettingsIcon size={20} className="text-blue-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
+                                Appearance
+                            </h3>
+                            <p className="text-sm text-[var(--muted-foreground)]">
+                                Customize the interface
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="space-y-4">
-                        {/* Dark Mode Toggle */}
-                        <div className="flex items-center justify-between p-4 rounded-lg bg-[var(--secondary)] hover-lift group">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-[var(--duration-fast)] group-hover:scale-110">
-                                    {isDarkMode ? (
-                                        <Moon size={18} className="text-[var(--foreground)]" />
-                                    ) : (
-                                        <Sun size={18} className="text-[var(--foreground)]" />
-                                    )}
-                                </div>
-                                <div>
-                                    <p className="font-medium text-[var(--foreground)]">Dark Mode</p>
-                                    <p className="text-sm text-[var(--muted-foreground)]">
-                                        Use dark theme for the interface
-                                    </p>
-                                </div>
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
+                                {isDarkMode ? (
+                                    <Moon size={18} className="text-[var(--foreground)]" />
+                                ) : (
+                                    <Sun size={18} className="text-[var(--foreground)]" />
+                                )}
                             </div>
-                            <button
-                                onClick={toggleTheme}
-                                className={`
-                    relative w-14 h-7 rounded-full transition-all duration-[var(--duration-base)]
-                    ${isDarkMode ? 'bg-[var(--foreground)]' : 'bg-[var(--border)]'}
-                  `}
-                            >
-                                <div
-                                    className={`
-                      absolute top-1 w-5 h-5 rounded-full shadow-md
-                      transition-all duration-[var(--duration-base)] ease-[var(--ease-out-back)]
-                      ${isDarkMode
-                                            ? 'left-8 bg-[var(--background)]'
-                                            : 'left-1 bg-[var(--foreground)]'
-                                        }
-                    `}
-                                />
-                            </button>
+                            <div>
+                                <p className="font-medium text-[var(--foreground)]">Dark Mode</p>
+                                <p className="text-sm text-[var(--muted-foreground)]">
+                                    Switch between light and dark themes
+                                </p>
+                            </div>
                         </div>
+                        <button
+                            onClick={toggleTheme}
+                            className={`
+                relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary)]
+                ${isDarkMode ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}
+              `}
+                        >
+                            <div
+                                className={`
+                  absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm
+                  transition-transform duration-200
+                  ${isDarkMode ? 'translate-x-7' : 'translate-x-1'}
+                `}
+                            />
+                        </button>
                     </div>
                 </GlassCard>
 
-                {/* Privacy */}
-                <GlassCard className="p-6 animate-fade-in-up" hover={false} spotlight style={{ animationDelay: '100ms' }}>
+                {/* Privacy & Data */}
+                <GlassCard className="p-6" hover={false} spotlight>
                     <div className="flex items-center gap-3 mb-6">
-                        <Eye size={20} className="text-[var(--foreground)]" />
-                        <h3 className="font-display text-lg font-semibold text-[var(--foreground)]">
-                            Privacy
-                        </h3>
+                        <div className="p-2 rounded-lg bg-amber-500/10">
+                            <Eye size={20} className="text-amber-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
+                                Privacy & Data
+                            </h3>
+                            <p className="text-sm text-[var(--muted-foreground)]">
+                                Manage your data and privacy settings
+                            </p>
+                        </div>
                     </div>
 
                     <div className="space-y-4">
                         {/* Track Window Titles */}
-                        <div className="flex items-center justify-between p-4 rounded-lg bg-[var(--secondary)] hover-lift group">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-[var(--duration-fast)] group-hover:scale-110">
+                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
                                     {trackTitles ? (
                                         <Eye size={18} className="text-[var(--foreground)]" />
                                     ) : (
@@ -199,33 +215,30 @@ export function Settings() {
                             <button
                                 onClick={() => setTrackTitles(!trackTitles)}
                                 className={`
-                    relative w-14 h-7 rounded-full transition-all duration-[var(--duration-base)]
-                    ${trackTitles ? 'bg-[var(--foreground)]' : 'bg-[var(--border)]'}
-                  `}
+                  relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary)]
+                  ${trackTitles ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}
+                `}
                             >
                                 <div
                                     className={`
-                      absolute top-1 w-5 h-5 rounded-full shadow-md
-                      transition-all duration-[var(--duration-base)] ease-[var(--ease-out-back)]
-                      ${trackTitles
-                                            ? 'left-8 bg-[var(--background)]'
-                                            : 'left-1 bg-[var(--foreground)]'
-                                        }
-                    `}
+                    absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm
+                    transition-transform duration-200
+                    ${trackTitles ? 'translate-x-7' : 'translate-x-1'}
+                  `}
                                 />
                             </button>
                         </div>
 
                         {/* Clear Data */}
-                        <div className="flex items-center justify-between p-4 rounded-lg bg-[var(--secondary)] hover-lift group">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--destructive)]/20 hover:border-[var(--destructive)]/50 transition-colors group">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--destructive)]/10 transition-transform duration-[var(--duration-fast)] group-hover:scale-110">
+                                <div className="p-2 rounded-lg bg-[var(--destructive)]/10 transition-transform duration-200 group-hover:scale-110">
                                     <Trash2 size={18} className="text-[var(--destructive)]" />
                                 </div>
                                 <div>
                                     <p className="font-medium text-[var(--foreground)]">Clear All Data</p>
                                     <p className="text-sm text-[var(--muted-foreground)]">
-                                        Delete all tracked activity data
+                                        Delete all tracks and restore default settings
                                     </p>
                                 </div>
                             </div>
@@ -235,35 +248,22 @@ export function Settings() {
                                 onClick={handleClearData}
                                 loading={isClearing}
                             >
-                                Clear
+                                Clear Data
                             </Button>
                         </div>
                     </div>
                 </GlassCard>
 
                 {/* About */}
-                <GlassCard className="p-6 animate-fade-in-up" hover={false} style={{ animationDelay: '150ms' }}>
-                    <h3 className="font-display text-lg font-semibold mb-4 text-[var(--foreground)]">
-                        About
-                    </h3>
-                    <div className="space-y-2 text-sm text-[var(--muted-foreground)]">
-                        <p>
-                            <span className="text-[var(--muted-foreground)]">Version:</span>{' '}
-                            <span className="text-[var(--foreground)] font-medium">0.1.0</span>
-                            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-[var(--secondary)] text-[var(--muted-foreground)]">
-                                Development
-                            </span>
-                        </p>
-                        <p>
-                            <span className="text-[var(--muted-foreground)]">Built with:</span>{' '}
-                            <span className="text-[var(--foreground)]">Tauri + React + TypeScript</span>
-                        </p>
-                        <p className="pt-2">
-                            All data is stored locally on your device. No information is sent to any server.
-                        </p>
-                    </div>
-                </GlassCard>
-            </div>
-        </div>
+                <div className="text-center pt-8 pb-4">
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                        Activity Tracker v0.1.0 • Built with Tauri + React
+                    </p>
+                    <p className="text-[10px] text-[var(--muted-foreground)]/60 mt-1">
+                        All data is stored locally. No information is uploaded to any server.
+                    </p>
+                </div>
+            </div >
+        </div >
     );
 }

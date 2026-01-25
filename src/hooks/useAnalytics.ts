@@ -109,9 +109,5 @@ export function useAnalytics() {
     return metrics;
 }
 
-export function getFlowColor(score: number): string {
-    if (score >= 80) return '#10b981'; // Emerald 500
-    if (score >= 60) return '#3b82f6'; // Blue 500
-    if (score >= 40) return '#f59e0b'; // Amber 500
-    return '#ef4444'; // Red 500
-}
+// Re-export getFlowColor from centralized colors for backwards compatibility
+export { getFlowColor } from '../constants/colors';
