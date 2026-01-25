@@ -44,12 +44,8 @@ export function ChartErrorFallback({
  */
 export function ChartErrorBoundary({
     children,
-    title,
-    height,
 }: {
     children: React.ReactNode;
-    title?: string;
-    height?: number | string;
 }) {
     // Using a simple try-catch pattern for synchronous chart errors
     // For async errors, the parent ErrorBoundary will catch them
