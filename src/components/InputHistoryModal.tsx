@@ -99,6 +99,7 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                                     tickLine={true}
                                     axisLine={true}
                                     interval={filteredHistory.length > 20 ? 'preserveStartEnd' : 0}
+                                    tickFormatter={(time) => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     style={{ fontFamily: 'var(--font-body)' }}
                                 />
                                 <YAxis
@@ -109,6 +110,7 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                                     style={{ fontFamily: 'var(--font-body)' }}
                                 />
                                 <Tooltip
+                                    labelFormatter={(time) => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                     contentStyle={{
                                         backgroundColor: 'var(--card)',
                                         border: '1px solid var(--border)',
