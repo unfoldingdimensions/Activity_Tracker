@@ -10,3 +10,7 @@ export type { FocusFlowChartProps, FocusFlowDataPoint } from './FocusFlowChart';
 
 export { AppUsageChart } from './AppUsageChart';
 export type { AppUsageChartProps, AppUsageDataPoint } from './AppUsageChart';
+
+export { TimeRangeFilter } from './TimeRangeFilter';
+export type { TimeRange } from './TimeRangeFilter';
+

@@ -53,7 +53,7 @@ export function useDashboardData(timeRange: TimeRange) {
                 start.setHours(0, 0, 0, 0);
                 isToday = true;
                 isSubDay = false; // We use daily stats for today
-                bucketSizeMs = 1000 * 60 * 120; // 2h
+                bucketSizeMs = 1000 * 60 * 60; // 1h buckets for today
                 break;
             case 'yesterday':
                 start.setDate(now.getDate() - 1);
@@ -61,9 +61,9 @@ export function useDashboardData(timeRange: TimeRange) {
                 end.setDate(now.getDate() - 1);
                 end.setHours(23, 59, 59, 999);
                 isSubDay = false; // Whole day
-                bucketSizeMs = 1000 * 60 * 120; // 2h
+                bucketSizeMs = 1000 * 60 * 60; // 1h buckets
                 break;
-            case 'past_1h':
+            case 'past_hour':
                 start.setTime(now.getTime() - (60 * 60 * 1000));
                 isSubDay = true;
                 bucketSizeMs = 1000 * 60 * 5; // 5 min
@@ -71,26 +71,27 @@ export function useDashboardData(timeRange: TimeRange) {
             case 'past_6h':
                 start.setTime(now.getTime() - (6 * 60 * 60 * 1000));
                 isSubDay = true;
-                bucketSizeMs = 1000 * 60 * 60; // 1h
+                bucketSizeMs = 1000 * 60 * 30; // 30 min
                 break;
             case 'past_12h':
                 start.setTime(now.getTime() - (12 * 60 * 60 * 1000));
                 isSubDay = true;
                 bucketSizeMs = 1000 * 60 * 60; // 1h
                 break;
-            case 'week':
+            case 'this_week':
                 start.setDate(now.getDate() - 7);
-                start.setHours(0, 0, 0, 0); // Start of day 7 days ago
+                start.setHours(0, 0, 0, 0);
                 isSubDay = false;
                 bucketSizeMs = 1000 * 60 * 60 * 24; // 1 day
                 break;
-            case 'month':
+            case 'this_month':
                 start.setDate(now.getDate() - 30);
                 start.setHours(0, 0, 0, 0);
                 isSubDay = false;
                 bucketSizeMs = 1000 * 60 * 60 * 24 * 7; // 1 week
                 break;
         }
+
 
         return { start, end, isToday, isSubDay, bucketSizeMs };
     }, [timeRange]);
@@ -236,13 +237,14 @@ export function useDashboardData(timeRange: TimeRange) {
                 let label = '';
 
                 // Dynamic label based on range
-                if (timeRange === 'past_1h' || timeRange === 'past_6h') {
+                if (timeRange === 'past_hour' || timeRange === 'past_6h' || timeRange === 'past_12h') {
                     label = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                } else if (timeRange === 'week' || timeRange === 'month') {
+                } else if (timeRange === 'this_week' || timeRange === 'this_month') {
                     label = date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
                 } else {
                     label = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 }
+
 
                 const active = Math.min(data.active, data.total);
                 const focus = data.total > 0 ? Math.round((active / data.total) * 100) : 0;
