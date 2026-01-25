@@ -1,8 +1,3 @@
-/**
- * FocusFlowChart - Stacked area chart showing focus vs distraction over time
- * Extracted from Dashboard.tsx for reusability
- */
-
 import {
     AreaChart,
     Area,
@@ -13,6 +8,7 @@ import {
     CartesianGrid,
     Legend,
 } from 'recharts';
+import { useState } from 'react';
 import { GlassCard } from '../GlassCard';
 import { ChartGradients } from '../charts/ChartGradients';
 import { ChartTooltip } from '../charts/ChartTooltip';
@@ -24,6 +20,7 @@ export interface FocusFlowDataPoint {
     time: string;
     focus: number;
     distraction: number;
+    idle: number;
 }
 
 export interface FocusFlowChartProps {
@@ -37,19 +34,76 @@ export interface FocusFlowChartProps {
     minHeight?: number;
 }
 
+type MetricType = 'focus' | 'distraction' | 'idle';
+
 export function FocusFlowChart({
     data,
     isLoading = false,
     title = 'Focus Flow',
     minHeight = 300,
 }: FocusFlowChartProps) {
+    const [activeMetrics, setActiveMetrics] = useState<Set<MetricType>>(new Set(['focus', 'distraction', 'idle']));
     const hasData = data.length > 0;
+
+    const toggleMetric = (metric: MetricType) => {
+        const next = new Set(activeMetrics);
+        if (next.has(metric)) {
+            if (next.size > 1) { // Keep at least one metric visible
+                next.delete(metric);
+            }
+        } else {
+            next.add(metric);
+        }
+        setActiveMetrics(next);
+    };
+
+    const metrics: { id: MetricType; label: string; color: string }[] = [
+        { id: 'focus', label: 'Focus', color: FLOW_COLORS.focus },
+        { id: 'distraction', label: 'Other', color: FLOW_COLORS.distraction },
+        { id: 'idle', label: 'Idle', color: '#78716c' },
+    ];
 
     return (
         <GlassCard className="p-6 h-full flex flex-col" hover={false}>
-            <h3 className="font-display text-lg font-semibold mb-4 text-[var(--foreground)]">
-                {title}
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <h3 className="font-display text-lg font-semibold text-[var(--foreground)]">
+                    {title}
+                </h3>
+
+                <div className="flex flex-wrap items-center gap-3">
+                    {metrics.map((m) => {
+                        const isActive = activeMetrics.has(m.id);
+                        return (
+                            <button
+                                key={m.id}
+                                onClick={() => toggleMetric(m.id)}
+                                className={`
+                                    flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 border btn-press
+                                    ${isActive
+                                        ? 'bg-primary text-primary-foreground border-primary shadow-md'
+                                        : 'bg-secondary/40 text-muted-foreground border-transparent hover:bg-secondary hover:text-foreground grayscale opacity-60'
+                                    }
+                                `}
+                                style={{
+                                    boxShadow: isActive ? `0 0 15px ${m.color}30` : 'none',
+                                    borderColor: isActive ? m.color : 'transparent',
+                                }}
+                            >
+                                <div
+                                    className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${isActive ? 'scale-110 shadow-[0_0_8px_currentColor]' : 'scale-90'}`}
+                                    style={{
+                                        backgroundColor: m.color,
+                                        color: m.color
+                                    }}
+                                />
+                                {m.label}
+                            </button>
+                        );
+                    })}
+                </div>
+
+            </div>
+
             <div className="flex-1" style={{ minHeight }}>
                 <ChartGradients />
                 {isLoading ? (
@@ -92,30 +146,47 @@ export function FocusFlowChart({
                                             fontFamily: 'var(--font-body)',
                                         }}
                                     >
-                                        {value === 'focus' ? 'Focus Session' : 'Distraction / Idle'}
+                                        {value === 'focus' ? 'Focus Session' : value === 'distraction' ? 'Other Activity' : 'Idle / Away'}
                                     </span>
+
                                 )}
                             />
-                            <Area
-                                type="monotone"
-                                dataKey="focus"
-                                stackId="1"
-                                stroke={FLOW_COLORS.focus}
-                                fill="url(#emeraldGradient)"
-                                strokeWidth={3}
-                                name="focus"
-                                animationDuration={1500}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="distraction"
-                                stackId="1"
-                                stroke={FLOW_COLORS.distraction}
-                                fill="url(#amberGradient)"
-                                strokeWidth={3}
-                                name="distraction"
-                                animationDuration={1500}
-                            />
+                            {activeMetrics.has('focus') && (
+                                <Area
+                                    type="monotone"
+                                    dataKey="focus"
+                                    stroke={FLOW_COLORS.focus}
+                                    fill="url(#emeraldGradient)"
+                                    fillOpacity={0.6}
+                                    strokeWidth={3}
+                                    name="focus"
+                                    animationDuration={1500}
+                                />
+                            )}
+                            {activeMetrics.has('distraction') && (
+                                <Area
+                                    type="monotone"
+                                    dataKey="distraction"
+                                    stroke={FLOW_COLORS.distraction}
+                                    fill="url(#amberGradient)"
+                                    fillOpacity={0.4}
+                                    strokeWidth={2}
+                                    name="distraction"
+                                    animationDuration={1500}
+                                />
+                            )}
+                            {activeMetrics.has('idle') && (
+                                <Area
+                                    type="monotone"
+                                    dataKey="idle"
+                                    stroke="#78716c"
+                                    fill="url(#grayGradient)"
+                                    fillOpacity={0.2}
+                                    strokeWidth={2}
+                                    name="idle"
+                                    animationDuration={1500}
+                                />
+                            )}
                         </AreaChart>
                     </ResponsiveContainer>
                 ) : (
@@ -125,3 +196,4 @@ export function FocusFlowChart({
         </GlassCard>
     );
 }
+

@@ -12,10 +12,48 @@ import type { AppUsageEntry, WindowEvent } from '../api/tauri';
 import { formatStatsForCards, formatAppUsageForChart } from './useTrackerData';
 
 /**
+ * Shared app categorization logic
+ */
+export const isProductiveApp = (name: string) => {
+    const n = name.toLowerCase();
+    return (
+        // IDEs & Editors
+        n.includes('code') || n.includes('studio') || n.includes('intellij') ||
+        n.includes('vim') || n.includes('sublime') || n.includes('xcrun') ||
+        // Terminal
+        n.includes('terminal') || n.includes('iterm') || n.includes('powershell') ||
+        n.includes('cmd.exe') || n.includes('bash') ||
+        // Communication
+        n.includes('slack') || n.includes('teams') || n.includes('zoom') ||
+        n.includes('discord') || n.includes('outlook') || n.includes('thunderbird') ||
+        // Browsers (Development/Research)
+        n.includes('chrome') || n.includes('firefox') || n.includes('edge') ||
+        n.includes('safari') || n.includes('arc') || n.includes('brave') ||
+        // Productivity Tools
+        n.includes('notion') || n.includes('figma') || n.includes('linear') ||
+        n.includes('jira') || n.includes('trello') || n.includes('word') ||
+        n.includes('excel') || n.includes('powerpoint') || n.includes('obsidian') ||
+        // The App itself
+        n.includes('activity_tracker') || n.includes('activity tracker')
+    );
+};
+
+/**
  * Helper to ensure timestamp is treated as UTC if naive
  */
 function parseValues(timestamp: string): number {
-    return new Date(timestamp).getTime();
+    if (!timestamp) return 0;
+    // Handle SQL format (space instead of T, missing Z)
+    let formatted = timestamp.trim();
+    if (!formatted.includes('T') && !formatted.includes('Z')) {
+        formatted = formatted.replace(' ', 'T');
+        // If it looks like a naive timestamp, assume it's UTC from backend
+        if (formatted.split('T')[1]?.split(':').length >= 2) {
+            formatted += 'Z';
+        }
+    }
+    const date = new Date(formatted);
+    return isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
 /**
@@ -198,10 +236,13 @@ export function useDashboardData(timeRange: TimeRange) {
         const startTime = start.getTime();
         const endTime = end.getTime();
 
+        // Classification helper
+        const isProductive = isProductiveApp;
+
         // Helper to determine focus score for a bucket
         const processEvents = (events: WindowEvent[]) => {
             // Init buckets
-            const buckets = new Map<string, { active: number, total: number }>();
+            const buckets = new Map<string, { focus: number, distraction: number, total: number }>();
             const timestamps: number[] = [];
 
             // Normalize start time
@@ -213,6 +254,7 @@ export function useDashboardData(timeRange: TimeRange) {
             events.forEach(e => {
                 const eTime = parseValues(e.timestamp);
                 const duration = e.duration_seconds;
+                const productive = isProductive(e.process_name);
 
                 // Iterate buckets and add overlap
                 timestamps.forEach(bucketStart => {
@@ -221,8 +263,12 @@ export function useDashboardData(timeRange: TimeRange) {
 
                     if (overlap > 0) {
                         const key = bucketStart.toString();
-                        const current = buckets.get(key) || { active: 0, total: bucketSizeMs / 1000 };
-                        current.active += overlap;
+                        const current = buckets.get(key) || { focus: 0, distraction: 0, total: bucketSizeMs / 1000 };
+                        if (productive) {
+                            current.focus += overlap;
+                        } else {
+                            current.distraction += overlap;
+                        }
                         buckets.set(key, current);
                     }
                 });
@@ -230,7 +276,7 @@ export function useDashboardData(timeRange: TimeRange) {
 
             return timestamps.map(ts => {
                 const key = ts.toString();
-                const data = buckets.get(key) || { active: 0, total: bucketSizeMs / 1000 };
+                const data = buckets.get(key) || { focus: 0, distraction: 0, total: bucketSizeMs / 1000 };
 
                 // Format label
                 const date = new Date(ts);
@@ -245,26 +291,51 @@ export function useDashboardData(timeRange: TimeRange) {
                     label = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 }
 
+                // User requested the sum to always be 100%. 
+                // To achieve this while still showing activity intensity, we:
+                // 1. Calculate focus/distraction as ratios of the ACTUAL active time.
+                // 2. Add an 'idle' component to fill the rest of the 100% bucket.
+                const bucketSeconds = bucketSizeMs / 1000;
 
-                const active = Math.min(data.active, data.total);
-                const focus = data.total > 0 ? Math.round((active / data.total) * 100) : 0;
+                // Focus/Distraction as % of Bucket
+                const focusPct = bucketSeconds > 0 ? Math.round((data.focus / bucketSeconds) * 100) : 0;
+                const distractionPct = bucketSeconds > 0 ? Math.round((data.distraction / bucketSeconds) * 100) : 0;
+
+                // Total activity capped at 100
+                const actualFocus = Math.min(100, focusPct);
+                const actualDistraction = Math.min(100 - actualFocus, distractionPct);
+                const idle = 100 - actualFocus - actualDistraction;
 
                 return {
                     time: label,
-                    focus,
-                    distraction: 100 - focus
+                    focus: actualFocus,
+                    distraction: actualDistraction,
+                    idle: Math.max(0, idle)
                 };
             });
         };
+
 
         // Always prioritize range events for consistent charting if available
         if (rangeEventsQuery.data && rangeEventsQuery.data.length > 0) {
             return processEvents(rangeEventsQuery.data);
         }
 
-        // Fallback for Today if range events empty (e.g. fresh start) but timelineQuery has data
-        if (isToday && timelineQuery.data) {
-            return [];
+        // Fallback for Today: Use pre-aggregated segments if available
+        if (isToday && timelineQuery.data && timelineQuery.data.length > 0) {
+            return timelineQuery.data.map(segment => {
+                const active = segment.active_seconds || 0;
+                const idle = segment.idle_seconds || 0;
+                const total = active + idle;
+                const focus = total > 0 ? Math.round((active / total) * 100) : 0;
+
+                return {
+                    time: segment.time,
+                    focus: focus,
+                    distraction: 0,
+                    idle: 100 - focus
+                };
+            });
         }
 
         return [];
@@ -272,14 +343,39 @@ export function useDashboardData(timeRange: TimeRange) {
     }, [timeRange, start, end, bucketSizeMs, isToday, rangeEventsQuery.data, timelineQuery.data]);
 
 
-    // 4. Return data
+    // 4. Calculate Unified Focus Score for the Stat Card
+    // We want the card to show (Focus / Active) ratio to reflect "Quality"
+    const reconciledFocusScore = useMemo(() => {
+        if (!unifiedAppUsage || unifiedAppUsage.length === 0) return 0;
+
+        let totalActive = 0;
+        let totalFocus = 0;
+
+        unifiedAppUsage.forEach(app => {
+            totalActive += app.seconds;
+            if (isProductiveApp(app.name)) {
+                totalFocus += app.seconds;
+            }
+        });
+
+        return totalActive > 0 ? Math.round((totalFocus / totalActive) * 100) : 0;
+    }, [unifiedAppUsage]);
+
+    // 5. Return data
     const isLoading =
         (isToday ? (dailyStatsQuery.isLoading || appUsageQuery.isLoading) : rangeStatsQuery.isLoading) ||
         // We only block on timeline loading if we have NO data yet
         (rangeEventsQuery.isLoading && !rangeEventsQuery.data);
 
+    const stats = formatStatsForCards(unifiedStats);
+
+    // Override the focus score with our multi-source reconciled score
+    if (stats) {
+        stats.focusScore = reconciledFocusScore;
+    }
+
     return {
-        stats: formatStatsForCards(unifiedStats),
+        stats,
         rawStats: unifiedStats,
         appUsage: formatAppUsageForChart(unifiedAppUsage),
         timelineData: unifiedTimeline,

@@ -25,6 +25,11 @@ export function ChartGradients() {
                     <stop offset="5%" stopColor="#be185d" stopOpacity={0.4} />
                     <stop offset="95%" stopColor="#be185d" stopOpacity={0} />
                 </linearGradient>
+                {/* Gray Gradient (Idle) */}
+                <linearGradient id="grayGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#78716c" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#78716c" stopOpacity={0} />
+                </linearGradient>
             </defs>
         </svg>
     );
