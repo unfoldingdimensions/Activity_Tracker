@@ -27,13 +27,23 @@ pub fn run() {
             }
 
             // Get app data directory for database
+            // On Windows, use a shared directory across users
+            #[cfg(target_os = "windows")]
+            let app_data_dir = {
+                let program_data = std::env::var("ProgramData")
+                    .unwrap_or_else(|_| "C:\\ProgramData".to_string());
+                std::path::PathBuf::from(program_data).join("ActivityTracker")
+            };
+
+            #[cfg(not(target_os = "windows"))]
             let app_data_dir = app
                 .path()
                 .app_data_dir()
                 .expect("Failed to get app data directory");
 
             // Create directory if it doesn't exist
-            std::fs::create_dir_all(&app_data_dir).expect("Failed to create app data directory");
+            std::fs::create_dir_all(&app_data_dir).expect("Failed to create data directory");
+
 
             // Initialize database
             let db = database::init_database(app_data_dir)

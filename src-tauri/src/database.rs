@@ -424,16 +424,6 @@ pub fn update_streak(conn: &Connection, today: &str) -> Result<()> {
     Ok(())
 }
 
-/// Check if achievement is unlocked
-pub fn is_achievement_unlocked(conn: &Connection, code: &str) -> Result<bool> {
-    let count: u32 = conn.query_row(
-        "SELECT COUNT(*) FROM achievements WHERE code = ?1",
-        [code],
-        |row| row.get(0),
-    ).unwrap_or(0);
-    Ok(count > 0)
-}
-
 /// Unlock an achievement
 pub fn unlock_achievement(conn: &Connection, code: &str, timestamp: &str) -> Result<()> {
     conn.execute(
