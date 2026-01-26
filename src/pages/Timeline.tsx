@@ -18,11 +18,12 @@ import { RefreshButton } from '../components/shared/RefreshButton';
 import { EmptyState } from '../components/shared/EmptyState';
 
 import { Skeleton } from '../components/ui/Skeleton';
+import { AppIcon } from '../components/shared/AppIcon';
+
 
 // Utils & Constants
 import { containerVariantsFast, itemVariantsSubtle } from '../constants/animations';
 import { formatDuration, formatAppName } from '../utils/formatters';
-import { CHART_COLORS } from '../constants/colors';
 
 type TimeRange = 'today' | 'yesterday' | 'week' | 'prev_week' | 'month';
 type ViewMode = 'all' | 'apps';
@@ -273,6 +274,7 @@ export function Timeline() {
                                                     >
                                                         <div className="min-w-0">
                                                             <div className="flex items-center gap-2">
+                                                                <AppIcon processName={event.process_name} size={16} />
                                                                 <span className="font-semibold text-[var(--foreground)] truncate font-display">
                                                                     {formatAppName(event.process_name)}
                                                                 </span>
@@ -317,8 +319,9 @@ export function Timeline() {
                                         <Skeleton key={i} className="h-32 w-full rounded-xl" />
                                     ))
                             ) : appUsage && appUsage.length > 0 ? (
-                                appUsage.map((app, idx) => (
+                                appUsage.map((app) => (
                                     <motion.div
+
                                         key={app.name}
                                         variants={itemVariantsSubtle}
                                         whileHover={{ scale: 1.02 }}
@@ -331,12 +334,11 @@ export function Timeline() {
                                         >
                                             <div className="flex items-center justify-between mb-4">
                                                 <div className="flex items-center gap-4">
-                                                    <div
-                                                        className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white shadow-sm transition-transform group-hover:scale-110"
-                                                        style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
-                                                    >
-                                                        {app.name.charAt(0).toUpperCase()}
-                                                    </div>
+                                                    <AppIcon
+                                                        processName={app.name}
+                                                        size={40}
+                                                        className="rounded-lg shadow-sm group-hover:scale-110 transition-transform"
+                                                    />
                                                     <div>
                                                         <p className="font-bold text-[var(--foreground)] truncate max-w-[150px] font-display">
                                                             {formatAppName(app.name)}

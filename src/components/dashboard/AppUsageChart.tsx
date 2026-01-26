@@ -9,6 +9,8 @@ import { GlassCard } from '../GlassCard';
 import { ChartTooltip } from '../charts/ChartTooltip';
 import { Skeleton } from '../ui/Skeleton';
 import { EmptyState } from '../shared/EmptyState';
+import { AppIcon } from '../shared/AppIcon';
+
 
 export interface AppUsageDataPoint {
     name: string;
@@ -96,11 +98,12 @@ export function AppUsageChart({
                                         className="w-3 h-3 rounded-full ring-2 ring-transparent group-hover:ring-[var(--border)] transition-all"
                                         style={{ backgroundColor: app.color }}
                                     />
+                                    <AppIcon processName={app.name} size={16} />
                                     <span className="text-[var(--muted-foreground)] group-hover:text-[var(--foreground)] transition-colors truncate max-w-[120px] font-semibold font-display">
                                         {app.name}
                                     </span>
-
                                 </div>
+
                                 <span className="text-[var(--foreground)] font-bold font-mono">
                                     {app.value}m
                                 </span>

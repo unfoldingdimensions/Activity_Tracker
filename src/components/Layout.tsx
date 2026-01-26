@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { useActiveWindow, useIdleStatus } from '../hooks/useTrackerData';
 import { formatAppName } from '../utils/formatters';
+import { AppIcon } from './shared/AppIcon';
+
 import { AnimatePresence, motion } from 'framer-motion';
 
 const navItems = [
@@ -91,9 +93,11 @@ export function Layout() {
                                 {isIdle ? 'Idle' : 'Tracking Active'}
                             </span>
                         </div>
-                        <div className="text-xs text-[var(--muted-foreground)] truncate">
+                        <div className="text-xs text-[var(--muted-foreground)] truncate flex items-center gap-2">
+                            <AppIcon processName={activeWindow?.process_name || ''} size={14} className="opacity-80" />
                             <span className="text-[var(--foreground)] font-bold font-display">{currentApp}</span>
                         </div>
+
                     </div>
                 </div>
             </aside>

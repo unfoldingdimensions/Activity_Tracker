@@ -1,0 +1,71 @@
+import { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+
+// Memory cache to avoid repeated invokes for the same process
+const iconCache: Record<string, string> = {};
+
+interface AppIconProps {
+    processName: string;
+    className?: string;
+    size?: number;
+    fallbackText?: string;
+}
+
+export function AppIcon({ processName, className = '', size = 24, fallbackText }: AppIconProps) {
+    const [iconData, setIconData] = useState<string | null>(iconCache[processName] || null);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        if (iconData || !processName) return;
+
+        let isMounted = true;
+
+        async function fetchIcon() {
+            try {
+                const data = await invoke<string | null>('get_app_icon', { processName });
+                if (data && isMounted) {
+                    iconCache[processName] = data;
+                    setIconData(data);
+                } else if (isMounted) {
+                    setError(true);
+                }
+            } catch (err) {
+                console.error('Failed to fetch icon:', err);
+                if (isMounted) setError(true);
+            }
+        }
+
+        fetchIcon();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [processName, iconData]);
+
+    // Fallback UI (First letter of app name in a colored box)
+    const renderFallback = () => {
+        const char = fallbackText?.charAt(0) || processName?.charAt(0) || '?';
+        return (
+            <div
+                className={`flex items-center justify-center rounded bg-secondary font-bold text-muted-foreground ${className}`}
+                style={{ width: size, height: size, fontSize: size * 0.6 }}
+            >
+                {char.toUpperCase()}
+            </div>
+        );
+    };
+
+    if (error || !iconData) {
+        return renderFallback();
+    }
+
+    return (
+        <img
+            src={iconData}
+            alt={processName}
+            className={`rounded shadow-sm ${className}`}
+            style={{ width: size, height: size, objectFit: 'contain' }}
+            onError={() => setError(true)}
+        />
+    );
+}

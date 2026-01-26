@@ -7,7 +7,9 @@ mod commands;
 mod database;
 mod tracker;
 mod windows_api;
+mod icons;
 mod input_monitor;
+
 
 use commands::AppState;
 use std::sync::Mutex;
@@ -81,7 +83,9 @@ pub fn run() {
             commands::get_user_stats,
             commands::get_unlocked_achievements,
             commands::unlock_achievement,
+            commands::get_app_icon,
         ])
+
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

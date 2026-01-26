@@ -6,7 +6,10 @@ import { Plus, Trash2, Target, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatAppName } from '../../utils/formatters';
 
+import { AppIcon } from '../shared/AppIcon';
+
 interface DailyGoal {
+
     id: string;
     appName: string; // "All" or specific process name
     targetMinutes: number;
@@ -134,9 +137,13 @@ export const GoalSetter: React.FC = () => {
                         <div key={goal.id} className="relative group">
                             <div className="flex justify-between items-center text-sm mb-1">
                                 <span className="font-bold font-display flex items-center gap-2">
-                                    {isComplete ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Target size={12} className="text-[var(--muted-foreground)]" />}
+                                    <div className="flex items-center gap-1.5">
+                                        {isComplete ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Target size={12} className="text-[var(--muted-foreground)]" />}
+                                        <AppIcon processName={goal.appName} size={14} />
+                                    </div>
                                     {formatAppName(goal.appName)}
                                 </span>
+
                                 <span className="text-xs text-[var(--muted-foreground)]">{goal.targetMinutes}m</span>
                             </div>
 

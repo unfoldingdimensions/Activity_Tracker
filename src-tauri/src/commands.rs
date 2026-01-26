@@ -5,7 +5,9 @@ use crate::windows_api::ActiveWindow;
 use crate::database::{DailyStats, TimelineSegment, WindowEvent, UserStats};
 use std::sync::Mutex;
 use tauri::State;
+use crate::icons;
 use chrono::{Duration, NaiveDateTime};
+
 use chrono::TimeZone;
 
 /// App state managed by Tauri
@@ -244,4 +246,26 @@ pub fn get_unlocked_achievements(state: State<AppState>) -> Vec<String> {
 pub fn unlock_achievement(state: State<AppState>, code: String) -> bool {
     state.tracker.lock().unwrap().unlock_achievement(&code)
 }
+
+/// Get the application icon as base64 string
+#[tauri::command]
+pub fn get_app_icon(process_name: String) -> Option<String> {
+    #[cfg(target_os = "windows")]
+    let base_dir = {
+        let program_data = std::env::var("ProgramData")
+            .unwrap_or_else(|_| "C:\\ProgramData".to_string());
+        std::path::PathBuf::from(program_data).join("ActivityTracker")
+    };
+    
+    #[cfg(not(target_os = "windows"))]
+    let base_dir = std::env::temp_dir();
+
+    let cache_dir = base_dir.join("icons");
+    if !cache_dir.exists() {
+        let _ = std::fs::create_dir_all(&cache_dir);
+    }
+
+    icons::get_app_icon_base64(&process_name, &cache_dir)
+}
+
 
