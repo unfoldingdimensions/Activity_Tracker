@@ -77,7 +77,9 @@ export function Settings() {
                 subtitle="Configure your tracking preferences and application settings"
             />
 
-            <div className="p-8 pt-6 space-y-6 flex-1 max-w-4xl">
+
+
+            <div className="p-8 pt-6 space-y-6 flex-1 max-w-4xl mx-auto w-full">
                 {/* Tracking Control */}
                 <GlassCard className="p-6" hover={false} spotlight>
                     <div className="flex items-center gap-3 mb-6">

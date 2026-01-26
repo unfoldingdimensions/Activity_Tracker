@@ -15,13 +15,17 @@ export interface PageHeaderProps {
     actions?: ReactNode;
     /** Optional back button or left-side action */
     leftAction?: ReactNode;
+    /** Optional max width for centering, e.g. "max-w-4xl" */
+    maxWidth?: string;
 }
+
 
 export function PageHeader({
     title,
     subtitle,
     actions,
     leftAction,
+    maxWidth,
 }: PageHeaderProps) {
     return (
         <div className="sticky top-0 z-20 backdrop-blur-md bg-[var(--background)]/80 p-8 pb-6 border-b border-[var(--border)]/50 transition-all">
@@ -29,8 +33,9 @@ export function PageHeader({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
-                className="flex justify-between items-center"
+                className={`flex justify-between items-center ${maxWidth ? `${maxWidth} mx-auto w-full` : ''}`}
             >
+
                 <div className="flex items-center gap-3">
                     {leftAction}
                     <div>
