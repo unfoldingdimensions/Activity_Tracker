@@ -85,8 +85,9 @@ export function Dashboard() {
                 title="The Pulse"
                 subtitle="Your productivity overview"
                 actions={
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                         <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+                        <div className="w-[1px] h-6 bg-border/40 mx-1" />
                         <StreakCounter />
                     </div>
                 }
@@ -94,6 +95,7 @@ export function Dashboard() {
 
             {/* Content */}
             <div className="p-8 pt-6 space-y-12 flex-1">
+
                 {/* 1. Primary Metrics */}
                 <motion.div
                     variants={containerVariants}

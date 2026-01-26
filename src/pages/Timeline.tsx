@@ -70,18 +70,14 @@ export function Timeline() {
             label = 'This Month';
         }
 
-        const toLocalIso = (d: Date) => {
-            const offset = d.getTimezoneOffset() * 60000;
-            return new Date(d.getTime() - offset).toISOString().slice(0, -1);
-        };
-
         return {
-            startIso: toLocalIso(start),
-            endIso: toLocalIso(end),
-            startDate: toLocalIso(start).split('T')[0],
-            endDate: toLocalIso(end).split('T')[0],
+            startIso: start.toISOString(),
+            endIso: end.toISOString(),
+            startDate: start.toISOString().split('T')[0],
+            endDate: end.toISOString().split('T')[0],
             rangeLabel: label,
         };
+
     }, [range]);
 
     // Fetch Data
@@ -109,9 +105,10 @@ export function Timeline() {
         const groups: { [key: string]: typeof displayEvents } = {};
 
         displayEvents.forEach((event) => {
-            const date = event.timestamp.split('T')[0];
-            const hour = event.timestamp.split('T')[1]?.substring(0, 2) || '00';
-            const key = `${date} ${hour}:00`;
+            const dateObj = new Date(event.timestamp);
+            const dateStr = dateObj.toLocaleDateString([], { year: 'numeric', month: '2-digit', day: '2-digit' });
+            const hour = dateObj.getHours().toString().padStart(2, '0');
+            const key = `${dateStr} ${hour}:00`;
             if (!groups[key]) groups[key] = [];
             groups[key].push(event);
         });
@@ -120,6 +117,7 @@ export function Timeline() {
             .map(([time, items]) => ({ time, items }))
             .sort((a, b) => b.time.localeCompare(a.time));
     }, [displayEvents]);
+
 
     const isLoading = selectedApp
         ? appEventsLoading
@@ -136,8 +134,8 @@ export function Timeline() {
                     <button
                         onClick={() => setViewMode('all')}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'all'
-                                ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-                                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                            ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                            : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                             }`}
                     >
                         <List size={16} />
@@ -146,8 +144,8 @@ export function Timeline() {
                     <button
                         onClick={() => setViewMode('apps')}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'apps'
-                                ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-                                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                            ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                            : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                             }`}
                     >
                         <LayoutList size={16} />
@@ -193,8 +191,8 @@ export function Timeline() {
                                             setShowRangePicker(false);
                                         }}
                                         className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--secondary)] transition-colors flex items-center justify-between ${range === opt.id
-                                                ? 'text-[var(--primary)] font-medium'
-                                                : 'text-[var(--foreground)]'
+                                            ? 'text-[var(--primary)] font-medium'
+                                            : 'text-[var(--foreground)]'
                                             }`}
                                     >
                                         {opt.label}
@@ -273,9 +271,8 @@ export function Timeline() {
                                                                     {event.process_name?.replace('.exe', '')}
                                                                 </span>
                                                                 <span className="text-xs text-[var(--muted-foreground)] bg-[var(--secondary)] px-2 py-0.5 rounded-full font-mono flex-shrink-0">
-                                                                    {event.timestamp
-                                                                        .split('T')[1]
-                                                                        .substring(0, 8)}
+                                                                    {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+
                                                                 </span>
                                                             </div>
                                                             <p className="text-sm text-[var(--muted-foreground)] mt-1 truncate max-w-md">
