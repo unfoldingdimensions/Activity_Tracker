@@ -123,24 +123,27 @@ export function FocusFlowChart({
                                 fontSize={11}
                                 tickLine={true}
                                 axisLine={true}
-                                interval={0}
-                                minTickGap={10}
+                                interval="preserveStartEnd"
                                 tickFormatter={(tick) => {
-                                    // Handle cases where label might already be formatted or is a raw time
                                     if (typeof tick === 'string' && tick.includes(':')) {
-                                        // Ensure it's in 1:00 AM format if it's e.g. "13:00"
+                                        const lower = tick.toLowerCase();
+                                        if (lower.includes('am') || lower.includes('pm')) {
+                                            return tick.replace(/\s+/g, '\n').toUpperCase();
+                                        }
                                         const [h, m] = tick.split(':');
-                                        if (h && m && !tick.includes('AM') && !tick.includes('PM')) {
+                                        if (h && m) {
                                             const hour = parseInt(h);
                                             const ampm = hour >= 12 ? 'PM' : 'AM';
                                             const displayHour = hour % 12 || 12;
-                                            return `${displayHour}:00 ${ampm}`;
+                                            const cleanM = m.replace(/[^0-9]/g, '');
+                                            return `${displayHour}:${cleanM}\n${ampm}`;
                                         }
-                                        return tick;
                                     }
                                     return tick;
                                 }}
-                                style={{ fontFamily: 'var(--font-body)' }}
+
+                                style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}
+
                             />
 
                             <YAxis

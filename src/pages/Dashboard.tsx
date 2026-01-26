@@ -136,8 +136,13 @@ export function Dashboard() {
                     className="grid grid-cols-1 lg:grid-cols-3 gap-6"
                 >
                     <motion.div variants={itemVariants} className="lg:col-span-2">
-                        <FocusFlowChart data={timelineData} isLoading={isLoading} title="Focus Flow" />
+                        <FocusFlowChart
+                            data={timelineData}
+                            isLoading={isLoading}
+                            title={`Focus Flow (${timeRange === 'past_hour' ? 'Past Hour' : timeRange === 'today' ? 'Today' : timeRange === 'yesterday' ? 'Yesterday' : timeRange === 'this_week' ? 'Past Week' : timeRange === 'this_month' ? 'Past Month' : timeRange.replace('past_', 'Past ')})`}
+                        />
                     </motion.div>
+
                     <motion.div variants={itemVariants}>
                         <AppUsageChart data={appUsage} isLoading={isLoading} />
                     </motion.div>
