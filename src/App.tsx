@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeProvider';
+import { SettingsProvider } from './context/SettingsProvider';
+
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Timeline } from './pages/Timeline';
@@ -28,19 +30,22 @@ function App() {
         <RefreshHandler />
         <ToastProvider>
 
-          <ThemeProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route element={<Layout />}>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/timeline" element={<Timeline />} />
-                  <Route path="/activity" element={<ActivityPage />} />
-                  <Route path="/power" element={<Power />} />
-                  <Route path="/settings" element={<Settings />} />
-                </Route>
-              </Routes>
-            </BrowserRouter>
-          </ThemeProvider>
+          <SettingsProvider>
+            <ThemeProvider>
+              <BrowserRouter>
+                <Routes>
+                  <Route element={<Layout />}>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/timeline" element={<Timeline />} />
+                    <Route path="/activity" element={<ActivityPage />} />
+                    <Route path="/power" element={<Power />} />
+                    <Route path="/settings" element={<Settings />} />
+                  </Route>
+                </Routes>
+              </BrowserRouter>
+            </ThemeProvider>
+          </SettingsProvider>
+
         </ToastProvider>
       </QueryClientProvider>
     </ErrorBoundary>

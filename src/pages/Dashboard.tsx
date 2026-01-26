@@ -13,6 +13,7 @@ import { RefreshButton } from '../components/shared/RefreshButton';
 
 // Data Hook
 import { useDashboardData } from '../hooks/useDashboardData';
+import { useSettings } from '../hooks/useSettings';
 
 // Feature components
 import { InputHistoryModal } from '../components/InputHistoryModal';
@@ -30,8 +31,9 @@ import { PomodoroTimer } from '../components/tools/PomodoroTimer';
 import { containerVariants, itemVariants } from '../constants/animations';
 
 export function Dashboard() {
+    const { settings } = useSettings();
     // Local state
-    const [timeRange, setTimeRange] = useState<TimeRange>('today');
+    const [timeRange, setTimeRange] = useState<TimeRange>(settings.dashboardDefaultRange);
     const [showInputModal, setShowInputModal] = useState(false);
     const [showBreathing, setShowBreathing] = useState(false);
 

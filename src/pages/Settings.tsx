@@ -1,21 +1,24 @@
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
-import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2, Play, Pause } from 'lucide-react';
+import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2, Play, Pause, LayoutGrid, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { useTheme } from '../context/useTheme';
+import { useSettings } from '../hooks/useSettings';
 import { isTauri } from '../utils/isTauri';
 import { startTracking, stopTracking, clearData } from '../api/tauri';
 import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useToast } from '../components/ui/Toast';
+import type { TimeRange } from '../components/dashboard/TimeRangeFilter';
 
 export function Settings() {
     const { theme, toggleTheme } = useTheme();
+    const { settings, updateSettings } = useSettings();
     const { showToast } = useToast();
-    const [trackTitles, setTrackTitles] = useState(true);
     const [isTracking, setIsTracking] = useState(true);
     const [isToggling, setIsToggling] = useState(false);
     const [isClearing, setIsClearing] = useState(false);
+
     const queryClient = useQueryClient();
 
     const isDarkMode = theme === 'dark';
@@ -128,6 +131,53 @@ export function Settings() {
                     </div>
                 </GlassCard>
 
+                {/* Dashboard Settings */}
+                <GlassCard className="p-6" hover={false} spotlight>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 rounded-lg bg-indigo-500/10">
+                            <LayoutGrid size={20} className="text-indigo-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
+                                Dashboard Preferences
+                            </h3>
+                            <p className="text-sm text-[var(--muted-foreground)]">
+                                Customize your dashboard view
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
+                                <Clock size={18} className="text-[var(--foreground)]" />
+                            </div>
+                            <div>
+                                <p className="font-medium text-[var(--foreground)]">Default Date Range</p>
+                                <p className="text-sm text-[var(--muted-foreground)]">
+                                    Initial range shown on the dashboard
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={settings.dashboardDefaultRange}
+                                onChange={(e) => updateSettings({ dashboardDefaultRange: e.target.value as TimeRange })}
+                                className="bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg focus:ring-[var(--primary)] focus:border-[var(--primary)] block w-full p-2.5 outline-none cursor-pointer hover:bg-[var(--secondary)] transition-colors min-w-[150px]"
+                            >
+                                <option value="past_hour">Past Hour</option>
+                                <option value="past_6h">Past 6 Hours</option>
+                                <option value="past_12h">Past 12 Hours</option>
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="this_week">This Week</option>
+                                <option value="this_month">This Month</option>
+                            </select>
+                        </div>
+                    </div>
+                </GlassCard>
+
                 {/* Appearance */}
                 <GlassCard className="p-6" hover={false} spotlight>
                     <div className="flex items-center gap-3 mb-6">
@@ -199,7 +249,7 @@ export function Settings() {
                         <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
-                                    {trackTitles ? (
+                                    {settings.trackWindowTitles ? (
                                         <Eye size={18} className="text-[var(--foreground)]" />
                                     ) : (
                                         <EyeOff size={18} className="text-[var(--muted-foreground)]" />
@@ -213,17 +263,17 @@ export function Settings() {
                                 </div>
                             </div>
                             <button
-                                onClick={() => setTrackTitles(!trackTitles)}
+                                onClick={() => updateSettings({ trackWindowTitles: !settings.trackWindowTitles })}
                                 className={`
                   relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary)]
-                  ${trackTitles ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}
+                  ${settings.trackWindowTitles ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}
                 `}
                             >
                                 <div
                                     className={`
                     absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm
                     transition-transform duration-200
-                    ${trackTitles ? 'translate-x-7' : 'translate-x-1'}
+                    ${settings.trackWindowTitles ? 'translate-x-7' : 'translate-x-1'}
                   `}
                                 />
                             </button>
