@@ -120,12 +120,29 @@ export function FocusFlowChart({
                             <XAxis
                                 dataKey="time"
                                 stroke="var(--muted-foreground)"
-                                fontSize={12}
+                                fontSize={11}
                                 tickLine={true}
                                 axisLine={true}
-                                minTickGap={30}
+                                interval={0}
+                                minTickGap={10}
+                                tickFormatter={(tick) => {
+                                    // Handle cases where label might already be formatted or is a raw time
+                                    if (typeof tick === 'string' && tick.includes(':')) {
+                                        // Ensure it's in 1:00 AM format if it's e.g. "13:00"
+                                        const [h, m] = tick.split(':');
+                                        if (h && m && !tick.includes('AM') && !tick.includes('PM')) {
+                                            const hour = parseInt(h);
+                                            const ampm = hour >= 12 ? 'PM' : 'AM';
+                                            const displayHour = hour % 12 || 12;
+                                            return `${displayHour}:00 ${ampm}`;
+                                        }
+                                        return tick;
+                                    }
+                                    return tick;
+                                }}
                                 style={{ fontFamily: 'var(--font-body)' }}
                             />
+
                             <YAxis
                                 stroke="var(--muted-foreground)"
                                 fontSize={12}

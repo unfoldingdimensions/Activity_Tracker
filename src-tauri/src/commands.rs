@@ -115,11 +115,20 @@ pub fn get_input_history(state: State<AppState>, interval_minutes: u32) -> Vec<I
 /// Get input history bucketed by interval in range
 #[tauri::command]
 pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_iso: String, interval_minutes: u32) -> Vec<InputHistoryBucket> {
-    let start_time = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&start_iso) {
+    let interval = if interval_minutes == 0 { 60 } else { interval_minutes };
+
+    
+    let mut start_time = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&start_iso) {
         dt.with_timezone(&chrono::Utc)
     } else {
         return Vec::new();
     };
+
+    // Align start_time down to the interval boundary
+    let ts = start_time.timestamp();
+    let alignment_seconds = interval as i64 * 60;
+    let aligned_ts = (ts / alignment_seconds) * alignment_seconds;
+    start_time = chrono::Utc.timestamp_opt(aligned_ts, 0).single().unwrap_or(start_time);
 
     let end_time = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&end_iso) {
         dt.with_timezone(&chrono::Utc)
@@ -127,10 +136,12 @@ pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_is
         chrono::Utc::now()
     };
 
-    let raw_data = state.tracker.lock().unwrap().get_input_history_range(&start_iso, &end_iso);
+    let raw_data = state.tracker.lock().unwrap().get_input_history_range(
+        &start_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true), 
+        &end_iso,
+    );
     
     let mut buckets = Vec::new();
-    let interval = if interval_minutes == 0 { 60 } else { interval_minutes };
     
     let diff_total = end_time.signed_duration_since(start_time);
     let total_minutes = diff_total.num_minutes();
@@ -145,6 +156,7 @@ pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_is
             mouse_clicks: 0,
         });
     }
+
 
     // Fill buckets
     for entry in raw_data {

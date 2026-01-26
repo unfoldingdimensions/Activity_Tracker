@@ -99,7 +99,11 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                                     tickLine={true}
                                     axisLine={true}
                                     interval={interval === 60 ? 'preserveStartEnd' : 0}
-                                    tickFormatter={(time) => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    tickFormatter={(timeStr) => {
+                                        const date = new Date(timeStr);
+                                        return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+                                    }}
+
                                     style={{ fontFamily: 'var(--font-body)' }}
                                     angle={interval <= 30 ? -45 : 0}
                                     textAnchor={interval <= 30 ? "end" : "middle"}
@@ -115,7 +119,14 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                                     style={{ fontFamily: 'var(--font-body)' }}
                                 />
                                 <Tooltip
-                                    labelFormatter={(time) => new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                    labelFormatter={(timeStr) => {
+                                        const date = new Date(timeStr);
+                                        const dateLabel = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                                        // For tooltip, always show precise time 5:10:00 AM
+                                        const timeLabel = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+                                        return `${dateLabel} • ${timeLabel}`;
+                                    }}
+
                                     contentStyle={{
                                         backgroundColor: 'var(--card)',
                                         border: '1px solid var(--border)',

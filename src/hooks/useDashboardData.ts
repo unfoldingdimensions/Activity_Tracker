@@ -104,7 +104,7 @@ export function useDashboardData(timeRange: TimeRange) {
             case 'past_hour':
                 start.setTime(now.getTime() - (60 * 60 * 1000));
                 isSubDay = true;
-                bucketSizeMs = 1000 * 60 * 5; // 5 min
+                bucketSizeMs = 1000 * 60 * 10; // Change to 10 min buckets as requested
                 break;
             case 'past_6h':
                 start.setTime(now.getTime() - (6 * 60 * 60 * 1000));
@@ -129,6 +129,13 @@ export function useDashboardData(timeRange: TimeRange) {
                 bucketSizeMs = 1000 * 60 * 60 * 24 * 7; // 1 week
                 break;
         }
+
+        // Align start time to the bucket boundary for clean x-axis labels
+        if (timeRange !== 'today' && timeRange !== 'yesterday' && timeRange !== 'this_week' && timeRange !== 'this_month') {
+            const alignedTime = Math.floor(start.getTime() / bucketSizeMs) * bucketSizeMs;
+            start.setTime(alignedTime);
+        }
+
 
 
         return { start, end, isToday, isSubDay, bucketSizeMs };
@@ -283,13 +290,14 @@ export function useDashboardData(timeRange: TimeRange) {
                 let label = '';
 
                 // Dynamic label based on range
-                if (timeRange === 'past_hour' || timeRange === 'past_6h' || timeRange === 'past_12h') {
-                    label = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                if (timeRange === 'past_hour' || timeRange === 'past_6h' || timeRange === 'past_12h' || timeRange === 'today' || timeRange === 'yesterday') {
+                    label = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
                 } else if (timeRange === 'this_week' || timeRange === 'this_month') {
                     label = date.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
                 } else {
-                    label = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    label = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
                 }
+
 
                 // User requested the sum to always be 100%. 
                 // To achieve this while still showing activity intensity, we:
@@ -321,24 +329,32 @@ export function useDashboardData(timeRange: TimeRange) {
             return processEvents(rangeEventsQuery.data);
         }
 
-        // Fallback for Today: Use pre-aggregated segments if available
-        if (isToday && timelineQuery.data && timelineQuery.data.length > 0) {
-            return timelineQuery.data.map(segment => {
-                const active = segment.active_seconds || 0;
-                const idle = segment.idle_seconds || 0;
+        // Fallback for Today: Use pre-aggregated segments and ensure all 24 hours are present
+        if (isToday && timelineQuery.data) {
+            const hourMap = new Map(timelineQuery.data.map(s => [s.time, s]));
+            const fullDay: { time: string, focus: number, distraction: number, idle: number }[] = [];
+
+            for (let h = 0; h < 24; h++) {
+                const hourStr = `${h.toString().padStart(2, '0')}:00`;
+                const segment = hourMap.get(hourStr);
+
+                const active = segment?.active_seconds || 0;
+                const idle = segment?.idle_seconds || 0;
                 const total = active + idle;
                 const focus = total > 0 ? Math.round((active / total) * 100) : 0;
 
-                return {
-                    time: segment.time,
+                fullDay.push({
+                    time: hourStr, // Will be formatted by Chart XAxis tickFormatter
                     focus: focus,
                     distraction: 0,
                     idle: 100 - focus
-                };
-            });
+                });
+            }
+            return fullDay;
         }
 
         return [];
+
 
     }, [timeRange, start, end, bucketSizeMs, isToday, rangeEventsQuery.data, timelineQuery.data]);
 
