@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { GlassCard } from '../GlassCard';
 import { useInputHistory, useAppUsage } from '../../hooks/useTrackerData';
 import { Activity, Brain } from 'lucide-react';
