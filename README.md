@@ -4,18 +4,19 @@ A premium, privacy-first activity and productivity tracker for Windows. Built wi
 
 ## ✨ Key Features
 
--   **🔒 Privacy-First**: All data is stored locally in an encrypted-at-rest SQLite database using WAL mode for high performance. No data leaves your machine.
+-   **🔒 Privacy-First**: All data is stored locally in an encrypted-at-rest SQLite database. On Windows, data is stored in `C:\ProgramData\ActivityTracker` to allow shared access across different user profiles on the same machine.
 -   **⏱️ Real-Time Tracking**: Automatically monitors active windows and application usage with zero-lag background monitoring.
 -   **⌨️ Input Monitoring**: Track global keystroke and mouse click volume in real-time. View detailed activity heatmaps with adjustable granularity (10m, 30m, 1h).
 -   **📅 Historical Analysis**: 
     -   Filter your activity records by date range: **Today**, **Yesterday**, **This Week**, **Previous Week**, and **This Month**.
     -   Switch between **Chronological Log** and **App-wise Aggregation**.
--   **🔍 Deep Dive**: Click on any application in the timeline to drill down into specific window titles and session durations for that app.
--   **📊 Dynamic Dashboards**:
+-   **🔍 smart Branding**: Process names are automatically cleaned and formatted (e.g., `visual_studio_code.exe` → `Visual Studio Code`) with support for common acronyms.
+-   **📊 Enhanced Visual Analytics**:
     -   **The Pulse**: A high-level overview of focus scores and screen time.
-    -   **Focus Flow**: A stacked visualization of productivity vs. distraction across your day.
-    -   **Energy Vampire**: AI-estimated power consumption based on application intensity.
--   **🎨 Premium UI**: Sleek monochrome design with emerald accents, featuring glassmorphism, spotlight hover effects, and smooth transitions.
+    -   **Focus Flow**: Continuous 24-hour timeline visualization with strict interval alignment (e.g., exactly starting at 5:00 AM).
+    -   **Vibrant Accessibility**: A bespoke high-contrast color palette designed specifically for clarity in dark mode.
+-   **🎨 Premium UI**: Sleek design featuring **Plus Jakarta Sans** typography, glassmorphism, spotlight hover effects, and smooth transitions.
+
 
 ## 🏗️ Architecture
 
@@ -109,7 +110,7 @@ We believe your data belongs to you. This application:
 1.  Does **not** log keystroke content (only frequency counts).
 2.  Does **not** capture screenshots or window contents.
 3.  Does **not** include any tracking pixels, telemetry, or cloud sync.
-4.  Stores everything in a local `activity.db` file in your app data folder.
+4.  Stores everything in a local `activity.db` file in the shared application data folder (`C:\ProgramData` on Windows).
 
 ## 📜 License
 
