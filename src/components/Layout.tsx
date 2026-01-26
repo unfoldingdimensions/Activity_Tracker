@@ -7,6 +7,7 @@ import {
     Clock,
 } from 'lucide-react';
 import { useActiveWindow, useIdleStatus } from '../hooks/useTrackerData';
+import { formatAppName } from '../utils/formatters';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const navItems = [
@@ -22,8 +23,8 @@ export function Layout() {
     const { data: activeWindow } = useActiveWindow();
     const { data: idleStatus } = useIdleStatus();
 
-    // Get current app name (strip .exe)
-    const currentApp = activeWindow?.process_name?.replace('.exe', '') || 'Unknown';
+    // Get current app name (strip .exe and capitalize)
+    const currentApp = activeWindow?.process_name ? formatAppName(activeWindow.process_name) : 'Unknown';
     const isIdle = idleStatus?.isIdle || false;
 
     return (
@@ -91,7 +92,7 @@ export function Layout() {
                             </span>
                         </div>
                         <div className="text-xs text-[var(--muted-foreground)] truncate">
-                            <span className="text-[var(--foreground)] font-medium">{currentApp}</span>
+                            <span className="text-[var(--foreground)] font-bold font-display">{currentApp}</span>
                         </div>
                     </div>
                 </div>

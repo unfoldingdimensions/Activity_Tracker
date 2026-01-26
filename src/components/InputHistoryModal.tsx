@@ -70,7 +70,7 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                             <button
                                 key={m}
                                 onClick={() => setMetric(m)}
-                                className={`px-4 py-1.5 rounded-full text-xs font-medium capitalize transition-all duration-200 ${metric === m
+                                className={`px-4 py-1.5 rounded-full text-xs font-bold font-display capitalize transition-all duration-200 ${metric === m
                                     ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
                                     : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)]'
                                     }`}

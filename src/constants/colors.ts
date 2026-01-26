@@ -3,17 +3,18 @@
  * Follows the Glassmorphism design system
  */
 
-/** Primary chart color palette for pie/bar charts */
+/** Primary chart color palette for pie/bar charts - Vibrant 500-series for dark mode visibility */
 export const CHART_COLORS = [
-    '#1c1917', // Zinc 900
-    '#a16207', // Amber 700
-    '#0f766e', // Teal 700
-    '#7c3aed', // Violet 600
-    '#78716c', // Stone 500
-    '#be185d', // Pink 700
-    '#0369a1', // Sky 700
-    '#15803d', // Green 700
+    '#10b981', // Emerald 500
+    '#3b82f6', // Blue 500
+    '#8b5cf6', // Violet 500
+    '#f59e0b', // Amber 500
+    '#ec4899', // Pink 500
+    '#06b6d4', // Cyan 500
+    '#f43f5e', // Rose 500
+    '#a855f7', // Purple 500
 ] as const;
+
 
 /** Flow state colors for Focus Flow chart */
 export const FLOW_COLORS = {

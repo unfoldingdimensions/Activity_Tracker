@@ -4,6 +4,7 @@ import { GlassCard } from '../GlassCard';
 import { useAppUsage } from '../../hooks/useTrackerData';
 import { Plus, Trash2, Target, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatAppName } from '../../utils/formatters';
 
 interface DailyGoal {
     id: string;
@@ -132,9 +133,9 @@ export const GoalSetter: React.FC = () => {
                     return (
                         <div key={goal.id} className="relative group">
                             <div className="flex justify-between items-center text-sm mb-1">
-                                <span className="font-medium flex items-center gap-2">
+                                <span className="font-bold font-display flex items-center gap-2">
                                     {isComplete ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Target size={12} className="text-[var(--muted-foreground)]" />}
-                                    {goal.appName}
+                                    {formatAppName(goal.appName)}
                                 </span>
                                 <span className="text-xs text-[var(--muted-foreground)]">{goal.targetMinutes}m</span>
                             </div>

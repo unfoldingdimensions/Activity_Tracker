@@ -16,9 +16,10 @@ export function ChartTooltip(props: any) {
                                 className="w-2.5 h-2.5 rounded-full shadow-sm"
                                 style={{ backgroundColor: entry.color }}
                             />
-                            <span className="text-[var(--muted-foreground)] capitalize">
+                            <span className="text-[var(--muted-foreground)] font-display font-medium">
                                 {entry.name}:
                             </span>
+
                             <span className="font-mono font-medium text-[var(--foreground)]">
                                 {formatter ? formatter(entry.value, entry.name, entry, index, payload) : entry.value}
                             </span>

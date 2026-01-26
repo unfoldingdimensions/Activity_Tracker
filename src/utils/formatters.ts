@@ -104,12 +104,23 @@ export function truncateText(text: string, maxLength: number): string {
 }
 
 /**
- * Strip .exe extension from process names
- * @param processName Process name potentially with .exe
- * @returns Clean process name
+ * Strip .exe extension and capitalize words
+ * @param processName Process name
+ * @returns Formatted name
  */
-export function cleanProcessName(processName: string): string {
-    return processName.replace(/\.exe$/i, '');
+export function formatAppName(processName: string): string {
+    const withoutExe = processName.replace(/\.exe$/i, '');
+    // Capitalize each word and handle some common app names
+    return withoutExe
+        .split(/[._\-\s]+/)
+        .map(word => {
+            if (word.length === 0) return '';
+            // Handle common acronyms
+            const upper = word.toUpperCase();
+            if (['VSCODE', 'IDE', 'UI', 'UX', 'SQL'].includes(upper)) return upper;
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        })
+        .join(' ');
 }
 
 /**

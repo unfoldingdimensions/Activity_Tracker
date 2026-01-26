@@ -14,7 +14,7 @@
  * ```
  */
 
-import { formatDuration } from '../utils/formatters';
+import { formatDuration, formatAppName } from '../utils/formatters';
 import { CHART_COLORS } from '../constants/colors';
 import type { DailyStats, AppUsageEntry, TimelineSegment } from '../api/tauri';
 
@@ -91,10 +91,11 @@ export function formatAppUsageForChart(usage: AppUsageEntry[] | undefined) {
     const colors = CHART_COLORS;
 
     return usage.slice(0, 6).map((entry, i) => ({
-        name: entry.name.replace('.exe', ''),
+        name: formatAppName(entry.name),
         value: Math.round(entry.seconds / 60), // Convert to minutes
         color: colors[i % colors.length],
     }));
+
 }
 
 /**

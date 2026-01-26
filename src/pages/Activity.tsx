@@ -150,9 +150,10 @@ export function ActivityPage() {
                                             <Legend
                                                 wrapperStyle={{ paddingTop: '16px' }}
                                                 formatter={(value) => (
-                                                    <span style={{ color: 'var(--foreground)', fontSize: '12px', fontWeight: 500 }}>
+                                                    <span className="font-display" style={{ color: 'var(--foreground)', fontSize: '12px', fontWeight: 600 }}>
                                                         {value === 'active' ? 'Active Time' : 'Idle Time'}
                                                     </span>
+
                                                 )}
                                             />
                                             <Bar dataKey="active" fill="url(#emeraldGradient)" stroke="#0f766e" strokeWidth={1} radius={[4, 4, 0, 0]} name="active" animationDuration={1500} />

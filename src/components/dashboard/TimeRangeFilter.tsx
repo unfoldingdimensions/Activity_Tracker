@@ -54,7 +54,8 @@ export const TimeRangeFilter: React.FC<TimeRangeFilterProps> = ({ value, onChang
                         <span className={`${isActive ? 'opacity-100 scale-110' : 'opacity-60 scale-90'} transition-transform`}>
                             {range.icon}
                         </span>
-                        <span>{range.label}</span>
+                        <span className="font-display">{range.label}</span>
+
                         {isActive && (
                             <motion.div
                                 initial={{ scale: 0 }}

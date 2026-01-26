@@ -21,7 +21,8 @@ import { Skeleton } from '../components/ui/Skeleton';
 
 // Utils & Constants
 import { containerVariantsFast, itemVariantsSubtle } from '../constants/animations';
-import { formatDuration } from '../utils/formatters';
+import { formatDuration, formatAppName } from '../utils/formatters';
+import { CHART_COLORS } from '../constants/colors';
 
 type TimeRange = 'today' | 'yesterday' | 'week' | 'prev_week' | 'month';
 type ViewMode = 'all' | 'apps';
@@ -272,8 +273,8 @@ export function Timeline() {
                                                     >
                                                         <div className="min-w-0">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="font-semibold text-[var(--foreground)] truncate">
-                                                                    {event.process_name?.replace('.exe', '')}
+                                                                <span className="font-semibold text-[var(--foreground)] truncate font-display">
+                                                                    {formatAppName(event.process_name)}
                                                                 </span>
                                                                 <span className="text-xs text-[var(--muted-foreground)] bg-[var(--secondary)] px-2 py-0.5 rounded-full font-mono flex-shrink-0">
                                                                     {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -332,21 +333,13 @@ export function Timeline() {
                                                 <div className="flex items-center gap-4">
                                                     <div
                                                         className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white shadow-sm transition-transform group-hover:scale-110"
-                                                        style={{
-                                                            backgroundColor: [
-                                                                '#be185d',
-                                                                '#a16207',
-                                                                '#0f766e',
-                                                                '#7c3aed',
-                                                                '#1c1917',
-                                                            ][idx % 5],
-                                                        }}
+                                                        style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
                                                     >
                                                         {app.name.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <p className="font-medium text-[var(--foreground)] truncate max-w-[150px]">
-                                                            {app.name.replace('.exe', '')}
+                                                        <p className="font-bold text-[var(--foreground)] truncate max-w-[150px] font-display">
+                                                            {formatAppName(app.name)}
                                                         </p>
                                                         <p className="text-xs text-[var(--muted-foreground)]">
                                                             Application

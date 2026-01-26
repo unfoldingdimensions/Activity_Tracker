@@ -96,9 +96,10 @@ export function AppUsageChart({
                                         className="w-3 h-3 rounded-full ring-2 ring-transparent group-hover:ring-[var(--border)] transition-all"
                                         style={{ backgroundColor: app.color }}
                                     />
-                                    <span className="text-[var(--muted-foreground)] group-hover:text-[var(--foreground)] transition-colors truncate max-w-[120px] font-medium">
+                                    <span className="text-[var(--muted-foreground)] group-hover:text-[var(--foreground)] transition-colors truncate max-w-[120px] font-semibold font-display">
                                         {app.name}
                                     </span>
+
                                 </div>
                                 <span className="text-[var(--foreground)] font-bold font-mono">
                                     {app.value}m
