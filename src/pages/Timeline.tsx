@@ -14,7 +14,9 @@ import { useTimelineEventsRange, useAppUsageRange, useTimelineRangeForApp } from
 import { GlassCard } from '../components/GlassCard';
 import { PageHeader } from '../components/shared/PageHeader';
 import { LoadingState } from '../components/shared/LoadingState';
+import { RefreshButton } from '../components/shared/RefreshButton';
 import { EmptyState } from '../components/shared/EmptyState';
+
 import { Skeleton } from '../components/ui/Skeleton';
 
 // Utils & Constants
@@ -204,8 +206,11 @@ export function Timeline() {
                     )}
                 </AnimatePresence>
             </div>
+            <RefreshButton />
+            <div className="w-[1px] h-6 bg-border/40 mx-1" />
         </>
     );
+
 
     const backAction = selectedApp ? (
         <motion.button

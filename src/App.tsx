@@ -9,12 +9,14 @@ import { Power } from './pages/Power';
 import { Settings } from './pages/Settings';
 import { ErrorBoundary } from './components/errors/ErrorBoundary';
 import { ToastProvider } from './components/ui/Toast';
+import { RefreshHandler } from './components/shared/RefreshHandler';
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
     },
   },
 });
@@ -23,7 +25,9 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
+        <RefreshHandler />
         <ToastProvider>
+
           <ThemeProvider>
             <BrowserRouter>
               <Routes>

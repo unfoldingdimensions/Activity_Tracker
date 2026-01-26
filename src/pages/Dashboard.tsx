@@ -8,6 +8,8 @@ import { StatCard } from '../components/dashboard/StatCard';
 import { FocusFlowChart } from '../components/dashboard/FocusFlowChart';
 import { AppUsageChart } from '../components/dashboard/AppUsageChart';
 import { TimeRangeFilter, type TimeRange } from '../components/dashboard/TimeRangeFilter';
+import { RefreshButton } from '../components/shared/RefreshButton';
+
 
 // Data Hook
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -86,7 +88,10 @@ export function Dashboard() {
                 subtitle="Your productivity overview"
                 actions={
                     <div className="flex items-center gap-4">
+                        <RefreshButton />
+                        <div className="w-[1px] h-6 bg-border/40 mx-1" />
                         <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+
                         <div className="w-[1px] h-6 bg-border/40 mx-1" />
                         <StreakCounter />
                     </div>

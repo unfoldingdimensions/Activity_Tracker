@@ -31,6 +31,8 @@ import { ChartTooltip } from '../components/charts/ChartTooltip';
 import { ChartGradients } from '../components/charts/ChartGradients';
 import { EmptyState } from '../components/shared/EmptyState';
 import { LoadingState } from '../components/shared/LoadingState';
+import { RefreshButton } from '../components/shared/RefreshButton';
+
 
 // Constants
 import { containerVariants, itemVariants } from '../constants/animations';
@@ -64,7 +66,9 @@ export function ActivityPage() {
             <PageHeader
                 title="Activity Timeline"
                 subtitle="Active usage patterns throughout the day"
+                actions={<RefreshButton />}
             />
+
 
             {/* Content */}
             <div className="p-8 pt-6 space-y-8 flex-1">
