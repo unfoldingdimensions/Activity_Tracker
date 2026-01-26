@@ -1,10 +1,11 @@
-
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GlassCard } from '../GlassCard';
 import { useInputHistory, useAppUsage } from '../../hooks/useTrackerData';
 import { Activity, Brain } from 'lucide-react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip } from 'recharts';
 import { formatAppUsageForChart } from '../../hooks/useTrackerData';
+import { Tooltip } from '../ui/Tooltip';
+import type { AppUsageEntry, InputHistoryBucket } from '../../api/tauri';
 
 export const WorkPatterns: React.FC = () => {
     // 24 hours of input history for the heatmap
@@ -13,23 +14,21 @@ export const WorkPatterns: React.FC = () => {
 
     const chartData = useMemo(() => formatAppUsageForChart(appUsage), [appUsage]);
 
-    // Calculate Diversity Index (Simplified Simpson's Index or similar)
+    // Calculate Diversity Index
     const diversityIndex = useMemo(() => {
         if (!appUsage || appUsage.length === 0) return 0;
 
-        const totalTime = appUsage.reduce((acc, curr) => acc + curr.seconds, 0);
+        const totalTime = appUsage.reduce((acc: number, curr: AppUsageEntry) => acc + curr.seconds, 0);
         if (totalTime === 0) return 0;
 
         // Count apps with significant usage (> 5%)
-        const significantApps = appUsage.filter(app => (app.seconds / totalTime) > 0.05);
+        const significantApps = appUsage.filter((app: AppUsageEntry) => (app.seconds / totalTime) > 0.05);
         return significantApps.length;
     }, [appUsage]);
 
     const cognitiveLoad = useMemo(() => {
         if (!inputHistory) return 'Low';
-        // Simple logic: High average inputs + High Diversity = High Load
-        // Implemented simply for now
-        const totalInputs = inputHistory.reduce((acc, curr) => acc + (curr.keystrokes || 0), 0);
+        const totalInputs = inputHistory.reduce((acc: number, curr: InputHistoryBucket) => acc + (curr.keystrokes || 0), 0);
         const avgInputs = totalInputs / inputHistory.length;
 
         if (avgInputs > 50 && diversityIndex > 4) return 'High';
@@ -61,33 +60,27 @@ export const WorkPatterns: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-12 gap-1 h-32">
-                    {/* Display actual history with precise hour-to-hour formatting */}
                     {(inputHistory || Array.from({ length: 24 }).fill({ keystrokes: 0, time: new Date().toISOString() }) as any[]).slice(-24).map((bucket: any, i: number) => {
                         const date = new Date(bucket.time);
-
-                        // Format the label as "Date, StartHour - EndHour"
                         const dateLabel = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-
-                        // Current hour (e.g. "11 AM")
                         const startHour = date.toLocaleTimeString([], { hour: 'numeric', hour12: true });
-
-                        // Next hour (e.g. "12 PM")
                         const nextDate = new Date(date);
                         nextDate.setHours(date.getHours() + 1);
                         const endHour = nextDate.toLocaleTimeString([], { hour: 'numeric', hour12: true });
-
                         const timeRangeLabel = `${startHour} - ${endHour}`;
 
                         return (
-                            <div
+                            <Tooltip
                                 key={i}
-                                className={`rounded-sm ${getIntensityColor(bucket.keystrokes || 0)} transition-all hover:scale-110`}
-                                title={`${dateLabel} • ${timeRangeLabel}\n${bucket.keystrokes || 0} inputs`}
-                            />
+                                content={`${dateLabel} • ${timeRangeLabel}\n${bucket.keystrokes || 0} inputs`}
+                            >
+                                <div
+                                    className={`w-full h-full rounded-sm ${getIntensityColor(bucket.keystrokes || 0)} transition-all hover:scale-110`}
+                                />
+                            </Tooltip>
                         );
                     })}
                 </div>
-
                 <div className="flex justify-between text-xs text-[var(--muted-foreground)] mt-2">
                     <span>24h ago</span>
                     <span>Now</span>
@@ -107,7 +100,6 @@ export const WorkPatterns: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-6">
-                    {/* Tiny Pie Chart for Diversity */}
                     <div className="w-24 h-24 relative">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -119,11 +111,18 @@ export const WorkPatterns: React.FC = () => {
                                     dataKey="value"
                                     stroke="none"
                                 >
-                                    {chartData.map((entry, index) => (
+                                    {chartData.map((entry: any, index: number) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <RechartsTooltip
+                                    contentStyle={{
+                                        backgroundColor: 'var(--card)',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--border)',
+                                        fontSize: '12px'
+                                    }}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
