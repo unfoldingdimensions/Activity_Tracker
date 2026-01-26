@@ -61,15 +61,33 @@ export const WorkPatterns: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-12 gap-1 h-32">
-                    {/* Mocking 24 hours if history is short, otherwise use actual history */}
-                    {(inputHistory || Array.from({ length: 24 }).fill({ keystrokes: 0 }) as any[]).slice(-24).map((bucket: any, i: number) => (
-                        <div
-                            key={i}
-                            className={`rounded-sm ${getIntensityColor(bucket.keystrokes || 0)} transition-all hover:scale-110`}
-                            title={`Hour ${i}: ${bucket.keystrokes || 0} inputs`}
-                        />
-                    ))}
+                    {/* Display actual history with precise hour-to-hour formatting */}
+                    {(inputHistory || Array.from({ length: 24 }).fill({ keystrokes: 0, time: new Date().toISOString() }) as any[]).slice(-24).map((bucket: any, i: number) => {
+                        const date = new Date(bucket.time);
+
+                        // Format the label as "Date, StartHour - EndHour"
+                        const dateLabel = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+                        // Current hour (e.g. "11 AM")
+                        const startHour = date.toLocaleTimeString([], { hour: 'numeric', hour12: true });
+
+                        // Next hour (e.g. "12 PM")
+                        const nextDate = new Date(date);
+                        nextDate.setHours(date.getHours() + 1);
+                        const endHour = nextDate.toLocaleTimeString([], { hour: 'numeric', hour12: true });
+
+                        const timeRangeLabel = `${startHour} - ${endHour}`;
+
+                        return (
+                            <div
+                                key={i}
+                                className={`rounded-sm ${getIntensityColor(bucket.keystrokes || 0)} transition-all hover:scale-110`}
+                                title={`${dateLabel} • ${timeRangeLabel}\n${bucket.keystrokes || 0} inputs`}
+                            />
+                        );
+                    })}
                 </div>
+
                 <div className="flex justify-between text-xs text-[var(--muted-foreground)] mt-2">
                     <span>24h ago</span>
                     <span>Now</span>
