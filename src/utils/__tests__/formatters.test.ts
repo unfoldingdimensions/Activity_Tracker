@@ -6,7 +6,7 @@ import {
     formatPercentage,
     formatBytes,
     truncateText,
-    cleanProcessName,
+    formatAppName,
     formatRelativeTime,
     formatTimeOfDay
 } from '../formatters';
@@ -74,15 +74,19 @@ describe('formatters', () => {
         });
     });
 
-    describe('cleanProcessName', () => {
-        it('removes .exe extension', () => {
-            expect(cleanProcessName('chrome.exe')).toBe('chrome');
-            expect(cleanProcessName('Code.exe')).toBe('Code');
-            expect(cleanProcessName('app')).toBe('app');
+    describe('formatAppName', () => {
+        it('removes .exe extension and capitalizes', () => {
+            expect(formatAppName('chrome.exe')).toBe('Chrome');
+            expect(formatAppName('Code.exe')).toBe('Code');
+            expect(formatAppName('app')).toBe('App');
         });
 
         it('is case insensitive for extension', () => {
-            expect(cleanProcessName('Game.EXE')).toBe('Game');
+            expect(formatAppName('Game.EXE')).toBe('Game');
+        });
+
+        it('handles acronyms correctly', () => {
+            expect(formatAppName('vscode.exe')).toBe('VSCODE');
         });
     });
 

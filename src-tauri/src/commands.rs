@@ -85,6 +85,12 @@ pub fn get_timeline_range(state: State<AppState>, start_iso: String, end_iso: St
     state.tracker.lock().unwrap().get_events_range(&start_iso, &end_iso)
 }
 
+/// Get events in range with pagination
+#[tauri::command]
+pub fn get_timeline_range_paginated(state: State<AppState>, start_iso: String, end_iso: String, limit: u32, offset: u32) -> Vec<WindowEvent> {
+    state.tracker.lock().unwrap().get_events_range_paginated(&start_iso, &end_iso, limit, offset)
+}
+
 /// Get events for specific app in range
 #[tauri::command]
 pub fn get_timeline_range_for_app(state: State<AppState>, process_name: String, start_iso: String, end_iso: String) -> Vec<WindowEvent> {

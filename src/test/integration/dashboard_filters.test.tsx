@@ -63,6 +63,16 @@ const mocks = {
     useStatsRange: vi.fn().mockReturnValue({ data: null, isLoading: false })
 };
 
+vi.mock('../../hooks/useSettings', () => ({
+    useSettings: () => ({
+        settings: {
+            dashboardDefaultRange: 'today',
+            trackWindowTitles: true
+        },
+        updateSettings: vi.fn()
+    })
+}));
+
 vi.mock('../../hooks/queries', () => ({
     useDailyStats: (...args: any[]) => mocks.useDailyStats(...args),
     useTimelineEventsRange: (...args: any[]) => mocks.useTimelineEventsRange(...args),

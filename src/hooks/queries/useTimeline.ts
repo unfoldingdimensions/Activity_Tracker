@@ -8,7 +8,7 @@ import { isTauri } from '../../utils/isTauri';
 import {
     getTimeline,
     getRecentEvents,
-    getTimelineRange,
+    getTimelineRangePaginated,
     getTimelineRangeForApp,
     type TimelineSegment,
     type WindowEvent,
@@ -54,8 +54,8 @@ export function useRecentEvents() {
             }
             return MOCK_EVENTS;
         },
-        refetchInterval: 2000,
-        staleTime: 1000,
+        refetchInterval: 10000,
+        staleTime: 8000,
     });
 }
 
@@ -75,7 +75,8 @@ export function useTimelineEventsRange(
         queryKey: ['timelineEventsRange', startIso, endIso],
         queryFn: async (): Promise<WindowEvent[]> => {
             if (isTauri()) {
-                return await getTimelineRange(startIso, endIso);
+                // Limit to 5000 events to prevent memory explosion
+                return await getTimelineRangePaginated(startIso, endIso, 5000, 0);
             }
             return MOCK_EVENTS;
         },

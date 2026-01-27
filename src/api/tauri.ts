@@ -101,6 +101,15 @@ export async function getTimelineRange(startIso: string, endIso: string): Promis
     return invoke<WindowEvent[]>('get_timeline_range', { startIso, endIso });
 }
 
+export async function getTimelineRangePaginated(
+    startIso: string,
+    endIso: string,
+    limit: number,
+    offset: number
+): Promise<WindowEvent[]> {
+    return invoke<WindowEvent[]>('get_timeline_range_paginated', { startIso, endIso, limit, offset });
+}
+
 /**
  * Get window events for specific app in range
  */

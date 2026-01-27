@@ -41,8 +41,8 @@ export function useActiveWindow() {
             }
             return MOCK_ACTIVE_WINDOW;
         },
-        refetchInterval: 1000,
-        staleTime: 500,
+        refetchInterval: 5000,
+        staleTime: 4000,
     });
 }
 
@@ -71,8 +71,8 @@ export function useIdleStatus() {
                 isIdle: false,
             };
         },
-        refetchInterval: 1000,
-        staleTime: 500,
+        refetchInterval: 5000,
+        staleTime: 4000,
     });
 }
 

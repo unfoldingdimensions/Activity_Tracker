@@ -1,8 +1,10 @@
 use std::path::{Path, PathBuf};
 use std::fs;
-use base64::{Engine as _, engine::general_purpose};
-use sysinfo::{System, ProcessRefreshKind, RefreshKind, ProcessesToUpdate};
 use std::sync::Mutex;
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use base64::{Engine as _, engine::general_purpose};
+use sysinfo::{System, ProcessRefreshKind, UpdateKind, ProcessesToUpdate};
 use once_cell::sync::Lazy;
 use windows::Win32::UI::Shell::ExtractIconExW;
 use windows::Win32::UI::WindowsAndMessaging::{HICON, DestroyIcon, ICONINFO, GetIconInfo};
@@ -12,62 +14,100 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::core::HSTRING;
 
+struct IconSystem {
+    sys: Mutex<System>,
+    path_cache: Mutex<HashMap<String, PathBuf>>,
+}
 
-static ICON_SYSTEM: Lazy<Mutex<System>> = Lazy::new(|| {
-    Mutex::new(System::new_with_specifics(
-        RefreshKind::everything()
-    ))
-});
+impl IconSystem {
+    fn new() -> Self {
+        Self {
+            sys: Mutex::new(System::new_all()), 
+            path_cache: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn find_exe_path(&self, process_name: &str) -> Option<PathBuf> {
+        // 1. Check Cache
+        {
+            let cache = self.path_cache.lock().unwrap();
+            if let Some(path) = cache.get(process_name) {
+                if path.exists() {
+                    return Some(path.clone());
+                }
+            }
+        }
+
+        // 2. Refresh Processes (Lightweight)
+        {
+            let mut sys = self.sys.lock().unwrap();
+            // sysinfo 0.33 usage:
+            sys.refresh_processes_specifics(
+                ProcessesToUpdate::All, 
+                true,
+                ProcessRefreshKind::nothing().with_exe(UpdateKind::Always)
+            );
+            
+            for process in sys.processes_by_name(OsStr::new(process_name)) {
+                if let Some(exe_path) = process.exe() {
+                    if exe_path.exists() {
+                        // Cache it
+                        let mut cache = self.path_cache.lock().unwrap();
+                        
+                        // Simple memory safety: if cache too big, clear it
+                        if cache.len() > 500 {
+                            cache.clear();
+                        }
+                        
+                        cache.insert(process_name.to_string(), exe_path.to_path_buf());
+                        return Some(exe_path.to_path_buf());
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback: look in common locations
+        let common_paths = [
+            PathBuf::from("C:\\Windows\\System32").join(process_name),
+            PathBuf::from("C:\\Windows").join(process_name),
+        ];
+
+        for path in common_paths {
+            if path.exists() {
+                let mut cache = self.path_cache.lock().unwrap();
+                cache.insert(process_name.to_string(), path.clone());
+                return Some(path);
+            }
+        }
+        
+        None
+    }
+}
+
+static ICON_SYSTEM: Lazy<IconSystem> = Lazy::new(|| IconSystem::new());
 
 /// Get the icon for an application, returning it as a base64 encoded PNG
 pub fn get_app_icon_base64(process_name: &str, cache_dir: &Path) -> Option<String> {
     let clean_name = process_name.replace(".exe", "");
     let icon_path = cache_dir.join(format!("{}.png", clean_name));
 
-    // 1. Check Cache
+    // 1. Check Cache on Disk (Fastest)
     if icon_path.exists() {
         if let Ok(data) = fs::read(&icon_path) {
             return Some(format!("data:image/png;base64,{}", general_purpose::STANDARD.encode(data)));
         }
     }
 
-    // 2. Find Executable Path
-    let exe_path = find_exe_path(process_name)?;
+    // 2. Find Executable Path (Cached in memory)
+    let exe_path = ICON_SYSTEM.find_exe_path(process_name)?;
 
     // 3. Extract Icon
     let icon_data = extract_icon_to_png(&exe_path)?;
 
-    // 4. Save to Cache
+    // 4. Save to Disk Cache
     let _ = fs::write(&icon_path, &icon_data);
 
     Some(format!("data:image/png;base64,{}", general_purpose::STANDARD.encode(icon_data)))
-}
-
-fn find_exe_path(process_name: &str) -> Option<PathBuf> {
-    let mut sys = ICON_SYSTEM.lock().unwrap();
-    sys.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::everything());
-
-    for process in sys.processes_by_name(process_name.as_ref()) {
-        if let Some(path) = process.exe() {
-            if path.exists() {
-                return Some(path.to_path_buf());
-            }
-        }
-    }
-
-    // Fallback: look in common locations if not running
-    let common_paths = [
-        PathBuf::from("C:\\Windows\\System32").join(process_name),
-        PathBuf::from("C:\\Windows").join(process_name),
-    ];
-
-    for path in common_paths {
-        if path.exists() {
-            return Some(path);
-        }
-    }
-
-    None
 }
 
 fn extract_icon_to_png(exe_path: &Path) -> Option<Vec<u8>> {

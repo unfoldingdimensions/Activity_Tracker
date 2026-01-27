@@ -8,7 +8,7 @@ import {
     CartesianGrid,
     Legend,
 } from 'recharts';
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { GlassCard } from '../GlassCard';
 import { ChartGradients } from '../charts/ChartGradients';
 import { ChartTooltip } from '../charts/ChartTooltip';
@@ -36,7 +36,7 @@ export interface FocusFlowChartProps {
 
 type MetricType = 'focus' | 'distraction' | 'idle';
 
-export function FocusFlowChart({
+export const FocusFlowChart = memo(function FocusFlowChart({
     data,
     isLoading = false,
     title = 'Focus Flow',
@@ -215,5 +215,5 @@ export function FocusFlowChart({
             </div>
         </GlassCard>
     );
-}
+});
 

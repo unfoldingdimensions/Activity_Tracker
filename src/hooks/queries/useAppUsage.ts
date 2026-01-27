@@ -25,8 +25,8 @@ export function useAppUsage() {
             }
             return MOCK_APP_USAGE;
         },
-        refetchInterval: 5000,
-        staleTime: 4000,
+        refetchInterval: 30000,
+        staleTime: 25000,
     });
 }
 

@@ -56,6 +56,14 @@ impl Tracker {
             let mut xp_seconds_accumulator = 0;
             let mut last_streak_check = String::new(); // Date string
 
+            // Cleanup scheduling
+            let mut last_cleanup = std::time::Instant::now();
+            // Run cleanup daily, or on first startup (we check elapsed, initially 0 so might wait 24h or run immediately if we adjust logic)
+            // Let's run it immediately on startup in a separate thread to avoid blocking, OR check here.
+            // Better: just set last_cleanup to now, so it runs after 24h.
+            const CLEANUP_INTERVAL: Duration = Duration::from_secs(86400); 
+            const RETENTION_DAYS: u32 = 90;
+
             loop {
                 // Check if we should stop
                 {
@@ -171,6 +179,28 @@ impl Tracker {
                             last_streak_check = today.clone();
                         }
                     }
+
+                    // Periodic Database Cleanup
+                    if last_cleanup.elapsed() >= CLEANUP_INTERVAL {
+                        log::info!("Tracker: Running scheduled database cleanup...");
+                        // Run in a separate scope to ensure lock isn't held too long if we added more logic, 
+                        // but here we already have the lock, which is fine since we want to block writing while cleaning.
+                        // However, vacuum can be slow.
+                        if let Err(e) = database::cleanup_old_snapshots(&conn, RETENTION_DAYS) {
+                            log::error!("Error cleaning snapshots: {}", e);
+                        }
+                        if let Err(e) = database::cleanup_old_input_activity(&conn, RETENTION_DAYS) {
+                            log::error!("Error cleaning input: {}", e);
+                        }
+                        if let Err(e) = database::cleanup_old_window_events(&conn, RETENTION_DAYS) {
+                            log::error!("Error cleaning events: {}", e);
+                        }
+                        if let Err(e) = database::vacuum_database(&conn) {
+                            log::error!("Error vacuuming DB: {}", e);
+                        }
+                        
+                        last_cleanup = std::time::Instant::now();
+                    }
                 }
 
                 // Sleep for 1 second
@@ -271,6 +301,15 @@ impl Tracker {
     pub fn get_events_for_process_range(&self, process_name: &str, start: &str, end: &str) -> Vec<database::WindowEvent> {
          if let Ok(conn) = self.db.lock() {
              database::get_window_events_for_process_in_range(&conn, process_name, start, end).unwrap_or_default()
+         } else {
+             Vec::new()
+         }
+    }
+
+    /// Get window events in range with pagination
+    pub fn get_events_range_paginated(&self, start: &str, end: &str, limit: u32, offset: u32) -> Vec<database::WindowEvent> {
+         if let Ok(conn) = self.db.lock() {
+             database::get_window_events_in_range_paginated(&conn, start, end, limit, offset).unwrap_or_default()
          } else {
              Vec::new()
          }

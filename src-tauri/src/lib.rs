@@ -71,6 +71,7 @@ pub fn run() {
             commands::get_activity_timeline,
             commands::get_recent_events,
             commands::get_timeline_range,
+            commands::get_timeline_range_paginated,
             commands::get_timeline_range_for_app,
             commands::get_app_usage_range,
             commands::get_input_history,

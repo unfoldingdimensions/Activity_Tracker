@@ -301,6 +301,38 @@ pub fn get_window_events_in_range(conn: &Connection, start_iso: &str, end_iso: &
     rows.collect()
 }
 
+/// Get window events in range with pagination
+pub fn get_window_events_in_range_paginated(
+    conn: &Connection, 
+    start_time: &str, 
+    end_time: &str, 
+    limit: u32, 
+    offset: u32
+) -> Result<Vec<WindowEvent>> {
+    let mut stmt = conn.prepare(
+        "SELECT timestamp, process_name, window_title, duration_seconds 
+         FROM window_events 
+         WHERE timestamp >= ?1 AND timestamp <= ?2 
+         ORDER BY timestamp DESC
+         LIMIT ?3 OFFSET ?4"
+    )?;
+    
+    let rows = stmt.query_map(rusqlite::params![start_time, end_time, limit, offset], |row| {
+        Ok(WindowEvent {
+            timestamp: row.get(0)?,
+            process_name: row.get(1)?,
+            window_title: row.get(2)?,
+            duration_seconds: row.get(3)?,
+        })
+    })?;
+
+    let mut events = Vec::new();
+    for row in rows {
+        events.push(row?);
+    }
+    Ok(events)
+}
+
 /// Get window events for a specific process in range
 pub fn get_window_events_for_process_in_range(
     conn: &Connection, 
@@ -438,6 +470,45 @@ pub fn get_unlocked_achievements(conn: &Connection) -> Result<Vec<String>> {
     let mut stmt = conn.prepare("SELECT code FROM achievements")?;
     let rows = stmt.query_map([], |row| row.get(0))?;
     rows.collect()
+}
+
+/// Delete old activity snapshots beyond retention period
+pub fn cleanup_old_snapshots(conn: &Connection, retention_days: u32) -> Result<usize> {
+    let cutoff_date = chrono::Utc::now() - chrono::Duration::days(retention_days as i64);
+    let cutoff = cutoff_date.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    
+    conn.execute(
+        "DELETE FROM activity_snapshots WHERE timestamp < ?1",
+        [&cutoff],
+    )
+}
+
+/// Delete old input activity
+pub fn cleanup_old_input_activity(conn: &Connection, retention_days: u32) -> Result<usize> {
+    let cutoff_date = chrono::Utc::now() - chrono::Duration::days(retention_days as i64);
+    let cutoff = cutoff_date.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    
+    conn.execute(
+        "DELETE FROM input_activity WHERE timestamp < ?1",
+        [&cutoff],
+    )
+}
+
+/// Delete old window events
+pub fn cleanup_old_window_events(conn: &Connection, retention_days: u32) -> Result<usize> {
+    let cutoff_date = chrono::Utc::now() - chrono::Duration::days(retention_days as i64);
+    let cutoff = cutoff_date.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    
+    conn.execute(
+        "DELETE FROM window_events WHERE timestamp < ?1",
+        [&cutoff],
+    )
+}
+
+/// Run vacuum to reclaim disk space
+pub fn vacuum_database(conn: &Connection) -> Result<()> {
+    conn.execute("VACUUM", [])?;
+    Ok(())
 }
 
 /// Clear all data from the database

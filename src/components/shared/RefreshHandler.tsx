@@ -12,8 +12,11 @@ export function RefreshHandler() {
     useEffect(() => {
         // Standard focus listener
         const handleFocus = () => {
-            console.log('[RefreshHandler] Window focused, invalidating queries...');
-            queryClient.invalidateQueries();
+            console.log('[RefreshHandler] Window focused, invalidating critical queries only...');
+            // Only invalidate time-sensitive queries
+            queryClient.invalidateQueries({ queryKey: ['activeWindow'] });
+            queryClient.invalidateQueries({ queryKey: ['idleStatus'] });
+            // Don't invalidate heavy queries like timeline, appUsage
         };
 
         window.addEventListener('focus', handleFocus);

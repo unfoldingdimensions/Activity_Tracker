@@ -10,6 +10,7 @@ import { ChartTooltip } from '../charts/ChartTooltip';
 import { Skeleton } from '../ui/Skeleton';
 import { EmptyState } from '../shared/EmptyState';
 import { AppIcon } from '../shared/AppIcon';
+import { memo } from 'react';
 
 
 export interface AppUsageDataPoint {
@@ -31,7 +32,7 @@ export interface AppUsageChartProps {
     onAppClick?: (appName: string) => void;
 }
 
-export function AppUsageChart({
+export const AppUsageChart = memo(function AppUsageChart({
     data,
     isLoading = false,
     title = 'App Usage',
@@ -114,4 +115,4 @@ export function AppUsageChart({
             )}
         </GlassCard>
     );
-}
+});

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 
 // Memory cache to avoid repeated invokes for the same process
@@ -11,7 +11,7 @@ interface AppIconProps {
     fallbackText?: string;
 }
 
-export function AppIcon({ processName, className = '', size = 24, fallbackText }: AppIconProps) {
+export const AppIcon = memo(function AppIcon({ processName, className = '', size = 24, fallbackText }: AppIconProps) {
     const [iconData, setIconData] = useState<string | null>(iconCache[processName] || null);
     const [error, setError] = useState(false);
 
@@ -68,4 +68,4 @@ export function AppIcon({ processName, className = '', size = 24, fallbackText }
             onError={() => setError(true)}
         />
     );
-}
+});

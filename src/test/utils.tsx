@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from 'react';
 import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '../context/ThemeProvider';
+import { SettingsProvider } from '../context/SettingsProvider';
 import { ToastProvider } from '../components/ui/Toast';
 import { ErrorBoundary } from '../components/errors/ErrorBoundary';
 
@@ -21,11 +22,13 @@ export function renderWithClient(ui: ReactElement) {
     const { rerender, ...result } = render(
         <QueryClientProvider client={testQueryClient}>
             <ErrorBoundary>
-                <ThemeProvider>
-                    <ToastProvider>
-                        {ui}
-                    </ToastProvider>
-                </ThemeProvider>
+                <SettingsProvider>
+                    <ThemeProvider>
+                        <ToastProvider>
+                            {ui}
+                        </ToastProvider>
+                    </ThemeProvider>
+                </SettingsProvider>
             </ErrorBoundary>
         </QueryClientProvider>
     );
@@ -34,11 +37,13 @@ export function renderWithClient(ui: ReactElement) {
         rerender: (rerenderUi: ReactElement) =>
             rerender(
                 <QueryClientProvider client={testQueryClient}>
-                    <ThemeProvider>
-                        <ToastProvider>
-                            {rerenderUi}
-                        </ToastProvider>
-                    </ThemeProvider>
+                    <SettingsProvider>
+                        <ThemeProvider>
+                            <ToastProvider>
+                                {rerenderUi}
+                            </ToastProvider>
+                        </ThemeProvider>
+                    </SettingsProvider>
                 </QueryClientProvider>
             ),
     };
@@ -48,11 +53,13 @@ export function createWrapper() {
     const testQueryClient = createTestQueryClient();
     return ({ children }: { children: ReactNode }) => (
         <QueryClientProvider client={testQueryClient}>
-            <ThemeProvider>
-                <ToastProvider>
-                    {children}
-                </ToastProvider>
-            </ThemeProvider>
+            <SettingsProvider>
+                <ThemeProvider>
+                    <ToastProvider>
+                        {children}
+                    </ToastProvider>
+                </ThemeProvider>
+            </SettingsProvider>
         </QueryClientProvider>
     );
 }

@@ -63,6 +63,16 @@ vi.mock('../../components/ui/AnimatedNumber', () => ({
 // But assume isTauri is false in test env, so it uses MOCK_APP_USAGE which is also fine for integration
 // If we want to test "Real" flow we should mock isTauri to true
 
+vi.mock('../../hooks/useSettings', () => ({
+    useSettings: () => ({
+        settings: {
+            dashboardDefaultRange: 'today',
+            trackWindowTitles: true
+        },
+        updateSettings: vi.fn()
+    })
+}));
+
 describe('Dashboard Integration', () => {
     beforeEach(() => {
         vi.clearAllMocks();
