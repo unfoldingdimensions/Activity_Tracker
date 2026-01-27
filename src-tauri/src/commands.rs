@@ -4,7 +4,7 @@ use crate::tracker::Tracker;
 use crate::windows_api::ActiveWindow;
 use crate::database::{DailyStats, TimelineSegment, WindowEvent, UserStats};
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{State, Manager, Emitter};
 use crate::icons;
 use chrono::{Duration, NaiveDateTime};
 
@@ -13,6 +13,36 @@ use chrono::TimeZone;
 /// App state managed by Tauri
 pub struct AppState {
     pub tracker: Mutex<Tracker>,
+}
+
+/// Show the main window (Dashboard)
+#[derive(serde::Serialize, Clone)]
+struct NavigatePayload {
+    path: String,
+}
+
+#[tauri::command]
+pub fn show_main_window(app_handle: tauri::AppHandle, path: Option<String>) {
+    if let Some(window) = app_handle.get_webview_window("main") {
+        if let Some(p) = path {
+            let _ = window.emit("navigate", NavigatePayload { path: p });
+        }
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+/// Hide the tray popup window
+#[tauri::command]
+pub fn hide_tray_window(app_handle: tauri::AppHandle) {
+    log::info!("hide_tray_window command invoked");
+    if let Some(window) = app_handle.get_webview_window("tray") {
+        log::info!("Found tray window, hiding it");
+        let _ = window.hide();
+    } else {
+        log::warn!("Tray window not found");
+    }
 }
 
 /// Get the currently active window

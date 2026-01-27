@@ -4,6 +4,7 @@ import { ThemeProvider } from './context/ThemeProvider';
 import { SettingsProvider } from './context/SettingsProvider';
 
 import { Layout } from './components/Layout';
+import { StartupProvider } from './context/StartupProvider';
 import { Dashboard } from './pages/Dashboard';
 import { Timeline } from './pages/Timeline';
 import { ActivityPage } from './pages/Activity';
@@ -12,6 +13,7 @@ import { Settings } from './pages/Settings';
 import { ErrorBoundary } from './components/errors/ErrorBoundary';
 import { ToastProvider } from './components/ui/Toast';
 import { RefreshHandler } from './components/shared/RefreshHandler';
+import { TrayPopup } from './pages/TrayPopup';
 
 
 const queryClient = new QueryClient({
@@ -39,26 +41,28 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <RefreshHandler />
-        <ToastProvider>
-
-          <SettingsProvider>
-            <ThemeProvider>
-              <BrowserRouter>
-                <Routes>
-                  <Route element={<Layout />}>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/timeline" element={<Timeline />} />
-                    <Route path="/activity" element={<ActivityPage />} />
-                    <Route path="/power" element={<Power />} />
-                    <Route path="/settings" element={<Settings />} />
-                  </Route>
-                </Routes>
-              </BrowserRouter>
-            </ThemeProvider>
-          </SettingsProvider>
-
-        </ToastProvider>
+        <StartupProvider>
+          <RefreshHandler />
+          <ToastProvider>
+            <SettingsProvider>
+              <ThemeProvider>
+                <BrowserRouter>
+                  <Routes>
+                    <Route element={<Layout />}>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/timeline" element={<Timeline />} />
+                      <Route path="/activity" element={<ActivityPage />} />
+                      <Route path="/power" element={<Power />} />
+                      <Route path="/settings" element={<Settings />} />
+                    </Route>
+                    {/* Standalone Tray Route */}
+                    <Route path="/tray" element={<TrayPopup />} />
+                  </Routes>
+                </BrowserRouter>
+              </ThemeProvider>
+            </SettingsProvider>
+          </ToastProvider>
+        </StartupProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

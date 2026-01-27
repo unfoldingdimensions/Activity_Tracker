@@ -4,9 +4,93 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>app-temp</title>
+    <title>Activity Tracker</title>
+    <script>
+      // Detect theme from localStorage BEFORE any rendering
+      (function() {
+        var theme = localStorage.getItem('theme') || 'dark';
+        var isLight = theme === 'light';
+        document.documentElement.style.setProperty('--splash-bg', isLight ? '#faf8f5' : '#0c0a09');
+        document.documentElement.style.setProperty('--splash-text', isLight ? '#1c1917' : '#fafaf9');
+        document.documentElement.style.setProperty('--splash-muted', isLight ? '#78716c' : '#a8a29e');
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+    <style>
+      /* Default values (fallback - dark mode) */
+      :root {
+        --splash-bg: #0c0a09;
+        --splash-text: #fafaf9;
+        --splash-muted: #a8a29e;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background-color: var(--splash-bg);
+        color: var(--splash-text);
+        font-family: system-ui, -apple-system, sans-serif;
+        min-height: 100vh;
+      }
+      #root {
+        min-height: 100vh;
+      }
+      /* Static splash - MUST match React LoadingScreen exactly */
+      #static-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--splash-bg);
+        z-index: 99999;
+        transition: opacity 0.3s ease-out;
+      }
+      #static-splash .content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      /* Logo: 80x80px, rounded 1.75rem, margin-bottom 1.5rem */
+      #static-splash .logo {
+        width: 80px;
+        height: 80px;
+        background-color: var(--splash-text);
+        border-radius: 1.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      }
+      #static-splash .logo svg {
+        width: 40px;
+        height: 40px;
+        color: var(--splash-bg);
+      }
+      /* Title: 1.5rem, font-weight 900, letter-spacing -0.025em */
+      #static-splash .title {
+        font-size: 1.5rem;
+        font-weight: 900;
+        letter-spacing: -0.025em;
+        margin-bottom: 0.5rem;
+      }
+    </style>
   </head>
   <body>
+    <!-- Static splash - minimal branding, EXACT same layout as React LoadingScreen -->
+    <div id="static-splash">
+      <div class="content">
+        <div class="logo">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <div class="title">ACTIVITY TRACKER</div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

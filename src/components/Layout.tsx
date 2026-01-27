@@ -11,6 +11,9 @@ import { formatAppName } from '../utils/formatters';
 import { AppIcon } from './shared/AppIcon';
 
 import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect } from 'react';
+import { listen } from '@tauri-apps/api/event';
+import { useNavigate } from 'react-router-dom';
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -22,8 +25,19 @@ const navItems = [
 
 export function Layout() {
     const location = useLocation();
+    const navigate = useNavigate();
     const { data: activeWindow } = useActiveWindow();
     const { data: idleStatus } = useIdleStatus();
+
+    useEffect(() => {
+        const unlisten = listen<{ path: string }>('navigate', (event) => {
+            console.log('[DEBUG] Navigation event received:', event.payload);
+            navigate(event.payload.path);
+        });
+        return () => {
+            unlisten.then(f => f());
+        };
+    }, [navigate]);
 
     // Get current app name (strip .exe and capitalize)
     const currentApp = activeWindow?.process_name ? formatAppName(activeWindow.process_name) : 'Unknown';
