@@ -16,7 +16,18 @@ export const AppIcon = memo(function AppIcon({ processName, className = '', size
     const [error, setError] = useState(false);
 
     useEffect(() => {
-        if (iconData || !processName) return;
+        if (!processName) return;
+
+        // If in cache, update state immediately and stop
+        if (iconCache[processName]) {
+            setIconData(iconCache[processName]);
+            setError(false);
+            return;
+        }
+
+        // Reset state for new fetch
+        setIconData(null);
+        setError(false);
 
         let isMounted = true;
 
@@ -40,7 +51,7 @@ export const AppIcon = memo(function AppIcon({ processName, className = '', size
         return () => {
             isMounted = false;
         };
-    }, [processName, iconData]);
+    }, [processName]);
 
     // Fallback UI (First letter of app name in a colored box)
     const renderFallback = () => {

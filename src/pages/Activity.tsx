@@ -137,6 +137,7 @@ export function ActivityPage() {
                                                 fontSize={12}
                                                 tickLine
                                                 axisLine
+                                                interval={chartData.length > 8 ? Math.ceil(chartData.length / 6) : 0}
                                                 style={{ fontFamily: 'var(--font-body)' }}
                                             />
                                             <YAxis

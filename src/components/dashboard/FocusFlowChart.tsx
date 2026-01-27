@@ -123,7 +123,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                                 fontSize={11}
                                 tickLine={true}
                                 axisLine={true}
-                                interval="preserveStartEnd"
+                                interval={data.length > 8 ? Math.ceil(data.length / 6) : 0}
                                 tickFormatter={(tick) => {
                                     if (typeof tick === 'string' && tick.includes(':')) {
                                         const lower = tick.toLowerCase();
@@ -141,9 +141,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                                     }
                                     return tick;
                                 }}
-
                                 style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}
-
                             />
 
                             <YAxis

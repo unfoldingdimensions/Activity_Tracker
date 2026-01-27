@@ -51,7 +51,6 @@ pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
         CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_snapshots(timestamp);
         CREATE INDEX IF NOT EXISTS idx_window_timestamp ON window_events(timestamp);
         CREATE INDEX IF NOT EXISTS idx_input_timestamp ON input_activity(timestamp);
-        CREATE INDEX IF NOT EXISTS idx_input_timestamp ON input_activity(timestamp);
         CREATE INDEX IF NOT EXISTS idx_app_usage_date ON app_usage(date);
 
         -- Gamification: User Stats
@@ -433,24 +432,37 @@ pub fn update_level(conn: &Connection, new_level: u32) -> Result<()> {
 
 /// Helper to update streak based on activity date
 pub fn update_streak(conn: &Connection, today: &str) -> Result<()> {
-    // This is a simplified streak update. Real logic might be more complex.
-    // Check last activity date. If yesterday, increment. If today, do nothing. Else reset.
     let current_stats = get_user_stats(conn)?;
+    let mut new_streak = current_stats.current_streak;
     
     if let Some(last_date) = current_stats.last_activity_date {
         if last_date == today {
             return Ok(()); // Already active today
         }
         
-        // Parse dates to check continuity (requires Chrono, but for now we'll do simple string check or rely on frontend/command logic)
-        // For simplicity in this step, we just update the last active date. 
-        // Real streak logic requires date parsing which we can do in the Command layer or here if we import chrono.
-        // Let's just update the date here for now.
+        // Parse dates to check continuity
+        let last_dt = chrono::NaiveDate::parse_from_str(&last_date, "%Y-%m-%d").unwrap_or_else(|_| {
+            chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap()
+        });
+        let today_dt = chrono::NaiveDate::parse_from_str(today, "%Y-%m-%d").unwrap_or_else(|_| {
+             chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap()
+        });
+        
+        // If today is exactly the day after last activity
+        if today_dt == last_dt.succ_opt().unwrap_or(last_dt) {
+            new_streak += 1;
+            log::info!("Streak continued! New streak: {}", new_streak);
+        } else {
+            new_streak = 1; // Streak broken, reset to 1
+            log::info!("Streak broken. Resetting to 1.");
+        }
+    } else {
+        new_streak = 1; // First activity ever
     }
     
     conn.execute(
-        "UPDATE user_stats SET last_activity_date = ?1",
-        [today],
+        "UPDATE user_stats SET current_streak = ?1, last_activity_date = ?2",
+        (new_streak, today),
     )?;
     
     Ok(())

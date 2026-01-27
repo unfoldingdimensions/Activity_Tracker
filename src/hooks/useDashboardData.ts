@@ -77,7 +77,7 @@ function calculateOverlap(
 
 export function useDashboardData(timeRange: TimeRange) {
     // 1. Calculate Date Range
-    const { start, end, isToday, isSubDay, bucketSizeMs } = useMemo(() => {
+    const { start, chartStart, end, isToday, isSubDay, bucketSizeMs } = useMemo(() => {
         const now = new Date();
         const end = new Date(now);
         let start = new Date(now);
@@ -130,15 +130,14 @@ export function useDashboardData(timeRange: TimeRange) {
                 break;
         }
 
-        // Align start time to the bucket boundary for clean x-axis labels
+        // Align start time only for visualization (chartStart)
+        const chartStart = new Date(start);
         if (timeRange !== 'today' && timeRange !== 'yesterday' && timeRange !== 'this_week' && timeRange !== 'this_month') {
-            const alignedTime = Math.floor(start.getTime() / bucketSizeMs) * bucketSizeMs;
-            start.setTime(alignedTime);
+            const alignedTime = Math.floor(chartStart.getTime() / bucketSizeMs) * bucketSizeMs;
+            chartStart.setTime(alignedTime);
         }
 
-
-
-        return { start, end, isToday, isSubDay, bucketSizeMs };
+        return { start, chartStart, end, isToday, isSubDay, bucketSizeMs };
     }, [timeRange]);
 
     // 2. Fetch Data
@@ -150,18 +149,20 @@ export function useDashboardData(timeRange: TimeRange) {
 
     // Case B: Range (Historical / Sub-day)
     // Always fetch events for range to calculate focus flow and sub-day stats
-    // ENABLED FOR TODAY as well to ensure consistent chart bucketing
+    // We use chartStart here for the timeline so the first bucket is full
     const rangeEventsQuery = useTimelineEventsRange(
-        start.toISOString(),
+        chartStart.toISOString(),
         end.toISOString(),
         true // Always enabled
     );
 
-    // Stats for range (Keystrokes, Clicks)
+    // Stats for range (Screen Time, Keystrokes, Clicks)
+    // CRITICAL: Use the EXACT 'start' here, NOT the aligned 'chartStart'
+    // to prevent showing "1h 5m" in a "Past Hour" range.
     const rangeStatsQuery = useStatsRange(
         start.toISOString(),
         end.toISOString(),
-        !isToday // Enable only for non-today
+        !isToday // Enable only for non-today rolling ranges or historical days
     );
 
     // Fetch App Usage:
@@ -237,10 +238,9 @@ export function useDashboardData(timeRange: TimeRange) {
     }, [isToday, isSubDay, appUsageQuery.data, rangeAppUsageQuery.data, rangeEventsQuery.data, start, end]);
 
 
-    // -- Timeline / Focus Flow --
     const unifiedTimeline = useMemo(() => {
-        // Source data
-        const startTime = start.getTime();
+        // Source data - Use chartStart for consistent bucket boundaries
+        const startTime = chartStart.getTime();
         const endTime = end.getTime();
 
         // Classification helper
@@ -356,7 +356,7 @@ export function useDashboardData(timeRange: TimeRange) {
         return [];
 
 
-    }, [timeRange, start, end, bucketSizeMs, isToday, rangeEventsQuery.data, timelineQuery.data]);
+    }, [timeRange, start, chartStart, end, bucketSizeMs, isToday, rangeEventsQuery.data, timelineQuery.data]);
 
 
     // 4. Calculate Unified Focus Score for the Stat Card
