@@ -6,6 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 // Hooks & Context
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useUserStats } from '../hooks/useTrackerData';
+import type { TimeRange } from '../components/dashboard/TimeRangeFilter';
 
 // Components
 import { GlassCard } from '../components/GlassCard';
