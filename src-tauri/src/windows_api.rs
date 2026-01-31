@@ -118,7 +118,13 @@ pub fn get_idle_seconds() -> u32 {
         // GetLastInputInfo returns BOOL (non-zero = success)
         if GetLastInputInfo(&mut last_input).as_bool() {
             let tick_count = GetTickCount();
-            let idle_ms = tick_count.saturating_sub(last_input.dwTime);
+            let idle_ms = if tick_count >= last_input.dwTime {
+                tick_count - last_input.dwTime
+            } else {
+                // Handle GetTickCount rollover (happens every ~49.7 days)
+                // When tick_count wraps around, last_input.dwTime will be larger
+                (u32::MAX - last_input.dwTime) + tick_count
+            };
             idle_ms / 1000
         } else {
             0

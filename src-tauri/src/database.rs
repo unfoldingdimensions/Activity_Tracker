@@ -449,7 +449,8 @@ pub fn update_streak(conn: &Connection, today: &str) -> Result<()> {
         });
         
         // If today is exactly the day after last activity
-        if today_dt == last_dt.succ_opt().unwrap_or(last_dt) {
+        let next_day = last_dt + chrono::Days::new(1);
+        if today_dt == next_day {
             new_streak += 1;
             log::info!("Streak continued! New streak: {}", new_streak);
         } else {

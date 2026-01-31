@@ -1,6 +1,6 @@
 [package]
-name = "activity-tracker"
-version = "0.1.0"
+name = "activity-tracker-v2"
+version = "2.0.0"
 description = "Privacy-first Windows activity and productivity tracker"
 authors = ["Activity Tracker Team"]
 license = "MIT"

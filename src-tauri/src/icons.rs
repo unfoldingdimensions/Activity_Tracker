@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::fs;
 use std::sync::Mutex;
-use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::ffi::OsStr;
 use base64::{Engine as _, engine::general_purpose};
 use sysinfo::{System, ProcessRefreshKind, UpdateKind, ProcessesToUpdate};
@@ -14,26 +14,67 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::core::HSTRING;
 
+const MAX_CACHE_SIZE: usize = 500;
+
+struct LruCache {
+    order: VecDeque<String>,
+    data: std::collections::HashMap<String, PathBuf>,
+}
+
+impl LruCache {
+    fn new() -> Self {
+        Self {
+            order: VecDeque::new(),
+            data: std::collections::HashMap::new(),
+        }
+    }
+    
+    fn get(&mut self, key: &str) -> Option<PathBuf> {
+        if let Some(path) = self.data.get(key) {
+            // Move to front (most recently used)
+            self.order.retain(|k| k != key);
+            self.order.push_front(key.to_string());
+            Some(path.clone())
+        } else {
+            None
+        }
+    }
+    
+    fn insert(&mut self, key: String, value: PathBuf) {
+        if self.data.contains_key(&key) {
+            // Update existing
+            self.order.retain(|k| k != &key);
+        } else if self.order.len() >= MAX_CACHE_SIZE {
+            // Evict least recently used
+            if let Some(lru_key) = self.order.pop_back() {
+                self.data.remove(&lru_key);
+            }
+        }
+        self.order.push_front(key.clone());
+        self.data.insert(key, value);
+    }
+}
+
 struct IconSystem {
     sys: Mutex<System>,
-    path_cache: Mutex<HashMap<String, PathBuf>>,
+    path_cache: Mutex<LruCache>,
 }
 
 impl IconSystem {
     fn new() -> Self {
         Self {
             sys: Mutex::new(System::new_all()), 
-            path_cache: Mutex::new(HashMap::new()),
+            path_cache: Mutex::new(LruCache::new()),
         }
     }
 
     fn find_exe_path(&self, process_name: &str) -> Option<PathBuf> {
         // 1. Check Cache
         {
-            let cache = self.path_cache.lock().unwrap();
+            let mut cache = self.path_cache.lock().unwrap();
             if let Some(path) = cache.get(process_name) {
                 if path.exists() {
-                    return Some(path.clone());
+                    return Some(path);
                 }
             }
         }
@@ -41,7 +82,6 @@ impl IconSystem {
         // 2. Refresh Processes (Lightweight)
         {
             let mut sys = self.sys.lock().unwrap();
-            // sysinfo 0.33 usage:
             sys.refresh_processes_specifics(
                 ProcessesToUpdate::All, 
                 true,
@@ -51,14 +91,8 @@ impl IconSystem {
             for process in sys.processes_by_name(OsStr::new(process_name)) {
                 if let Some(exe_path) = process.exe() {
                     if exe_path.exists() {
-                        // Cache it
+                        // Cache it using LRU
                         let mut cache = self.path_cache.lock().unwrap();
-                        
-                        // Simple memory safety: if cache too big, clear it
-                        if cache.len() > 500 {
-                            cache.clear();
-                        }
-                        
                         cache.insert(process_name.to_string(), exe_path.to_path_buf());
                         return Some(exe_path.to_path_buf());
                     }
@@ -153,6 +187,8 @@ unsafe fn hicon_to_png(hicon: HICON) -> Option<Vec<u8>> {
     }
 
     let hbm_color = icon_info.hbmColor;
+    let hbm_mask = icon_info.hbmMask;
+
     let mut bm = BITMAP::default();
     GetObjectW(
         hbm_color,
@@ -188,14 +224,7 @@ unsafe fn hicon_to_png(hicon: HICON) -> Option<Vec<u8>> {
         DIB_RGB_COLORS
     );
 
-    // Cleanup Windows objects
-    SelectObject(hdc_mem, hold_bm);
-    let _ = DeleteDC(hdc_mem);
-    let _ = ReleaseDC(None, hdc_screen);
-    let _ = DeleteObject(icon_info.hbmColor);
-    let _ = DeleteObject(icon_info.hbmMask);
-
-    // Convert BGRA to RGBA and create PNG
+    // Convert BGRA to RGBA
     let mut rgba = vec![0u8; (width * height * 4) as usize];
     for i in (0..buffer.len()).step_by(4) {
         rgba[i] = buffer[i + 2];     // R
@@ -204,17 +233,30 @@ unsafe fn hicon_to_png(hicon: HICON) -> Option<Vec<u8>> {
         rgba[i + 3] = buffer[i + 3]; // A
     }
 
+    // Cleanup DC resources
+    SelectObject(hdc_mem, hold_bm);
+    let _ = DeleteDC(hdc_mem);
+    let _ = ReleaseDC(None, hdc_screen);
+
+    // Create PNG
     let mut png_data = Vec::new();
     let mut cursor = std::io::Cursor::new(&mut png_data);
     
-    // Using image crate 0.25 to encode PNG
-    use image::ImageEncoder;
-    if let Ok(_) = image::codecs::png::PngEncoder::new(&mut cursor).write_image(
-        &rgba,
-        width as u32,
-        height as u32,
-        image::ExtendedColorType::Rgba8
-    ) {
+    let result = {
+        use image::ImageEncoder;
+        image::codecs::png::PngEncoder::new(&mut cursor).write_image(
+            &rgba,
+            width as u32,
+            height as u32,
+            image::ExtendedColorType::Rgba8
+        ).is_ok()
+    };
+
+    // Cleanup bitmaps - always execute even if PNG encoding failed
+    let _ = DeleteObject(hbm_color);
+    let _ = DeleteObject(hbm_mask);
+
+    if result {
         Some(png_data)
     } else {
         None

@@ -48,16 +48,17 @@ pub fn hide_tray_window(app_handle: tauri::AppHandle) {
 /// Get the currently active window
 #[tauri::command]
 pub fn get_active_window(state: State<AppState>) -> Option<ActiveWindow> {
-    state.tracker.lock().unwrap().get_current_window()
+    state.tracker.lock().ok()?.get_current_window()
 }
 
 /// Get app usage for today
 #[tauri::command]
 pub fn get_app_usage(state: State<AppState>) -> Vec<AppUsageEntry> {
-    state
-        .tracker
-        .lock()
-        .unwrap()
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_app_usage");
+        return Vec::new();
+    };
+    tracker
         .get_today_app_usage()
         .into_iter()
         .map(|(name, seconds)| AppUsageEntry { name, seconds })
@@ -67,14 +68,27 @@ pub fn get_app_usage(state: State<AppState>) -> Vec<AppUsageEntry> {
 /// Get daily stats
 #[tauri::command]
 pub fn get_daily_stats(state: State<AppState>) -> Option<DailyStats> {
-    state.tracker.lock().unwrap().get_today_stats()
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_daily_stats");
+        return None;
+    };
+    tracker.get_today_stats()
 }
 
 /// Get stats for custom range
 #[tauri::command]
 pub fn get_stats_range(state: State<AppState>, start_iso: String, end_iso: String) -> DailyStats {
     let db = {
-        let tracker = state.tracker.lock().unwrap();
+        let Ok(tracker) = state.tracker.lock() else {
+            log::error!("Failed to lock tracker for get_stats_range");
+            return DailyStats {
+                total_active_seconds: 0,
+                total_idle_seconds: 0,
+                total_keystrokes: 0,
+                total_mouse_clicks: 0,
+                total_mouse_distance: 0,
+            };
+        };
         tracker.db.clone()
     };
     
@@ -100,40 +114,61 @@ pub fn get_stats_range(state: State<AppState>, start_iso: String, end_iso: Strin
 /// Get activity timeline
 #[tauri::command]
 pub fn get_activity_timeline(state: State<AppState>) -> Vec<TimelineSegment> {
-    state.tracker.lock().unwrap().get_today_timeline()
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_activity_timeline");
+        return Vec::new();
+    };
+    tracker.get_today_timeline()
 }
 
 /// Get recent window events
 #[tauri::command]
 pub fn get_recent_events(state: State<AppState>) -> Vec<WindowEvent> {
-    state.tracker.lock().unwrap().get_recent_events()
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_recent_events");
+        return Vec::new();
+    };
+    tracker.get_recent_events()
 }
 
 /// Get events in range
 #[tauri::command]
 pub fn get_timeline_range(state: State<AppState>, start_iso: String, end_iso: String) -> Vec<WindowEvent> {
-    state.tracker.lock().unwrap().get_events_range(&start_iso, &end_iso)
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_timeline_range");
+        return Vec::new();
+    };
+    tracker.get_events_range(&start_iso, &end_iso)
 }
 
 /// Get events in range with pagination
 #[tauri::command]
 pub fn get_timeline_range_paginated(state: State<AppState>, start_iso: String, end_iso: String, limit: u32, offset: u32) -> Vec<WindowEvent> {
-    state.tracker.lock().unwrap().get_events_range_paginated(&start_iso, &end_iso, limit, offset)
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_timeline_range_paginated");
+        return Vec::new();
+    };
+    tracker.get_events_range_paginated(&start_iso, &end_iso, limit, offset)
 }
 
 /// Get events for specific app in range
 #[tauri::command]
 pub fn get_timeline_range_for_app(state: State<AppState>, process_name: String, start_iso: String, end_iso: String) -> Vec<WindowEvent> {
-    state.tracker.lock().unwrap().get_events_for_process_range(&process_name, &start_iso, &end_iso)
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_timeline_range_for_app");
+        return Vec::new();
+    };
+    tracker.get_events_for_process_range(&process_name, &start_iso, &end_iso)
 }
 
 /// Get app usage in range
 #[tauri::command]
 pub fn get_app_usage_range(state: State<AppState>, start_date: String, end_date: String) -> Vec<AppUsageEntry> {
-    state
-        .tracker
-        .lock()
-        .unwrap()
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_app_usage_range");
+        return Vec::new();
+    };
+    tracker
         .get_app_usage_range(&start_date, &end_date)
         .into_iter()
         .map(|(name, seconds)| AppUsageEntry { name, seconds })
@@ -166,7 +201,9 @@ pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_is
     let ts = start_time.timestamp();
     let alignment_seconds = interval as i64 * 60;
     let aligned_ts = (ts / alignment_seconds) * alignment_seconds;
-    start_time = chrono::Utc.timestamp_opt(aligned_ts, 0).single().unwrap_or(start_time);
+    start_time = chrono::DateTime::from_timestamp(aligned_ts, 0)
+        .map(|dt| dt.with_timezone(&chrono::Utc))
+        .unwrap_or(start_time);
 
     let end_time = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&end_iso) {
         dt.with_timezone(&chrono::Utc)
@@ -174,10 +211,16 @@ pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_is
         chrono::Utc::now()
     };
 
-    let raw_data = state.tracker.lock().unwrap().get_input_history_range(
-        &start_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true), 
-        &end_iso,
-    );
+    let raw_data = match state.tracker.lock() {
+        Ok(tracker) => tracker.get_input_history_range(
+            &start_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true), 
+            &end_iso,
+        ),
+        Err(_) => {
+            log::error!("Failed to lock tracker for get_input_history_range");
+            Vec::new()
+        }
+    };
     
     let mut buckets = Vec::new();
     
@@ -224,31 +267,48 @@ pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_is
 /// Check if the system is idle
 #[tauri::command]
 pub fn is_idle(state: State<AppState>) -> bool {
-    state.tracker.lock().unwrap().is_idle()
+    let Ok(tracker) = state.tracker.lock() else {
+        return false;
+    };
+    tracker.is_idle()
 }
 
 /// Get idle time in seconds
 #[tauri::command]
 pub fn get_idle_seconds(state: State<AppState>) -> u32 {
-    state.tracker.lock().unwrap().get_idle_seconds()
+    let Ok(tracker) = state.tracker.lock() else {
+        return 0;
+    };
+    tracker.get_idle_seconds()
 }
 
 /// Manually start tracking (usually auto-started)
 #[tauri::command]
 pub fn start_tracking(state: State<AppState>) {
-    state.tracker.lock().unwrap().start();
+    if let Ok(tracker) = state.tracker.lock() {
+        tracker.start();
+    } else {
+        log::error!("Failed to lock tracker for start_tracking");
+    }
 }
 
 /// Stop tracking
 #[tauri::command]
 pub fn stop_tracking(state: State<AppState>) {
-    state.tracker.lock().unwrap().stop();
+    if let Ok(tracker) = state.tracker.lock() {
+        tracker.stop();
+    } else {
+        log::error!("Failed to lock tracker for stop_tracking");
+    }
 }
 
 /// Clear all data
 #[tauri::command]
 pub fn clear_data(state: State<AppState>) -> Result<(), String> {
-    state.tracker.lock().unwrap().clear_data().map_err(|e| e.to_string())
+    let Ok(tracker) = state.tracker.lock() else {
+        return Err("Failed to lock tracker".to_string());
+    };
+    tracker.clear_data().map_err(|e| e.to_string())
 }
 
 /// App usage entry for frontend
@@ -268,19 +328,31 @@ pub struct InputHistoryBucket {
 /// Get user stats
 #[tauri::command]
 pub fn get_user_stats(state: State<AppState>) -> Option<UserStats> {
-    state.tracker.lock().unwrap().get_user_stats()
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_user_stats");
+        return None;
+    };
+    tracker.get_user_stats()
 }
 
 /// Get unlocked achievements
 #[tauri::command]
 pub fn get_unlocked_achievements(state: State<AppState>) -> Vec<String> {
-    state.tracker.lock().unwrap().get_unlocked_achievements()
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_unlocked_achievements");
+        return Vec::new();
+    };
+    tracker.get_unlocked_achievements()
 }
 
 /// Unlock achievement (debug/manual)
 #[tauri::command]
 pub fn unlock_achievement(state: State<AppState>, code: String) -> bool {
-    state.tracker.lock().unwrap().unlock_achievement(&code)
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for unlock_achievement");
+        return false;
+    };
+    tracker.unlock_achievement(&code)
 }
 
 /// Get the application icon as base64 string

@@ -32,8 +32,8 @@ export function useTimeline() {
             }
             return MOCK_TIMELINE;
         },
-        refetchInterval: 10000,
-        staleTime: 9000,
+        refetchInterval: 30000, // 30 seconds - reduced from 10s to prevent backend overload
+        staleTime: 25000,
     });
 }
 
@@ -54,8 +54,8 @@ export function useRecentEvents() {
             }
             return MOCK_EVENTS;
         },
-        refetchInterval: 10000,
-        staleTime: 8000,
+        refetchInterval: 30000, // 30 seconds - reduced from 10s to prevent backend overload
+        staleTime: 25000,
     });
 }
 
@@ -81,7 +81,7 @@ export function useTimelineEventsRange(
             return MOCK_EVENTS;
         },
         enabled,
-        refetchInterval: 5000,
+        refetchInterval: 30000, // 30 seconds - reduced from 5s to prevent backend overload
     });
 }
 

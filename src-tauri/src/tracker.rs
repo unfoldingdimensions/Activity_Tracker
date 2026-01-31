@@ -56,13 +56,52 @@ impl Tracker {
             let mut xp_seconds_accumulator = 0;
             let mut last_streak_check = String::new(); // Date string
 
-            // Cleanup scheduling
-            let mut last_cleanup = std::time::Instant::now();
-            // Run cleanup daily, or on first startup (we check elapsed, initially 0 so might wait 24h or run immediately if we adjust logic)
-            // Let's run it immediately on startup in a separate thread to avoid blocking, OR check here.
-            // Better: just set last_cleanup to now, so it runs after 24h.
-            const CLEANUP_INTERVAL: Duration = Duration::from_secs(86400); 
-            const RETENTION_DAYS: u32 = 90;
+            // Cleanup scheduling - run in separate thread to avoid blocking
+            let last_cleanup = Arc::new(Mutex::new(std::time::Instant::now()));
+            let cleanup_db = db.clone();
+            let cleanup_running = is_running.clone();
+            
+            std::thread::spawn(move || {
+                const CLEANUP_INTERVAL: Duration = Duration::from_secs(86400);
+                const RETENTION_DAYS: u32 = 90;
+                
+                loop {
+                    std::thread::sleep(Duration::from_secs(60)); // Check every minute
+                    
+                    let should_run = {
+                        let running = cleanup_running.lock().unwrap();
+                        if !*running { break; }
+                        
+                        let last = last_cleanup.lock().unwrap();
+                        last.elapsed() >= CLEANUP_INTERVAL
+                    };
+                    
+                    if should_run {
+                        log::info!("Background cleanup: Starting database maintenance...");
+                        
+                        if let Ok(conn) = cleanup_db.lock() {
+                            if let Err(e) = database::cleanup_old_snapshots(&conn, RETENTION_DAYS) {
+                                log::error!("Background cleanup: Error cleaning snapshots: {}", e);
+                            }
+                            if let Err(e) = database::cleanup_old_input_activity(&conn, RETENTION_DAYS) {
+                                log::error!("Background cleanup: Error cleaning input: {}", e);
+                            }
+                            if let Err(e) = database::cleanup_old_window_events(&conn, RETENTION_DAYS) {
+                                log::error!("Background cleanup: Error cleaning events: {}", e);
+                            }
+                            // VACUUM is slow - consider removing or running less frequently
+                            if let Err(e) = database::vacuum_database(&conn) {
+                                log::error!("Background cleanup: Error vacuuming DB: {}", e);
+                            }
+                            log::info!("Background cleanup: Completed successfully");
+                        }
+                        
+                        let mut last = last_cleanup.lock().unwrap();
+                        *last = std::time::Instant::now();
+                    }
+                }
+                log::info!("Background cleanup thread stopped");
+            });
 
             loop {
                 // Check if we should stop
@@ -92,116 +131,111 @@ impl Tracker {
                 // Get input counts since last tick
                 let input_counts = input_monitor.get_and_reset();
 
-                // Record activity and app usage every second
-                if let Ok(conn) = db.lock() {
-                    let _ = database::insert_activity_snapshot(&conn, &timestamp, is_idle, idle_seconds);
+                    // Record activity and app usage every second
+                    if let Ok(conn) = db.lock() {
+                        if let Err(e) = database::insert_activity_snapshot(&conn, &timestamp, is_idle, idle_seconds) {
+                            log::error!("Failed to insert activity snapshot: {}", e);
+                        }
 
-                    // Record input activity if any
-                    if input_counts.keystrokes > 0 || input_counts.mouse_clicks > 0 {
-                        log::info!("Tracker: Recording input - Keys: {}, Clicks: {}", input_counts.keystrokes, input_counts.mouse_clicks);
-                        let _ = database::insert_input_activity(
-                            &conn, 
-                            &timestamp, 
-                            input_counts.keystrokes, 
-                            input_counts.mouse_clicks, 
-                            input_counts.mouse_distance
-                        );
-                    }
+                        // Record input activity if any
+                        if input_counts.keystrokes > 0 || input_counts.mouse_clicks > 0 {
+                            log::info!("Tracker: Recording input - Keys: {}, Clicks: {}", input_counts.keystrokes, input_counts.mouse_clicks);
+                            if let Err(e) = database::insert_input_activity(
+                                &conn, 
+                                &timestamp, 
+                                input_counts.keystrokes, 
+                                input_counts.mouse_clicks, 
+                                input_counts.mouse_distance
+                            ) {
+                                log::error!("Failed to insert input activity: {}", e);
+                            }
+                        }
 
-                    // Track current app usage (1 second per tick)
-                    if !is_idle {
-                        if let Some(ref window) = active_window {
-                            // Always record 1 second of usage for current app
-                            let _ = database::upsert_app_usage(&conn, &today, &window.process_name, 1);
-                            
-                            // Check for Window Switch
-                            let process_changed = match &current_process {
-                                Some(p) => p != &window.process_name,
-                                None => true,
-                            };
-                            
-                            if process_changed {
-                                // Close out previous event
-                                if let Some(ref prev_process) = current_process {
-                                    let duration = app_start_time.elapsed().as_secs() as u32;
-                                    let prev_title = current_title.as_deref().unwrap_or("");
-                                    
-                                    if duration > 0 {
-                                        let _ = database::insert_window_event(
-                                            &conn, 
-                                            &windows_api::get_timestamp(), // Approximate end time
-                                            prev_process,
-                                            prev_title,
-                                            duration
-                                        );
-                                    }
+                        // Track current app usage (1 second per tick)
+                        if !is_idle {
+                            if let Some(ref window) = active_window {
+                                // Always record 1 second of usage for current app
+                                if let Err(e) = database::upsert_app_usage(&conn, &today, &window.process_name, 1) {
+                                    log::error!("Failed to upsert app usage: {}", e);
                                 }
+                                
+                                // Check for Window Switch
+                                let process_changed = match &current_process {
+                                    Some(p) => p != &window.process_name,
+                                    None => true,
+                                };
+                                
+                                if process_changed {
+                                    // Close out previous event
+                                    if let Some(ref prev_process) = current_process {
+                                        let duration = app_start_time.elapsed().as_secs() as u32;
+                                        let prev_title = current_title.as_deref().unwrap_or("");
+                                        
+                                        if duration > 0 {
+                                            // Calculate actual end timestamp
+                                            let end_timestamp = app_start_time.elapsed().as_secs();
+                                            let actual_end = chrono::Utc::now() - chrono::Duration::seconds(end_timestamp as i64);
+                                            let end_iso = actual_end.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+                                            
+                                            if let Err(e) = database::insert_window_event(
+                                                &conn, 
+                                                &end_iso,
+                                                prev_process,
+                                                prev_title,
+                                                duration
+                                            ) {
+                                                log::error!("Failed to insert window event: {}", e);
+                                            }
+                                        }
+                                    }
 
-                                log::info!("Window changed to: {}", window.process_name);
-                                current_process = Some(window.process_name.clone());
-                                current_title = Some(window.window_title.clone());
-                                app_start_time = std::time::Instant::now();
-                            } else {
-                                // Update current title if changed
-                                if let Some(ref title) = current_title {
-                                    if title != &window.window_title {
+                                    log::info!("Window changed to: {}", window.process_name);
+                                    current_process = Some(window.process_name.clone());
+                                    current_title = Some(window.window_title.clone());
+                                    app_start_time = std::time::Instant::now();
+                                } else {
+                                    // Update current title if changed
+                                    if let Some(ref title) = current_title {
+                                        if title != &window.window_title {
+                                            current_title = Some(window.window_title.clone());
+                                        }
+                                    } else {
                                         current_title = Some(window.window_title.clone());
                                     }
-                                } else {
-                                    current_title = Some(window.window_title.clone());
                                 }
                             }
-                        }
-                    
-                        // Gamification Logic: XP & Leveling
-                        xp_seconds_accumulator += 1;
-                        if xp_seconds_accumulator >= 60 {
-                            // Award 10 XP per minute of active time
-                            let _ = database::add_xp(&conn, 10);
-                            xp_seconds_accumulator = 0;
-
-                            // Check level up (Simple formula: Level * 100 XP required for next level)
-                            // Or cumulative: Level = floor(sqrt(total_xp / 100)) + 1
-                            if let Ok(stats) = database::get_user_stats(&conn) {
-                                let calculated_level = ((stats.total_xp as f64 / 100.0).sqrt().floor() as u32) + 1;
-                                if calculated_level > stats.current_level {
-                                    let _ = database::update_level(&conn, calculated_level);
-                                    log::info!("Level Up! New Level: {}", calculated_level);
-                                    // Could emit an event here if we had the window handle
-                                }
-                            }
-                        }
-
-                        // Gamification Logic: Streak
-                        // Check once per tick if date changed (or on startup)
-                        if today != last_streak_check {
-                            let _ = database::update_streak(&conn, &today);
-                            last_streak_check = today.clone();
-                        }
-                    }
-
-                    // Periodic Database Cleanup
-                    if last_cleanup.elapsed() >= CLEANUP_INTERVAL {
-                        log::info!("Tracker: Running scheduled database cleanup...");
-                        // Run in a separate scope to ensure lock isn't held too long if we added more logic, 
-                        // but here we already have the lock, which is fine since we want to block writing while cleaning.
-                        // However, vacuum can be slow.
-                        if let Err(e) = database::cleanup_old_snapshots(&conn, RETENTION_DAYS) {
-                            log::error!("Error cleaning snapshots: {}", e);
-                        }
-                        if let Err(e) = database::cleanup_old_input_activity(&conn, RETENTION_DAYS) {
-                            log::error!("Error cleaning input: {}", e);
-                        }
-                        if let Err(e) = database::cleanup_old_window_events(&conn, RETENTION_DAYS) {
-                            log::error!("Error cleaning events: {}", e);
-                        }
-                        if let Err(e) = database::vacuum_database(&conn) {
-                            log::error!("Error vacuuming DB: {}", e);
-                        }
                         
-                        last_cleanup = std::time::Instant::now();
+                            // Gamification Logic: XP & Leveling
+                            xp_seconds_accumulator += 1;
+                            if xp_seconds_accumulator >= 60 {
+                                // Award 10 XP per minute of active time
+                                if let Err(e) = database::add_xp(&conn, 10) {
+                                    log::error!("Failed to add XP: {}", e);
+                                }
+                                xp_seconds_accumulator = 0;
+
+                                // Check level up
+                                if let Ok(stats) = database::get_user_stats(&conn) {
+                                    let calculated_level = ((stats.total_xp as f64 / 100.0).sqrt().floor() as u32) + 1;
+                                    if calculated_level > stats.current_level {
+                                        if let Err(e) = database::update_level(&conn, calculated_level) {
+                                            log::error!("Failed to update level: {}", e);
+                                        } else {
+                                            log::info!("Level Up! New Level: {}", calculated_level);
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Gamification Logic: Streak
+                            if today != last_streak_check {
+                                if let Err(e) = database::update_streak(&conn, &today) {
+                                    log::error!("Failed to update streak: {}", e);
+                                }
+                                last_streak_check = today.clone();
+                            }
+                        }
                     }
-                }
 
                 // Sleep for 1 second
                 std::thread::sleep(Duration::from_secs(1));
@@ -216,7 +250,7 @@ impl Tracker {
         log::info!("Stopping activity tracker...");
     }
 
-    /// Ge the current active window
+    /// Get the current active window
     pub fn get_current_window(&self) -> Option<windows_api::ActiveWindow> {
         self.current_window.lock().unwrap().clone()
     }

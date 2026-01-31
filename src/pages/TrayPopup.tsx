@@ -1,4 +1,4 @@
-import { useMemo, useContext } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Maximize2, Activity, MousePointer, Keyboard, Zap, X, Settings as SettingsIcon } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
@@ -6,26 +6,15 @@ import { invoke } from '@tauri-apps/api/core';
 // Hooks & Context
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useUserStats } from '../hooks/useTrackerData';
-import { SettingsContext } from '../context/SettingsContext';
 
 // Components
 import { GlassCard } from '../components/GlassCard';
 import { AppIcon } from '../components/shared/AppIcon';
 import { formatDuration } from '../utils/formatters';
 
-const RANGE_LABELS: Record<string, string> = {
-    'past_hour': 'Past Hour',
-    'past_6h': 'Past 6 Hours',
-    'past_12h': 'Past 12 Hours',
-    'today': 'Today',
-    'yesterday': 'Yesterday',
-    'this_week': 'This Week',
-    'this_month': 'This Month'
-};
-
 export function TrayPopup() {
-    const settingsContext = useContext(SettingsContext);
-    const selectedRange = settingsContext?.settings?.dashboardDefaultRange || 'today';
+    // Always show today in tray popup for consistent behavior
+    const selectedRange: TimeRange = 'today';
 
     // We use the setting's default range for the tray view
     const { stats, appUsage, isLoading } = useDashboardData(selectedRange);
@@ -171,7 +160,7 @@ export function TrayPopup() {
                     <div className="flex flex-col items-center text-center">
                         <span className="text-[10px] text-[var(--muted-foreground)] font-bold mb-1 opacity-60">Viewing Stats For</span>
                         <span className="text-[11px] font-display font-black text-[var(--foreground)] uppercase tracking-tight">
-                            {RANGE_LABELS[selectedRange] || selectedRange}
+                            Today
                         </span>
                     </div>
 

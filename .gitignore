@@ -25,4 +25,4 @@ dist-ssr
 
 # Security
 GITHUB_PUSH.md
-
+.agent/

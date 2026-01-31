@@ -3,8 +3,8 @@
 version = 3
 
 [[package]]
-name = "activity-tracker"
-version = "0.1.0"
+name = "activity-tracker-v2"
+version = "2.0.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",

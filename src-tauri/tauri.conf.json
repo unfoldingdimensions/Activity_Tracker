@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "ActivityTracker",
-  "version": "0.1.0",
+  "productName": "Activity Tracker v2",
+  "version": "2.0.0",
   "identifier": "com.activitytracker.app",
   "build": {
     "frontendDist": "../dist",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Activity Tracker",
+        "title": "Activity Tracker v2",
         "width": 1280,
         "height": 800,
         "resizable": true,
