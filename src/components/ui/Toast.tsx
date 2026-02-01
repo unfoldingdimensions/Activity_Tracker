@@ -3,7 +3,7 @@
  * Provides user feedback for async operations
  */
 
-import { useState, useCallback, createContext, useContext, type ReactNode } from 'react';
+import { useState, useCallback, createContext, useContext, useRef, useEffect, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
@@ -31,6 +31,19 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
     const [toasts, setToasts] = useState<Toast[]>([]);
+    const timeoutIdsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+    // Cleanup all timeouts on unmount
+    useEffect(() => {
+        return () => {
+            timeoutIdsRef.current.forEach(id => clearTimeout(id));
+            timeoutIdsRef.current.clear();
+        };
+    }, []);
+
+    const dismissToast = useCallback((id: string) => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, []);
 
     const showToast = useCallback(
         (type: ToastType, message: string, duration = 4000) => {
@@ -41,17 +54,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
             // Auto-dismiss after duration
             if (duration > 0) {
-                setTimeout(() => {
-                    setToasts((prev) => prev.filter((t) => t.id !== id));
+                const timeoutId = setTimeout(() => {
+                    dismissToast(id);
                 }, duration);
+                timeoutIdsRef.current.add(timeoutId);
             }
         },
-        []
+        [dismissToast]
     );
-
-    const dismissToast = useCallback((id: string) => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, []);
 
     return (
         <ToastContext.Provider value={{ showToast, dismissToast }}>

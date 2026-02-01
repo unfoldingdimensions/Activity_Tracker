@@ -43,6 +43,9 @@ vi.mock('framer-motion', () => ({
         div: ({ children, variants, initial, animate, whileInView, viewport, ...props }: any) => (
             <div {...props}>{children}</div>
         ),
+        button: ({ children, whileHover, whileTap, ...props }: any) => (
+            <button {...props}>{children}</button>
+        ),
     },
     AnimatePresence: ({ children }: any) => <>{children}</>,
 }));

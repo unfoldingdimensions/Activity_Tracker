@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { SettingsContext, type UserSettings } from './SettingsContext';
 
 const DEFAULT_SETTINGS: UserSettings = {
@@ -29,8 +29,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setSettings((prev) => ({ ...prev, ...newSettings }));
     };
 
+    const value = useMemo(() => ({ settings, updateSettings }), [settings]);
+
     return (
-        <SettingsContext.Provider value={{ settings, updateSettings }}>
+        <SettingsContext.Provider value={value}>
             {children}
         </SettingsContext.Provider>
     );

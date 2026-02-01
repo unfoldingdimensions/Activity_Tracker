@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
@@ -11,25 +11,25 @@ interface BreathingWidgetProps {
 export const BreathingWidget: React.FC<BreathingWidgetProps> = ({ isOpen, onClose }) => {
     const [phase, setPhase] = useState<'Inhale' | 'Hold' | 'Exhale'>('Inhale');
 
+    const isActiveRef = useRef(isOpen);
+    isActiveRef.current = isOpen;
+
     useEffect(() => {
         if (!isOpen) return;
 
-        // 4-7-8 Breathing Technique or simple Box Breathing (4-4-4-4)
-        // Let's do simple 4-4-4 (Inhale 4, Hold 4, Exhale 4)
-
         const cycle = async () => {
-            while (isOpen) {
+            while (isActiveRef.current) {
                 setPhase('Inhale');
                 await new Promise(r => setTimeout(r, 4000));
-                if (!isOpen) break;
+                if (!isActiveRef.current) break;
 
                 setPhase('Hold');
                 await new Promise(r => setTimeout(r, 4000));
-                if (!isOpen) break;
+                if (!isActiveRef.current) break;
 
                 setPhase('Exhale');
                 await new Promise(r => setTimeout(r, 4000));
-                if (!isOpen) break;
+                if (!isActiveRef.current) break;
             }
         };
 

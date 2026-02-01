@@ -28,11 +28,12 @@ export function AnimatedNumber({ value, className, duration = 1, delay = 0.5 }: 
     }, [isInView, value, motionValue, delay]);
 
     useEffect(() => {
-        springValue.on("change", (latest) => {
+        const unsubscribe = springValue.on("change", (latest) => {
             if (ref.current) {
                 ref.current.textContent = Math.round(latest).toLocaleString();
             }
         });
+        return () => unsubscribe();
     }, [springValue]);
 
     return <span ref={ref} className={className}>{0}</span>;

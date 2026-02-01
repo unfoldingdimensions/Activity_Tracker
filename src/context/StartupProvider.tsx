@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { LoadingScreen } from '../components/shared/LoadingScreen';
 
@@ -56,8 +56,10 @@ export const StartupProvider: React.FC<{ children: React.ReactNode }> = ({ child
         initializeApp();
     }, [queryClient]);
 
+    const value = useMemo(() => ({ isReady }), [isReady]);
+
     return (
-        <StartupContext.Provider value={{ isReady }}>
+        <StartupContext.Provider value={value}>
             <LoadingScreen isLoading={!isReady} status={status} progress={progress} />
             <div className={!isReady ? 'hidden' : 'block animate-fade-in'}>
                 {children}
