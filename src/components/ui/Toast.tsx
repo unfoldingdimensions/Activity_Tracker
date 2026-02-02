@@ -135,13 +135,13 @@ function ToastItem({
             exit={{ opacity: 0, x: 50, scale: 0.95 }}
             className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg max-w-sm ${colorClass}`}
         >
-            <Icon size={20} className="flex-shrink-0" />
-            <p className="text-sm text-[var(--foreground)] flex-1">{toast.message}</p>
+            <Icon size={20} className="shrink-0" />
+            <p className="text-sm text-(--foreground) flex-1">{toast.message}</p>
             <button
                 onClick={() => onDismiss(toast.id)}
-                className="p-1 rounded hover:bg-[var(--secondary)] transition-colors"
+                className="p-1 rounded hover:bg-(--secondary) transition-colors"
             >
-                <X size={14} className="text-[var(--muted-foreground)]" />
+                <X size={14} className="text-(--muted-foreground)" />
             </button>
         </motion.div>
     );
