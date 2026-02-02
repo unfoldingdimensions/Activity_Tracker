@@ -13,7 +13,7 @@ export const PomodoroTimer: React.FC = () => {
         let interval: any = null;
         if (isActive && timeLeft > 0) {
             interval = setInterval(() => {
-                setTimeLeft(timeLeft - 1);
+                setTimeLeft(prevTimeLeft => prevTimeLeft - 1);
             }, 1000);
         } else if (timeLeft === 0) {
             setIsActive(false);

@@ -56,6 +56,7 @@ export function useAppUsageRange(
             return MOCK_APP_USAGE;
         },
         enabled,
-        refetchInterval: 5000,
+        refetchInterval: 30000,
+        staleTime: 60000,
     });
 }
