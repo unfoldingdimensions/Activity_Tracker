@@ -6,12 +6,16 @@ use std::ffi::OsStr;
 use base64::{Engine as _, engine::general_purpose};
 use sysinfo::{System, ProcessRefreshKind, UpdateKind, ProcessesToUpdate};
 use once_cell::sync::Lazy;
+#[cfg(target_os = "windows")]
 use windows::Win32::UI::Shell::ExtractIconExW;
+#[cfg(target_os = "windows")]
 use windows::Win32::UI::WindowsAndMessaging::{HICON, DestroyIcon, ICONINFO, GetIconInfo};
+#[cfg(target_os = "windows")]
 use windows::Win32::Graphics::Gdi::{
     GetDC, ReleaseDC, GetDIBits, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
     GetObjectW, BITMAP, DeleteObject, CreateCompatibleDC, SelectObject, DeleteDC,
 };
+#[cfg(target_os = "windows")]
 use windows::core::HSTRING;
 
 const MAX_CACHE_SIZE: usize = 500;
@@ -132,18 +136,27 @@ pub fn get_app_icon_base64(process_name: &str, cache_dir: &Path) -> Option<Strin
         }
     }
 
-    // 2. Find Executable Path (Cached in memory)
-    let exe_path = ICON_SYSTEM.find_exe_path(process_name)?;
+    // 2. Find Executable Path & 3. Extract Icon
+    #[cfg(target_os = "windows")]
+    let icon_data = if let Some(exe_path) = ICON_SYSTEM.find_exe_path(process_name) {
+        extract_icon_to_png(&exe_path)
+    } else {
+        None
+    };
 
-    // 3. Extract Icon
-    let icon_data = extract_icon_to_png(&exe_path)?;
+    #[cfg(not(target_os = "windows"))]
+    let icon_data: Option<Vec<u8>> = None;
 
-    // 4. Save to Disk Cache
-    let _ = fs::write(&icon_path, &icon_data);
-
-    Some(format!("data:image/png;base64,{}", general_purpose::STANDARD.encode(icon_data)))
+    if let Some(data) = icon_data {
+        // 4. Save to Disk Cache
+        let _ = fs::write(&icon_path, &data);
+        Some(format!("data:image/png;base64,{}", general_purpose::STANDARD.encode(data)))
+    } else {
+        None
+    }
 }
 
+#[cfg(target_os = "windows")]
 fn extract_icon_to_png(exe_path: &Path) -> Option<Vec<u8>> {
     unsafe {
         let path_hstring = HSTRING::from(exe_path.to_str()?);
@@ -180,6 +193,7 @@ fn extract_icon_to_png(exe_path: &Path) -> Option<Vec<u8>> {
     }
 }
 
+#[cfg(target_os = "windows")]
 unsafe fn hicon_to_png(hicon: HICON) -> Option<Vec<u8>> {
     let mut icon_info = ICONINFO::default();
     if GetIconInfo(hicon, &mut icon_info).is_err() {
