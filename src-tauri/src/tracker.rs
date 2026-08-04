@@ -4,11 +4,95 @@ use crate::database;
 use crate::windows_api;
 use crate::input_monitor::InputMonitor;
 use rusqlite::Connection;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use chrono::{Datelike, TimeZone};
+use tauri::Emitter;
+use tauri_plugin_notification::NotificationExt;
+
+/// Compact duration like "2h 5m" / "45m" for limit notifications
+fn format_duration_compact(seconds: u64) -> String {
+    let hours = seconds / 3600;
+    let minutes = (seconds % 3600) / 60;
+    if hours > 0 {
+        format!("{}h {}m", hours, minutes)
+    } else {
+        format!("{}m", minutes)
+    }
+}
+
+/// Distraction guard: fire a notification (once per app per day) when an
+/// app's usage crosses its configured daily limit.
+fn check_app_limits(
+    conn: &Connection,
+    today: &str,
+    settings: &Mutex<HashMap<String, serde_json::Value>>,
+    app: &tauri::AppHandle,
+    notified: &Mutex<HashSet<String>>,
+) {
+    let limits: HashMap<String, u64> = {
+        let Ok(guard) = settings.lock() else {
+            return;
+        };
+        match guard.get("app_limits") {
+            Some(value) => serde_json::from_value(value.clone()).unwrap_or_default(),
+            None => return,
+        }
+    };
+    if limits.is_empty() {
+        return;
+    }
+
+    let usage = match database::get_app_usage(conn, today) {
+        Ok(usage) => usage,
+        Err(e) => {
+            log::error!("Distraction guard: failed to read app usage: {}", e);
+            return;
+        }
+    };
+
+    let Ok(mut notified_guard) = notified.lock() else {
+        return;
+    };
+
+    for (app_name, seconds) in usage {
+        let lower = app_name.to_lowercase();
+        for (pattern, limit) in &limits {
+            if pattern.is_empty() || !lower.contains(&pattern.to_lowercase()) {
+                continue;
+            }
+            if (seconds as u64) < *limit {
+                continue;
+            }
+
+            let key = format!("{}|{}", lower, today);
+            if !notified_guard.insert(key) {
+                continue;
+            }
+
+            let title = format!("Daily limit reached: {}", app_name);
+            let body = format!(
+                "{} used today (limit {}). Time for a switch?",
+                format_duration_compact(seconds as u64),
+                format_duration_compact(*limit)
+            );
+            if let Err(e) = app.notification().builder().title(&title).body(&body).show() {
+                log::error!("Distraction guard: failed to send notification: {}", e);
+            }
+            let _ = app.emit(
+                "limit-reached",
+                serde_json::json!({
+                    "app": app_name,
+                    "limit_seconds": limit,
+                    "usage_seconds": seconds,
+                }),
+            );
+            log::info!("Distraction guard: {} exceeded its daily limit", app_name);
+        }
+    }
+}
 
 /// Replace every occurrence of each keyword (case-insensitive) in `title`
 /// with a mask of bullet characters ("•"). Byte-slicing is clamped to char
@@ -127,7 +211,7 @@ impl Tracker {
     }
 
     /// Start the tracking loop (called once on app start)
-    pub fn start(&self) {
+    pub fn start(&self, app: tauri::AppHandle) {
         let db = self.db.clone();
         let is_running = self.is_running.clone();
         let current_window = self.current_window.clone();
@@ -135,6 +219,8 @@ impl Tracker {
         let track_titles = self.track_titles.clone();
         let loop_active = self.loop_active.clone();
         let settings = self.settings.clone();
+        // Once-per-app-per-day dedupe for distraction-guard notifications
+        let limit_notified = Arc::new(Mutex::new(HashSet::<String>::new()));
 
         // Re-assert the running flag so a still-alive loop keeps running
         // (resume semantics: Pause -> Resume must not spawn a duplicate loop).
@@ -173,6 +259,9 @@ impl Tracker {
             let mut last_achievement_day = String::new();
             let mut early_bird_checked = false;
             let mut night_owl_checked = false;
+
+            // Distraction guard: check daily app limits once per minute
+            let mut last_limit_check = std::time::Instant::now();
 
             // Cleanup scheduling - run in separate thread to avoid blocking
             let last_cleanup = Arc::new(Mutex::new(std::time::Instant::now()));
@@ -441,6 +530,14 @@ impl Tracker {
                                 }
                             }
                         }
+                    }
+
+                    // Distraction guard: check daily app limits once per minute
+                    if last_limit_check.elapsed().as_secs() >= 60 {
+                        if let Ok(guard_conn) = db.lock() {
+                            check_app_limits(&guard_conn, &today, &settings, &app, &limit_notified);
+                        }
+                        last_limit_check = std::time::Instant::now();
                     }
 
                 // Sleep for 1 second

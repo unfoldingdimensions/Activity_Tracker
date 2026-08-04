@@ -10,6 +10,7 @@ import { StartupProvider } from './context/StartupProvider';
 import { ErrorBoundary } from './components/errors/ErrorBoundary';
 import { ToastProvider } from './components/ui/Toast';
 import { RefreshHandler } from './components/shared/RefreshHandler';
+import { useLimitAlerts } from './hooks/useLimitAlerts';
 
 // Route-level code splitting: each page (and its chart/gamification deps)
 // is loaded on demand, keeping the initial bundle small.
@@ -42,6 +43,15 @@ function RouteFallback() {
     );
 }
 
+/**
+ * Surfaces backend distraction-guard alerts (limit-reached) as toasts.
+ * Rendered inside ToastProvider so useToast is available.
+ */
+function LimitAlerts() {
+    useLimitAlerts();
+    return null;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -49,6 +59,7 @@ function App() {
         <StartupProvider>
           <RefreshHandler />
           <ToastProvider>
+            <LimitAlerts />
             <SettingsProvider>
               <ThemeProvider>
                 <VisibilityProvider>

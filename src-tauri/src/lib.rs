@@ -22,6 +22,7 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             // Initialize logging in debug mode
             if cfg!(debug_assertions) {
@@ -65,7 +66,7 @@ pub fn run() {
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
 
-            tracker.start();
+            tracker.start(app.handle().clone());
 
             // Store in app state
             app.manage(AppState {

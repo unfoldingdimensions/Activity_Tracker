@@ -1,6 +1,6 @@
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
-import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2, Play, Pause, LayoutGrid, Clock, Rocket, Minimize2, Gauge, ShieldBan, Lock, CalendarClock, ListFilter } from 'lucide-react';
+import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2, Play, Pause, LayoutGrid, Clock, Rocket, Minimize2, Gauge, ShieldBan, Lock, CalendarClock, ListFilter, ShieldAlert } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../context/useTheme';
 import { useSettings } from '../hooks/useSettings';
@@ -23,6 +23,8 @@ export function Settings() {
     const [blacklistInput, setBlacklistInput] = useState('');
     const [classInput, setClassInput] = useState('');
     const [classSelect, setClassSelect] = useState<'focus' | 'distraction'>('distraction');
+    const [limitInput, setLimitInput] = useState('');
+    const [limitMinutes, setLimitMinutes] = useState(120);
 
     const queryClient = useQueryClient();
 
@@ -143,6 +145,25 @@ export function Settings() {
         const next = { ...settings.appClassification };
         delete next[name];
         updateSettings({ appClassification: next });
+    };
+
+    const addAppLimit = () => {
+        const name = limitInput.trim();
+        if (!name) return;
+        updateSettings({ appLimits: { ...settings.appLimits, [name]: limitMinutes * 60 } });
+        setLimitInput('');
+        showToast('success', `Daily limit set for ${name}.`);
+    };
+
+    const setAppLimit = (name: string, minutes: number) => {
+        const seconds = Math.max(5, minutes) * 60;
+        updateSettings({ appLimits: { ...settings.appLimits, [name]: seconds } });
+    };
+
+    const removeAppLimit = (name: string) => {
+        const next = { ...settings.appLimits };
+        delete next[name];
+        updateSettings({ appLimits: next });
     };
 
     const handleClearData = async () => {
@@ -492,6 +513,89 @@ export function Settings() {
                             <p className="text-[10px] text-[var(--muted-foreground)]/60 mt-2">
                                 Overrides the built-in defaults. Names match by fragment (chrome matches Chrome.exe).
                                 Ignore removes an app from Focus Score, Focus Flow and Timeline badges.
+                            </p>
+                        </div>
+                    </div>
+                </GlassCard>
+
+                {/* Distraction Guard */}
+                <GlassCard className="p-6" hover={false} spotlight>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 rounded-lg bg-red-500/10">
+                            <ShieldAlert size={20} className="text-red-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
+                                Distraction Guard
+                            </h3>
+                            <p className="text-sm text-[var(--muted-foreground)]">
+                                Daily time limits per app — notified once when crossed
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {Object.keys(settings.appLimits).length > 0 && (
+                            <div className="space-y-2">
+                                {Object.entries(settings.appLimits).map(([name, seconds]) => (
+                                    <div
+                                        key={name}
+                                        className="flex items-center justify-between p-3 rounded-xl bg-[var(--background)] border border-[var(--border)]"
+                                    >
+                                        <span className="text-sm font-medium text-[var(--foreground)] truncate mr-2">
+                                            {name}
+                                        </span>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            <input
+                                                type="number"
+                                                min={5}
+                                                step={5}
+                                                value={Math.round(seconds / 60)}
+                                                onChange={(e) => setAppLimit(name, Number(e.target.value))}
+                                                className="w-20 bg-[var(--secondary)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-2 py-1.5 outline-none"
+                                                aria-label={`Daily limit for ${name} in minutes`}
+                                            />
+                                            <span className="text-xs text-[var(--muted-foreground)]">min</span>
+                                            <button
+                                                onClick={() => removeAppLimit(name)}
+                                                className="text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors text-lg leading-none"
+                                                aria-label={`Remove limit for ${name}`}
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)]">
+                            <div className="flex gap-2">
+                                <input
+                                    value={limitInput}
+                                    onChange={(e) => setLimitInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') addAppLimit();
+                                    }}
+                                    placeholder="App name, e.g. chrome or YouTube"
+                                    className="flex-1 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg focus:ring-[var(--primary)] focus:border-[var(--primary)] px-3 py-2 outline-none placeholder:text-[var(--muted-foreground)]/50"
+                                />
+                                <input
+                                    type="number"
+                                    min={5}
+                                    step={5}
+                                    value={limitMinutes}
+                                    onChange={(e) => setLimitMinutes(Number(e.target.value))}
+                                    className="w-20 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-2 py-2 outline-none"
+                                    aria-label="Daily limit in minutes"
+                                />
+                                <span className="flex items-center text-xs text-[var(--muted-foreground)]">min</span>
+                                <Button variant="secondary" size="sm" onClick={addAppLimit}>
+                                    Add
+                                </Button>
+                            </div>
+                            <p className="text-[10px] text-[var(--muted-foreground)]/60 mt-2">
+                                When an app passes its limit you get one notification per day, plus an in-app alert.
                             </p>
                         </div>
                     </div>
