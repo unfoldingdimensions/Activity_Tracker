@@ -24,6 +24,7 @@ import { AppIcon } from '../components/shared/AppIcon';
 // Utils & Constants
 import { containerVariantsFast, itemVariantsSubtle } from '../constants/animations';
 import { formatDuration, formatAppName, toLocalDateString } from '../utils/formatters';
+import { isProductiveApp } from '../hooks/useDashboardData';
 
 type TimeRange = 'today' | 'yesterday' | 'week' | 'prev_week' | 'month';
 type ViewMode = 'all' | 'apps';
@@ -344,7 +345,7 @@ export function Timeline() {
                                                             {formatAppName(app.name)}
                                                         </p>
                                                         <p className="text-xs text-[var(--muted-foreground)]">
-                                                            Application
+                                                            {isProductiveApp(app.name) ? 'Focus' : 'Other'}
                                                         </p>
                                                     </div>
                                                 </div>

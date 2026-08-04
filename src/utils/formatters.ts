@@ -134,6 +134,27 @@ export function formatTimeOfDay(isoString: string): string {
 }
 
 /**
+ * Rank ladder tied to the level curve (mirrors the backend XP formula).
+ * @param level Current level (1-based)
+ * @returns Rank name, e.g. "Apprentice" at level 3
+ */
+const LEVEL_RANKS = [
+    { min: 1, name: 'Novice' },
+    { min: 3, name: 'Apprentice' },
+    { min: 5, name: 'Focused' },
+    { min: 8, name: 'Specialist' },
+    { min: 11, name: 'Master' },
+] as const;
+
+export function getRank(level: number): string {
+    let rank = LEVEL_RANKS[0].name;
+    for (const r of LEVEL_RANKS) {
+        if (level >= r.min) rank = r.name;
+    }
+    return rank;
+}
+
+/**
  * Format a Date as a local calendar date (YYYY-MM-DD).
  * Unlike `date.toISOString().split('T')[0]`, this uses the machine's LOCAL timezone,
  * which is what the backend uses to key `app_usage` rows.

@@ -11,7 +11,8 @@ import {
     formatTimeOfDay,
     toLocalDateString,
     getLevelInfo,
-    formatDistance
+    formatDistance,
+    getRank
 } from '../formatters';
 
 describe('formatters', () => {
@@ -180,6 +181,22 @@ describe('formatters', () => {
 
         it('switches to km above 1000 m', () => {
             expect(formatDistance(5_000_000)).toBe('1.3 km');
+        });
+    });
+
+    describe('getRank', () => {
+        it('maps levels to ranks', () => {
+            expect(getRank(1)).toBe('Novice');
+            expect(getRank(2)).toBe('Novice');
+            expect(getRank(3)).toBe('Apprentice');
+            expect(getRank(5)).toBe('Focused');
+            expect(getRank(8)).toBe('Specialist');
+            expect(getRank(12)).toBe('Master');
+        });
+
+        it('handles zero or negative levels', () => {
+            expect(getRank(0)).toBe('Novice');
+            expect(getRank(-5)).toBe('Novice');
         });
     });
 
