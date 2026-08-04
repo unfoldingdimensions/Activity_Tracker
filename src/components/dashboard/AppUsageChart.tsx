@@ -42,24 +42,24 @@ export const AppUsageChart = memo(function AppUsageChart({
     const hasData = data.length > 0;
 
     return (
-        <GlassCard className="p-6 h-full" hover={false}>
+        <GlassCard className="p-6 h-full flex flex-col" hover={false}>
             <h3 className="font-display text-lg font-semibold mb-4 text-[var(--foreground)]">
                 {title}
             </h3>
-            <div className="h-48">
+            <div className="flex-1 min-h-64">
                 {isLoading ? (
                     <div className="h-full flex items-center justify-center">
                         <Skeleton variant="circular" className="w-32 h-32" />
                     </div>
                 ) : hasData ? (
-                    <ResponsiveContainer width="100%" height="100%" minHeight={192}>
+                    <ResponsiveContainer width="100%" height="100%" minHeight={256}>
                         <PieChart>
                             <Pie
                                 data={data}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={60}
-                                outerRadius={80}
+                                innerRadius={75}
+                                outerRadius={100}
                                 paddingAngle={5}
                                 dataKey="value"
                                 cornerRadius={4}

@@ -46,7 +46,7 @@ export function Achievements() {
     const { data: unlockedCodes } = useUnlockedAchievements();
 
     return (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {ACHIEVEMENTS_DATA.map((achievement) => {
                 const isUnlocked = unlockedCodes?.includes(achievement.code);
                 const Icon = achievement.icon;

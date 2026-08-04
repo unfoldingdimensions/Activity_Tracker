@@ -102,7 +102,7 @@ export function Dashboard() {
             />
 
             {/* Content */}
-            <div className="p-8 pt-6 space-y-12 flex-1">
+            <div className="p-8 pt-6 space-y-8 flex-1">
 
                 {/* 1. Primary Metrics */}
                 <motion.div
@@ -129,7 +129,7 @@ export function Dashboard() {
                     ))}
                 </motion.div>
 
-                {/* 2. Core Visual Analytics */}
+                {/* 2. Core Visual Analytics - charts get the most space */}
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
@@ -140,6 +140,7 @@ export function Dashboard() {
                         <FocusFlowChart
                             data={timelineData}
                             isLoading={isLoading}
+                            minHeight={360}
                             title={`Focus Flow (${timeRange === 'past_hour' ? 'Past Hour' : timeRange === 'today' ? 'Today' : timeRange === 'yesterday' ? 'Yesterday' : timeRange === 'this_week' ? 'Past Week' : timeRange === 'this_month' ? 'Past Month' : timeRange.replace('past_', 'Past ')})`}
                         />
                     </motion.div>
@@ -149,18 +150,19 @@ export function Dashboard() {
                     </motion.div>
                 </motion.div>
 
-                {/* 3. Deep Analytical Insights */}
+                {/* 3. Deep Analytical Insights - KPI column + wide visualization */}
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
+                    animate="show"
                     whileInView="show"
                     viewport={{ once: true, amount: 0.2 }}
-                    className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+                    className="grid grid-cols-1 lg:grid-cols-3 gap-6"
                 >
                     <motion.div variants={itemVariants}>
                         <FlowStateMetrics />
                     </motion.div>
-                    <motion.div variants={itemVariants}>
+                    <motion.div variants={itemVariants} className="lg:col-span-2">
                         <WorkPatterns />
                     </motion.div>
                 </motion.div>
@@ -173,10 +175,10 @@ export function Dashboard() {
                     viewport={{ once: true, amount: 0.2 }}
                     className="grid grid-cols-1 lg:grid-cols-3 gap-6"
                 >
-                    <motion.div variants={itemVariants} className="lg:col-span-2">
+                    <motion.div variants={itemVariants}>
                         <LevelSystem />
                     </motion.div>
-                    <motion.div variants={itemVariants}>
+                    <motion.div variants={itemVariants} className="lg:col-span-2">
                         <Achievements />
                     </motion.div>
                 </motion.div>

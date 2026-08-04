@@ -18,7 +18,7 @@ export const FlowStateMetrics: React.FC = () => {
     };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
             {/* Flow Score Card */}
             <GlassCard className="p-5 group relative overflow-hidden" spotlight>
                 <div className="flex justify-between items-start mb-2">
