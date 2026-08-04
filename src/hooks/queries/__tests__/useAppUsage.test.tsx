@@ -10,6 +10,7 @@ import { MOCK_APP_USAGE } from '../mockData';
 vi.mock('../../../api/tauri', () => ({
     getAppUsage: vi.fn(),
     getAppUsageRange: vi.fn(),
+    setTrackWindowTitles: vi.fn(),
     isTauri: vi.fn(), // If needed, but we mock the whole module usually or separate utils
 }));
 

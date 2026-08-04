@@ -1,5 +1,7 @@
 use rusqlite::{Connection, Result};
 use std::path::PathBuf;
+use std::collections::HashMap;
+use chrono::{Datelike, TimeZone};
 
 /// Initialize the SQLite database with the activity tracking schema
 pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
@@ -230,16 +232,19 @@ pub fn get_stats_range(
     })
 }
 
-/// Get activity timeline grouped by hour for a specific date
-/// Get activity timeline grouped by hour for a specific range
+/// Get activity timeline grouped by local hour for a specific range
+/// Timestamps are stored as UTC ISO-8601 strings; we group by the full
+/// UTC hour in SQL, then re-bucket each UTC hour into the local hour so the
+/// resulting "HH:00" labels match the machine's timezone (same convention as
+/// `app_usage.date`).
 pub fn get_activity_timeline(
     conn: &Connection, 
     start_timestamp: &str, 
     end_timestamp: &str
 ) -> Result<Vec<TimelineSegment>> {
-    // subtsr(timestamp, 12, 2) works for "YYYY-MM-DDTHH:MM:SS"
+    // Hour label is "YYYY-MM-DDTHH:00" (UTC), parseable by chrono.
     let mut stmt = conn.prepare(
-        "SELECT substr(timestamp, 12, 2) || ':00' as hour,
+        "SELECT substr(timestamp, 1, 13) || ':00' as hour,
                 COUNT(CASE WHEN is_idle = 0 THEN 1 END) as active_secs,
                 COUNT(CASE WHEN is_idle = 1 THEN 1 END) as idle_secs
          FROM activity_snapshots 
@@ -249,22 +254,45 @@ pub fn get_activity_timeline(
     )?;
     
     let rows = stmt.query_map([start_timestamp, end_timestamp], |row| {
-        Ok(TimelineSegment {
-            time: row.get(0)?,
-            active_seconds: row.get(1)?,
-            idle_seconds: row.get(2)?,
-        })
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, u32>(1)?,
+            row.get::<_, u32>(2)?,
+        ))
     })?;
-    
-    rows.collect()
+
+    // Re-bucket UTC hours into local-hour buckets
+    let mut buckets: HashMap<u32, (u32, u32)> = HashMap::new();
+    for row in rows {
+        let (hour_utc, active_secs, idle_secs) = row?;
+        if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(&hour_utc, "%Y-%m-%dT%H:%M") {
+            let utc_dt = chrono::Utc.from_utc_datetime(&naive);
+            let local_hour = utc_dt.with_timezone(&chrono::Local).hour();
+            let entry = buckets.entry(local_hour).or_insert((0, 0));
+            entry.0 += active_secs;
+            entry.1 += idle_secs;
+        }
+    }
+
+    let mut segments: Vec<TimelineSegment> = buckets
+        .into_iter()
+        .map(|(hour, (active_secs, idle_secs))| TimelineSegment {
+            time: format!("{:02}:00", hour),
+            active_seconds: active_secs,
+            idle_seconds: idle_secs,
+        })
+        .collect();
+    segments.sort_by(|a, b| a.time.cmp(&b.time));
+
+    Ok(segments)
 }
 
-/// Get recent window events (limit 50) - Deprecated-ish in favor of range
+/// Get recent window events (limit 500) - Deprecated-ish in favor of range
 pub fn get_recent_window_events(conn: &Connection) -> Result<Vec<WindowEvent>> {
     let mut stmt = conn.prepare(
         "SELECT timestamp, process_name, window_title, duration_seconds 
          FROM window_events 
-         ORDER BY id DESC LIMIT 50"
+         ORDER BY id DESC LIMIT 500"
     )?;
     
     let rows = stmt.query_map([], |row| {
@@ -478,6 +506,19 @@ pub fn unlock_achievement(conn: &Connection, code: &str, timestamp: &str) -> Res
     Ok(())
 }
 
+/// Unlock an achievement and award bonus XP the first time it is earned.
+/// Returns `true` if the achievement was newly unlocked (and XP awarded).
+pub fn unlock_achievement_with_reward(conn: &Connection, code: &str, timestamp: &str, reward_xp: u32) -> Result<bool> {
+    let inserted = conn.execute(
+        "INSERT OR IGNORE INTO achievements (code, unlocked_at) VALUES (?1, ?2)",
+        (code, timestamp),
+    )?;
+    if inserted > 0 && reward_xp > 0 {
+        add_xp(conn, reward_xp)?;
+    }
+    Ok(inserted > 0)
+}
+
 /// Get all unlocked achievements
 pub fn get_unlocked_achievements(conn: &Connection) -> Result<Vec<String>> {
     let mut stmt = conn.prepare("SELECT code FROM achievements")?;
@@ -524,13 +565,16 @@ pub fn vacuum_database(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Clear all data from the database
+/// Clear all data from the database (activity + gamification)
 pub fn clear_database(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         "DELETE FROM activity_snapshots;
          DELETE FROM window_events;
          DELETE FROM app_usage;
          DELETE FROM input_activity;
+         DELETE FROM achievements;
+         DELETE FROM user_stats;
+         INSERT INTO user_stats (id, total_xp, current_level, current_streak) VALUES (1, 0, 1, 0);
          VACUUM;"
     )?;
     Ok(())

@@ -23,7 +23,7 @@ import { AppIcon } from '../components/shared/AppIcon';
 
 // Utils & Constants
 import { containerVariantsFast, itemVariantsSubtle } from '../constants/animations';
-import { formatDuration, formatAppName } from '../utils/formatters';
+import { formatDuration, formatAppName, toLocalDateString } from '../utils/formatters';
 
 type TimeRange = 'today' | 'yesterday' | 'week' | 'prev_week' | 'month';
 type ViewMode = 'all' | 'apps';
@@ -77,8 +77,8 @@ export function Timeline() {
         return {
             startIso: start.toISOString(),
             endIso: end.toISOString(),
-            startDate: start.toISOString().split('T')[0],
-            endDate: end.toISOString().split('T')[0],
+            startDate: toLocalDateString(start),
+            endDate: toLocalDateString(end),
             rangeLabel: label,
         };
 

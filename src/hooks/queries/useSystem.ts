@@ -5,6 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { isTauri } from '../../utils/isTauri';
+import { useVisibility } from '../../context/VisibilityContext';
 import {
     getActiveWindow,
     getIdleSeconds,
@@ -33,6 +34,7 @@ export interface IdleStatus {
  * ```
  */
 export function useActiveWindow() {
+    const { visible } = useVisibility();
     return useQuery({
         queryKey: ['activeWindow'],
         queryFn: async (): Promise<ActiveWindow | null> => {
@@ -41,7 +43,7 @@ export function useActiveWindow() {
             }
             return MOCK_ACTIVE_WINDOW;
         },
-        refetchInterval: 5000,
+        refetchInterval: visible ? 5000 : false,
         staleTime: 4000,
     });
 }
@@ -56,6 +58,7 @@ export function useActiveWindow() {
  * ```
  */
 export function useIdleStatus() {
+    const { visible } = useVisibility();
     return useQuery({
         queryKey: ['idleStatus'],
         queryFn: async (): Promise<IdleStatus> => {
@@ -71,7 +74,7 @@ export function useIdleStatus() {
                 isIdle: false,
             };
         },
-        refetchInterval: 5000,
+        refetchInterval: visible ? 5000 : false,
         staleTime: 4000,
     });
 }
@@ -88,6 +91,7 @@ export function useIdleStatus() {
  * ```
  */
 export function useInputHistory(interval: number, enabled = true) {
+    const { visible } = useVisibility();
     return useQuery({
         queryKey: ['inputHistory', interval],
         queryFn: async (): Promise<InputHistoryBucket[]> => {
@@ -97,7 +101,7 @@ export function useInputHistory(interval: number, enabled = true) {
             return MOCK_INPUT_HISTORY;
         },
         enabled,
-        refetchInterval: 10000,
+        refetchInterval: visible ? 10000 : false,
     });
 }
 

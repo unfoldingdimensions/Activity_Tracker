@@ -2,14 +2,15 @@ import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { useUserStats } from '../../hooks/useTrackerData';
+import { getLevelInfo } from '../../utils/formatters';
 
 export function LevelSystem() {
     const { data: stats } = useUserStats();
 
     if (!stats) return null;
 
-    // Simplified: 0-100 progress for every level
-    const progress = Math.min(100, (stats.total_xp % 100));
+    // Progress toward the next level, aligned with the backend XP curve
+    const { level, progress } = getLevelInfo(stats.total_xp);
 
     return (
         <GlassCard className="p-4 flex items-center gap-4 relative overflow-hidden group" hover={true}>
@@ -22,7 +23,7 @@ export function LevelSystem() {
 
             <div className="flex-1 min-w-0 z-10">
                 <div className="flex justify-between items-end mb-1">
-                    <span className="text-sm font-medium text-[var(--muted-foreground)]">Level {stats.current_level}</span>
+                    <span className="text-sm font-medium text-[var(--muted-foreground)]">Level {level}</span>
                     <span className="text-xs font-mono text-[var(--muted-foreground)] opacity-70">
                         {stats.total_xp} XP
                     </span>

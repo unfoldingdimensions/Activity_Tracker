@@ -92,7 +92,7 @@ describe('Dashboard Integration', () => {
 
         // Check header
         expect(screen.getByText('The Pulse')).toBeInTheDocument();
-        expect(screen.getByText('Your productivity overview for today')).toBeInTheDocument();
+        expect(screen.getByText('Your productivity overview')).toBeInTheDocument();
 
         // Check Stat Cards (labels from Dashboard.tsx)
         await waitFor(() => {
@@ -108,13 +108,11 @@ describe('Dashboard Integration', () => {
         // Let's check FocusFlowChart source later. For now assume it renders something.
 
         // Check for Focus Score value which comes from useDailyStats (mocked in setup.ts)
-        // Check for Focus Score value which comes from useDailyStats (mocked in setup.ts)
-        // total_active_seconds: 7200, total_idle_seconds: 1800 => 7200 / 9000 = 80% focus score
-        // content is split between AnimatedNumber ("80") and suffix ("%")
+        // The card's focus score is overridden by the reconciled app-usage score:
+        // appUsage is [{ Code.exe: 3600 }], Code is productive => focusScore = 100%
+        // content is split between AnimatedNumber ("100") and suffix ("%")
         await waitFor(() => {
-            expect(screen.getByText('80')).toBeInTheDocument();
-            // We can't easily check for standalone % as it might match others, but "80" is unique enough here relative to focus score context
-            // checking it exists is enough proof data loaded
+            expect(screen.getByText('100')).toBeInTheDocument();
         });
     });
 });

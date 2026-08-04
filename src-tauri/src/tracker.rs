@@ -4,16 +4,19 @@ use crate::database;
 use crate::windows_api;
 use crate::input_monitor::InputMonitor;
 use rusqlite::Connection;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use chrono::TimeZone;
+use chrono::{Datelike, TimeZone};
 
 /// The main tracker state
 pub struct Tracker {
     pub db: Arc<Mutex<Connection>>,
     is_running: Arc<Mutex<bool>>,
+    loop_active: Arc<Mutex<bool>>,
     current_window: Arc<Mutex<Option<windows_api::ActiveWindow>>>,
     input_monitor: Arc<InputMonitor>,
+    track_titles: Arc<AtomicBool>,
 }
 
 impl Tracker {
@@ -22,9 +25,21 @@ impl Tracker {
         Self {
             db: Arc::new(Mutex::new(db)),
             is_running: Arc::new(Mutex::new(false)),
+            loop_active: Arc::new(Mutex::new(false)),
             current_window: Arc::new(Mutex::new(None)),
             input_monitor: Arc::new(InputMonitor::new()),
+            track_titles: Arc::new(AtomicBool::new(true)),
         }
+    }
+
+    /// Enable or disable recording of window titles (privacy setting)
+    pub fn set_track_titles(&self, enabled: bool) {
+        self.track_titles.store(enabled, Ordering::Relaxed);
+    }
+
+    /// Whether the tracking loop is currently running
+    pub fn is_running(&self) -> bool {
+        *self.is_running.lock().unwrap()
     }
 
     /// Start the tracking loop (called once on app start)
@@ -33,18 +48,30 @@ impl Tracker {
         let is_running = self.is_running.clone();
         let current_window = self.current_window.clone();
         let input_monitor = self.input_monitor.clone();
+        let track_titles = self.track_titles.clone();
+        let loop_active = self.loop_active.clone();
 
-        // Set running flag
+        // Re-assert the running flag so a still-alive loop keeps running
+        // (resume semantics: Pause -> Resume must not spawn a duplicate loop).
         {
             let mut running = is_running.lock().unwrap();
-            if *running {
-                log::warn!("Tracker is already running");
-                return;
-            }
             *running = true;
         }
 
+        // Guard against spawning a second loop while one is still draining.
+        {
+            let mut active = loop_active.lock().unwrap();
+            if *active {
+                log::info!("Tracker loop is already active; nothing to start");
+                return;
+            }
+            *active = true;
+        }
+
         log::info!("Starting activity tracker...");
+
+        // Drop any input counts accumulated while tracking was stopped
+        input_monitor.reset();
 
         // Spawn the tracking loop
         std::thread::spawn(move || {
@@ -55,6 +82,12 @@ impl Tracker {
             // Gamification accumulators
             let mut xp_seconds_accumulator = 0;
             let mut last_streak_check = String::new(); // Date string
+
+            // Achievement evaluation state
+            let mut consecutive_active_seconds: u32 = 0;
+            let mut last_achievement_day = String::new();
+            let mut early_bird_checked = false;
+            let mut night_owl_checked = false;
 
             // Cleanup scheduling - run in separate thread to avoid blocking
             let last_cleanup = Arc::new(Mutex::new(std::time::Instant::now()));
@@ -89,10 +122,8 @@ impl Tracker {
                             if let Err(e) = database::cleanup_old_window_events(&conn, RETENTION_DAYS) {
                                 log::error!("Background cleanup: Error cleaning events: {}", e);
                             }
-                            // VACUUM is slow - consider removing or running less frequently
-                            if let Err(e) = database::vacuum_database(&conn) {
-                                log::error!("Background cleanup: Error vacuuming DB: {}", e);
-                            }
+                            // Note: no VACUUM here - it holds the DB write lock and would
+                            // stall the per-second tracking inserts. Freed pages are reused.
                             log::info!("Background cleanup: Completed successfully");
                         }
                         
@@ -130,6 +161,11 @@ impl Tracker {
 
                 // Get input counts since last tick
                 let input_counts = input_monitor.get_and_reset();
+
+                // Reset contiguous-active counter once the user goes idle
+                if is_idle {
+                    consecutive_active_seconds = 0;
+                }
 
                     // Record activity and app usage every second
                     if let Ok(conn) = db.lock() {
@@ -191,20 +227,56 @@ impl Tracker {
 
                                     log::info!("Window changed to: {}", window.process_name);
                                     current_process = Some(window.process_name.clone());
-                                    current_title = Some(window.window_title.clone());
+                                    let title = if track_titles.load(Ordering::Relaxed) {
+                                        window.window_title.clone()
+                                    } else {
+                                        String::new()
+                                    };
+                                    current_title = Some(title);
                                     app_start_time = std::time::Instant::now();
                                 } else {
                                     // Update current title if changed
-                                    if let Some(ref title) = current_title {
-                                        if title != &window.window_title {
-                                            current_title = Some(window.window_title.clone());
+                                    let title = if track_titles.load(Ordering::Relaxed) {
+                                        window.window_title.clone()
+                                    } else {
+                                        String::new()
+                                    };
+                                    if let Some(ref current) = current_title {
+                                        if current != &title {
+                                            current_title = Some(title.clone());
                                         }
                                     } else {
-                                        current_title = Some(window.window_title.clone());
+                                        current_title = Some(title);
                                     }
                                 }
                             }
                         
+                            // Achievement evaluation (daily + session based)
+                            if today != last_achievement_day {
+                                last_achievement_day = today.clone();
+                                early_bird_checked = false;
+                                night_owl_checked = false;
+                            }
+
+                            // Early Bird: active before 7 AM local time
+                            if !early_bird_checked && chrono::Local::now().hour() < 7 {
+                                let _ = database::unlock_achievement_with_reward(&conn, "early_bird", &timestamp, 50);
+                                early_bird_checked = true;
+                            }
+
+                            // Night Owl: active after 10 PM local time
+                            if !night_owl_checked && chrono::Local::now().hour() >= 22 {
+                                let _ = database::unlock_achievement_with_reward(&conn, "night_owl", &timestamp, 50);
+                                night_owl_checked = true;
+                            }
+
+                            // Deep Diver: 4 hours of contiguous focus
+                            consecutive_active_seconds += 1;
+                            if consecutive_active_seconds >= 4 * 3600 {
+                                let _ = database::unlock_achievement_with_reward(&conn, "deep_diver", &timestamp, 100);
+                                consecutive_active_seconds = 0;
+                            }
+
                             // Gamification Logic: XP & Leveling
                             xp_seconds_accumulator += 1;
                             if xp_seconds_accumulator >= 60 {
@@ -233,6 +305,13 @@ impl Tracker {
                                     log::error!("Failed to update streak: {}", e);
                                 }
                                 last_streak_check = today.clone();
+
+                                // Consistency King: maintain a 7-day streak
+                                if let Ok(stats) = database::get_user_stats(&conn) {
+                                    if stats.current_streak >= 7 {
+                                        let _ = database::unlock_achievement_with_reward(&conn, "consistency_king", &timestamp, 200);
+                                    }
+                                }
                             }
                         }
                     }
@@ -240,6 +319,8 @@ impl Tracker {
                 // Sleep for 1 second
                 std::thread::sleep(Duration::from_secs(1));
             }
+            *loop_active.lock().unwrap() = false;
+            log::info!("Tracker loop thread exited");
         });
     }
 

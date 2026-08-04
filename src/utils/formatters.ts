@@ -132,3 +132,36 @@ export function formatTimeOfDay(isoString: string): string {
     const date = new Date(isoString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
+
+/**
+ * Format a Date as a local calendar date (YYYY-MM-DD).
+ * Unlike `date.toISOString().split('T')[0]`, this uses the machine's LOCAL timezone,
+ * which is what the backend uses to key `app_usage` rows.
+ * @param date Date to format
+ * @returns Local date string like "2024-08-03"
+ */
+export function toLocalDateString(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+/**
+ * Derive level and progress-to-next-level from total XP.
+ * Mirrors the backend level curve: level = floor(sqrt(xp / 100)) + 1
+ * (level N requires 100*(N-1)^2 XP, next level at 100*N^2).
+ * @param totalXp Total XP accumulated
+ * @returns The current level and progress (0-100) toward the next one
+ */
+export function getLevelInfo(totalXp: number): { level: number; progress: number } {
+    const safeXp = Math.max(0, Math.floor(totalXp));
+    const level = Math.floor(Math.sqrt(safeXp / 100)) + 1;
+    const n = level - 1;
+    const currentBase = 100 * n * n;
+    const nextBase = 100 * (n + 1) * (n + 1);
+    const progress = nextBase > currentBase
+        ? Math.max(0, Math.min(100, ((safeXp - currentBase) / (nextBase - currentBase)) * 100))
+        : 100;
+    return { level, progress };
+}

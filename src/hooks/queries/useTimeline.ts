@@ -5,6 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { isTauri } from '../../utils/isTauri';
+import { useVisibility } from '../../context/VisibilityContext';
 import {
     getTimeline,
     getRecentEvents,
@@ -24,6 +25,7 @@ import { MOCK_TIMELINE, MOCK_EVENTS } from './mockData';
  * ```
  */
 export function useTimeline() {
+    const { visible } = useVisibility();
     return useQuery({
         queryKey: ['timeline'],
         queryFn: async (): Promise<TimelineSegment[]> => {
@@ -32,7 +34,7 @@ export function useTimeline() {
             }
             return MOCK_TIMELINE;
         },
-        refetchInterval: 30000, // 30 seconds - reduced from 10s to prevent backend overload
+        refetchInterval: visible ? 30000 : false, // 30 seconds - reduced from 10s to prevent backend overload
         staleTime: 25000,
     });
 }
@@ -46,6 +48,7 @@ export function useTimeline() {
  * ```
  */
 export function useRecentEvents() {
+    const { visible } = useVisibility();
     return useQuery({
         queryKey: ['recentEvents'],
         queryFn: async (): Promise<WindowEvent[]> => {
@@ -54,7 +57,7 @@ export function useRecentEvents() {
             }
             return MOCK_EVENTS;
         },
-        refetchInterval: 30000, // 30 seconds - reduced from 10s to prevent backend overload
+        refetchInterval: visible ? 30000 : false, // 30 seconds - reduced from 10s to prevent backend overload
         staleTime: 25000,
     });
 }
@@ -71,6 +74,7 @@ export function useTimelineEventsRange(
     endIso: string,
     enabled = true
 ) {
+    const { visible } = useVisibility();
     return useQuery({
         queryKey: ['timelineEventsRange', startIso, endIso],
         queryFn: async (): Promise<WindowEvent[]> => {
@@ -81,7 +85,7 @@ export function useTimelineEventsRange(
             return MOCK_EVENTS;
         },
         enabled,
-        refetchInterval: 30000, // 30 seconds - reduced from 5s to prevent backend overload
+        refetchInterval: visible ? 30000 : false, // 30 seconds - reduced from 5s to prevent backend overload
     });
 }
 

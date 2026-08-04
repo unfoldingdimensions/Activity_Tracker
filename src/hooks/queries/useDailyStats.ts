@@ -5,6 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { isTauri } from '../../utils/isTauri';
+import { useVisibility } from '../../context/VisibilityContext';
 import { getDailyStats, getStatsRange, type DailyStats } from '../../api/tauri';
 import { MOCK_DAILY_STATS } from './mockData';
 
@@ -18,6 +19,7 @@ import { MOCK_DAILY_STATS } from './mockData';
  * ```
  */
 export function useDailyStats() {
+    const { visible } = useVisibility();
     return useQuery({
         queryKey: ['dailyStats'],
         queryFn: async (): Promise<DailyStats | null> => {
@@ -26,7 +28,7 @@ export function useDailyStats() {
             }
             return MOCK_DAILY_STATS;
         },
-        refetchInterval: 5000,
+        refetchInterval: visible ? 5000 : false,
         staleTime: 4000,
     });
 }

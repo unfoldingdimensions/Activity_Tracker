@@ -157,6 +157,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::show_main_window, 
             commands::hide_tray_window,
+            commands::set_track_window_titles,
+            commands::is_tracking,
             commands::get_active_window,
             commands::get_app_usage,
             commands::get_daily_stats,

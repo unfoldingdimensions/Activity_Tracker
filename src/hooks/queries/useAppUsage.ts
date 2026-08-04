@@ -5,6 +5,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { isTauri } from '../../utils/isTauri';
+import { useVisibility } from '../../context/VisibilityContext';
 import { getAppUsage, getAppUsageRange, type AppUsageEntry } from '../../api/tauri';
 import { MOCK_APP_USAGE } from './mockData';
 
@@ -17,6 +18,7 @@ import { MOCK_APP_USAGE } from './mockData';
  * ```
  */
 export function useAppUsage() {
+    const { visible } = useVisibility();
     return useQuery({
         queryKey: ['appUsage'],
         queryFn: async (): Promise<AppUsageEntry[]> => {
@@ -25,7 +27,7 @@ export function useAppUsage() {
             }
             return MOCK_APP_USAGE;
         },
-        refetchInterval: 30000,
+        refetchInterval: visible ? 30000 : false,
         staleTime: 25000,
     });
 }
@@ -47,6 +49,7 @@ export function useAppUsageRange(
     endDate: string,
     enabled = true
 ) {
+    const { visible } = useVisibility();
     return useQuery({
         queryKey: ['appUsageRange', startDate, endDate],
         queryFn: async (): Promise<AppUsageEntry[]> => {
@@ -56,7 +59,7 @@ export function useAppUsageRange(
             return MOCK_APP_USAGE;
         },
         enabled,
-        refetchInterval: 30000,
+        refetchInterval: visible ? 30000 : false,
         staleTime: 60000,
     });
 }

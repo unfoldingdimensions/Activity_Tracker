@@ -1,11 +1,11 @@
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
 import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2, Play, Pause, LayoutGrid, Clock } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme } from '../context/useTheme';
 import { useSettings } from '../hooks/useSettings';
 import { isTauri } from '../utils/isTauri';
-import { startTracking, stopTracking, clearData } from '../api/tauri';
+import { startTracking, stopTracking, clearData, isTracking as fetchTrackingState } from '../api/tauri';
 import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useToast } from '../components/ui/Toast';
@@ -20,6 +20,20 @@ export function Settings() {
     const [isClearing, setIsClearing] = useState(false);
 
     const queryClient = useQueryClient();
+
+    // Sync toggle with the real backend tracking state
+    useEffect(() => {
+        if (!isTauri()) return;
+        let active = true;
+        fetchTrackingState()
+            .then((tracking) => {
+                if (active) setIsTracking(tracking);
+            })
+            .catch(() => {});
+        return () => {
+            active = false;
+        };
+    }, []);
 
     const isDarkMode = theme === 'dark';
 
@@ -58,6 +72,10 @@ export function Settings() {
             setIsClearing(true);
             try {
                 await clearData();
+                // Reset local preferences and in-session settings to defaults
+                localStorage.removeItem('user_settings');
+                localStorage.removeItem('activity_tracker_goals');
+                updateSettings({ dashboardDefaultRange: 'past_hour', trackWindowTitles: true });
                 // Invalidate all queries to refresh UI
                 await queryClient.invalidateQueries();
                 showToast('success', 'All activity history has been permanently deleted.');

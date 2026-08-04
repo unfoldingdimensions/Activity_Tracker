@@ -10,6 +10,7 @@ import {
 import type { TimeRange } from '../components/dashboard/TimeRangeFilter';
 import type { AppUsageEntry, WindowEvent } from '../api/tauri';
 import { formatStatsForCards, formatAppUsageForChart } from './useTrackerData';
+import { toLocalDateString } from '../utils/formatters';
 
 /**
  * Shared app categorization logic
@@ -168,12 +169,12 @@ export function useDashboardData(timeRange: TimeRange) {
     // Fetch App Usage:
     // For >= 1 day ranges (Yesterday, Week, Month), use the range endpoint.
     // For < 1 day ranges (Past 1h, 6h), calculate from events (client-side) to avoid getting full-day data.
-    const startDateStr = start.toISOString().split('T')[0];
-    const endDateStr = end.toISOString().split('T')[0];
+    const startDateStr = toLocalDateString(start);
+    const endDateStr = toLocalDateString(end);
     const rangeAppUsageQuery = useAppUsageRange(
         startDateStr,
         endDateStr,
-        !isSubDay // Enable only for long ranges
+        !isSubDay && !isToday // Enable only for long ranges; "today" uses the live endpoint
     );
 
     // 3. Data Processing

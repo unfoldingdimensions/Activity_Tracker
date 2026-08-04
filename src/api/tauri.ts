@@ -168,6 +168,20 @@ export async function stopTracking(): Promise<void> {
 }
 
 /**
+ * Enable/disable recording of window titles (privacy setting)
+ */
+export async function setTrackWindowTitles(enabled: boolean): Promise<void> {
+    return invoke<void>('set_track_window_titles', { enabled });
+}
+
+/**
+ * Check whether tracking is currently active
+ */
+export async function isTracking(): Promise<boolean> {
+    return invoke<boolean>('is_tracking');
+}
+
+/**
  * Clear all tracking data
  */
 export async function clearData(): Promise<void> {

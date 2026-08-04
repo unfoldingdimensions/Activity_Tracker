@@ -8,7 +8,9 @@ import {
     truncateText,
     formatAppName,
     formatRelativeTime,
-    formatTimeOfDay
+    formatTimeOfDay,
+    toLocalDateString,
+    getLevelInfo
 } from '../formatters';
 
 describe('formatters', () => {
@@ -140,6 +142,49 @@ describe('formatters', () => {
             const iso = '2024-01-01T14:30:00';
             const result = formatTimeOfDay(iso);
             expect(result).toMatch(/\d{1,2}:\d{2}/);
+        });
+    });
+
+    describe('toLocalDateString', () => {
+        it('formats a date as a local YYYY-MM-DD string', () => {
+            // 2024-08-03 12:00 local
+            const date = new Date(2024, 7, 3, 12, 0, 0);
+            expect(toLocalDateString(date)).toBe('2024-08-03');
+        });
+
+        it('pads single-digit month and day', () => {
+            const date = new Date(2024, 0, 5, 0, 0, 0);
+            expect(toLocalDateString(date)).toBe('2024-01-05');
+        });
+
+        it('does not shift to UTC date for late local times', () => {
+            // Late evening local in a UTC+X timezone must NOT roll to the next UTC date
+            const date = new Date(2024, 7, 3, 23, 30, 0);
+            expect(toLocalDateString(date)).toBe('2024-08-03');
+        });
+    });
+
+    describe('getLevelInfo', () => {
+        it('starts at level 1 with 0 XP', () => {
+            expect(getLevelInfo(0)).toEqual({ level: 1, progress: 0 });
+        });
+
+        it('treats negative XP as 0', () => {
+            expect(getLevelInfo(-10)).toEqual({ level: 1, progress: 0 });
+        });
+
+        it('progresses within level 1 toward 100 XP', () => {
+            expect(getLevelInfo(50)).toEqual({ level: 1, progress: 50 });
+        });
+
+        it('levels up at exactly 100 XP (level 2 requires 100 XP)', () => {
+            expect(getLevelInfo(100)).toEqual({ level: 2, progress: 0 });
+        });
+
+        it('matches the backend sqrt curve (level 3 at 400 XP)', () => {
+            expect(getLevelInfo(399)).toEqual({ level: 2, progress: expect.closeTo(99.666666, 2) });
+            expect(getLevelInfo(400)).toEqual({ level: 3, progress: 0 });
+            expect(getLevelInfo(900)).toEqual({ level: 4, progress: 0 });
         });
     });
 });

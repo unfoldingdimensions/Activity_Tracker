@@ -45,6 +45,26 @@ pub fn hide_tray_window(app_handle: tauri::AppHandle) {
     }
 }
 
+/// Enable/disable recording of window titles (privacy setting)
+#[tauri::command]
+pub fn set_track_window_titles(state: State<AppState>, enabled: bool) {
+    if let Ok(tracker) = state.tracker.lock() {
+        tracker.set_track_titles(enabled);
+    } else {
+        log::error!("Failed to lock tracker for set_track_window_titles");
+    }
+}
+
+/// Check whether tracking is currently active
+#[tauri::command]
+pub fn is_tracking(state: State<AppState>) -> bool {
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for is_tracking");
+        return false;
+    };
+    tracker.is_running()
+}
+
 /// Get the currently active window
 #[tauri::command]
 pub fn get_active_window(state: State<AppState>) -> Option<ActiveWindow> {
@@ -225,8 +245,9 @@ pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_is
     let mut buckets = Vec::new();
     
     let diff_total = end_time.signed_duration_since(start_time);
-    let total_minutes = diff_total.num_minutes();
-    let num_buckets = (total_minutes / interval as i64) as u32 + 1;
+    let total_minutes = diff_total.num_minutes().max(0);
+    // Exact bucket count: ceil(minutes / interval), so no empty trailing bucket
+    let num_buckets = total_minutes.div_ceil(interval as i64).max(1) as u32;
     
     // Initialize buckets
     for i in 0..num_buckets {
@@ -308,7 +329,20 @@ pub fn clear_data(state: State<AppState>) -> Result<(), String> {
     let Ok(tracker) = state.tracker.lock() else {
         return Err("Failed to lock tracker".to_string());
     };
-    tracker.clear_data().map_err(|e| e.to_string())
+    tracker.clear_data().map_err(|e| e.to_string())?;
+
+    // Clear cached app icons so "Clear All Data" fully resets stored artifacts
+    #[cfg(target_os = "windows")]
+    let base_dir = {
+        let program_data = std::env::var("ProgramData")
+            .unwrap_or_else(|_| "C:\\ProgramData".to_string());
+        std::path::PathBuf::from(program_data).join("ActivityTracker")
+    };
+    #[cfg(not(target_os = "windows"))]
+    let base_dir = std::env::temp_dir();
+    let _ = std::fs::remove_dir_all(base_dir.join("icons"));
+
+    Ok(())
 }
 
 /// App usage entry for frontend
@@ -356,24 +390,31 @@ pub fn unlock_achievement(state: State<AppState>, code: String) -> bool {
 }
 
 /// Get the application icon as base64 string
+/// Runs the (potentially slow) icon extraction on a blocking thread to avoid
+/// stalling the UI event loop.
 #[tauri::command]
-pub fn get_app_icon(process_name: String) -> Option<String> {
-    #[cfg(target_os = "windows")]
-    let base_dir = {
-        let program_data = std::env::var("ProgramData")
-            .unwrap_or_else(|_| "C:\\ProgramData".to_string());
-        std::path::PathBuf::from(program_data).join("ActivityTracker")
-    };
-    
-    #[cfg(not(target_os = "windows"))]
-    let base_dir = std::env::temp_dir();
+pub async fn get_app_icon(process_name: String) -> Option<String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        #[cfg(target_os = "windows")]
+        let base_dir = {
+            let program_data = std::env::var("ProgramData")
+                .unwrap_or_else(|_| "C:\\ProgramData".to_string());
+            std::path::PathBuf::from(program_data).join("ActivityTracker")
+        };
 
-    let cache_dir = base_dir.join("icons");
-    if !cache_dir.exists() {
-        let _ = std::fs::create_dir_all(&cache_dir);
-    }
+        #[cfg(not(target_os = "windows"))]
+        let base_dir = std::env::temp_dir();
 
-    icons::get_app_icon_base64(&process_name, &cache_dir)
+        let cache_dir = base_dir.join("icons");
+        if !cache_dir.exists() {
+            let _ = std::fs::create_dir_all(&cache_dir);
+        }
+
+        icons::get_app_icon_base64(&process_name, &cache_dir)
+    })
+    .await
+    .ok()
+    .flatten()
 }
 
 

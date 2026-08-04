@@ -137,20 +137,15 @@ describe('Dashboard Filters', () => {
 
         expect(mocks.useTimelineEventsRange).toHaveBeenCalled(); // Should be called for today now
 
-        // Switch to Yesterday
-        const toggle = screen.getByText('Today');
-        fireEvent.click(toggle);
-
-        const yesterdayOption = await screen.findByText((content, element) => {
-            return element?.tagName.toLowerCase() === 'button' && content.includes('Yesterday');
-        });
-        fireEvent.click(yesterdayOption);
+        // Switch to Yesterday via the inline pill filter (no dropdown)
+        const yesterdayButton = screen.getByRole('button', { name: /yesterday/i });
+        fireEvent.click(yesterdayButton);
 
         await waitFor(() => {
             expect(screen.getByText('Yesterday')).toBeInTheDocument();
         });
 
-        // Verify call
+        // Verify the range hook was called again with the new range
         expect(mocks.useTimelineEventsRange).toHaveBeenCalledTimes(2); // Once initial, once update
     });
 

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeProvider';
 import { SettingsProvider } from './context/SettingsProvider';
+import { VisibilityProvider } from './context/VisibilityProvider';
 
 import { Layout } from './components/Layout';
 import { StartupProvider } from './context/StartupProvider';
@@ -21,6 +22,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false, // Disable global focus refresh
+      refetchIntervalInBackground: false, // Pause intervals when the document is hidden
       staleTime: 30000, // 30 seconds default
       gcTime: 300_000, // 5 minutes garbage collection
     },
@@ -46,19 +48,21 @@ function App() {
           <ToastProvider>
             <SettingsProvider>
               <ThemeProvider>
-                <BrowserRouter>
-                  <Routes>
-                    <Route element={<Layout />}>
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/timeline" element={<Timeline />} />
-                      <Route path="/activity" element={<ActivityPage />} />
-                      <Route path="/power" element={<Power />} />
-                      <Route path="/settings" element={<Settings />} />
-                    </Route>
-                    {/* Standalone Tray Route */}
-                    <Route path="/tray" element={<TrayPopup />} />
-                  </Routes>
-                </BrowserRouter>
+                <VisibilityProvider>
+                  <BrowserRouter>
+                    <Routes>
+                      <Route element={<Layout />}>
+                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/timeline" element={<Timeline />} />
+                        <Route path="/activity" element={<ActivityPage />} />
+                        <Route path="/power" element={<Power />} />
+                        <Route path="/settings" element={<Settings />} />
+                      </Route>
+                      {/* Standalone Tray Route */}
+                      <Route path="/tray" element={<TrayPopup />} />
+                    </Routes>
+                  </BrowserRouter>
+                </VisibilityProvider>
               </ThemeProvider>
             </SettingsProvider>
           </ToastProvider>
