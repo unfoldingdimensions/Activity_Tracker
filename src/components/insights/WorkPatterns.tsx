@@ -54,9 +54,9 @@ export const WorkPatterns: React.FC = () => {
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Input Heatmap */}
-            <GlassCard className="p-5 group" spotlight>
+            <GlassCard className="p-5 group h-full flex flex-col" spotlight>
                 <div className="flex justify-between items-start mb-6">
                     <div>
                         <h3 className="text-sm font-medium text-[var(--muted-foreground)]">Input Intensity</h3>
@@ -67,7 +67,7 @@ export const WorkPatterns: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-12 gap-1 h-32">
+                <div className="grid grid-cols-12 gap-1 flex-1 min-h-32">
                     {heatmapBuckets.slice(-24).map((bucket: InputHistoryBucket, i: number) => {
                         const ts = parseTimestamp(bucket.time);
                         const date = ts ? new Date(ts) : null;
@@ -97,7 +97,7 @@ export const WorkPatterns: React.FC = () => {
             </GlassCard>
 
             {/* Diversity & Cognitive Load */}
-            <GlassCard className="p-5 group" spotlight>
+            <GlassCard className="p-5 group h-full flex flex-col" spotlight>
                 <div className="flex justify-between items-start mb-4">
                     <div>
                         <h3 className="text-sm font-medium text-[var(--muted-foreground)]">Work Patterns</h3>
@@ -108,7 +108,7 @@ export const WorkPatterns: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6 flex-1">
                     <div className="w-24 h-24 relative">
                         <ResponsiveContainer width="100%" height="100%" minHeight={96}>
                             <PieChart>

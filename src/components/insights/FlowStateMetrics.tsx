@@ -18,9 +18,9 @@ export const FlowStateMetrics: React.FC = () => {
     };
 
     return (
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Flow Score Card */}
-            <GlassCard className="p-5 group relative overflow-hidden" spotlight>
+            <GlassCard className="p-5 group relative overflow-hidden h-full flex flex-col" spotlight>
                 <div className="flex justify-between items-start mb-2">
                     <div>
                         <h3 className="text-sm font-medium text-[var(--muted-foreground)]">Flow Score</h3>
@@ -49,7 +49,7 @@ export const FlowStateMetrics: React.FC = () => {
             </GlassCard>
 
             {/* Context Switching Card */}
-            <GlassCard className="p-5 group" spotlight>
+            <GlassCard className="p-5 group h-full flex flex-col" spotlight>
                 <div className="flex justify-between items-start mb-2">
                     <div>
                         <h3 className="text-sm font-medium text-[var(--muted-foreground)]">Context Switches</h3>
@@ -77,7 +77,7 @@ export const FlowStateMetrics: React.FC = () => {
             </GlassCard>
 
             {/* Streak Card */}
-            <GlassCard className="p-5 group" spotlight>
+            <GlassCard className="p-5 group h-full flex flex-col" spotlight>
                 <div className="flex justify-between items-start mb-2">
                     <div>
                         <h3 className="text-sm font-medium text-[var(--muted-foreground)]">Longest Streak</h3>

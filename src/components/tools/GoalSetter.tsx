@@ -71,7 +71,7 @@ export const GoalSetter: React.FC = () => {
     };
 
     return (
-        <GlassCard className="p-5" spotlight>
+        <GlassCard className="p-5 h-full flex flex-col" spotlight>
             <div className="flex justify-between items-center mb-4">
                 <div>
                     <h3 className="text-sm font-medium text-[var(--muted-foreground)]">Daily Targets</h3>

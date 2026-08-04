@@ -72,7 +72,7 @@ export const PomodoroTimer: React.FC = () => {
         : ((BREAK_SECONDS - timeLeft) / BREAK_SECONDS) * 100;
 
     return (
-        <GlassCard className="relative overflow-hidden p-4" spotlight>
+        <GlassCard className="relative overflow-hidden p-4 h-full flex flex-col" spotlight>
             {/* Background Progress Bar */}
             <div className="absolute bottom-0 left-0 h-1 bg-(--muted) w-full">
                 <div

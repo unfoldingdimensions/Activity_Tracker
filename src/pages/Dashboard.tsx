@@ -104,7 +104,7 @@ export function Dashboard() {
             />
 
             {/* Content */}
-            <div className="p-8 pt-6 space-y-8 flex-1">
+            <div className="p-8 pt-6 space-y-6 flex-1">
 
                 {/* 1. Primary Metrics */}
                 <motion.div
@@ -145,7 +145,7 @@ export function Dashboard() {
                     variants={containerVariants}
                     initial="hidden"
                     animate="show"
-                    className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+                    className="grid grid-cols-1 lg:grid-cols-3 gap-4"
                 >
                     <motion.div variants={itemVariants} className="lg:col-span-2">
                         <FocusFlowChart
@@ -161,30 +161,37 @@ export function Dashboard() {
                     </motion.div>
                 </motion.div>
 
-                {/* 3. Deep Analytical Insights - KPI column + wide visualization */}
+                {/* 3. Flow State KPIs - three equal cards */}
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
-                    animate="show"
                     whileInView="show"
                     viewport={{ once: true, amount: 0.2 }}
-                    className="grid grid-cols-1 lg:grid-cols-3 gap-6"
                 >
                     <motion.div variants={itemVariants}>
                         <FlowStateMetrics />
                     </motion.div>
-                    <motion.div variants={itemVariants} className="lg:col-span-2">
-                        <WorkPatterns />
-                    </motion.div>
                 </motion.div>
 
-                {/* 4. Gamification & Progress */}
+                {/* 4. Work Patterns - two equal cards */}
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
                     whileInView="show"
                     viewport={{ once: true, amount: 0.2 }}
-                    className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+                >
+                    <motion.div variants={itemVariants}>
+                        <WorkPatterns />
+                    </motion.div>
+                </motion.div>
+
+                {/* 5. Gamification & Progress */}
+                <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={{ once: true, amount: 0.2 }}
+                    className="grid grid-cols-1 lg:grid-cols-3 gap-4"
                 >
                     <motion.div variants={itemVariants}>
                         <LevelSystem />
@@ -194,7 +201,7 @@ export function Dashboard() {
                     </motion.div>
                 </motion.div>
 
-                {/* 4b. Deep Work Sessions */}
+                {/* 6. Deep Work Sessions */}
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
@@ -204,13 +211,13 @@ export function Dashboard() {
                     <DeepWorkSessions sessions={focusSessions} isLoading={isLoading} />
                 </motion.div>
 
-                {/* 5. Wellbeing & Tools */}
+                {/* 7. Wellbeing & Tools */}
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
                     whileInView="show"
                     viewport={{ once: true, amount: 0.2 }}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
                 >
                     <motion.div variants={itemVariants}>
                         <ErgonomicMetrics onStartBreathing={() => setShowBreathing(true)} />

@@ -58,7 +58,7 @@ export const ErgonomicMetrics: React.FC<ErgonomicMetricsProps> = ({ onStartBreat
     }, [needsBreak]);
 
     return (
-        <GlassCard className={`p-5 group relative overflow-hidden ${needsBreak ? 'border-rose-500/50' : ''}`} spotlight>
+        <GlassCard className={`p-5 group relative overflow-hidden h-full flex flex-col ${needsBreak ? 'border-rose-500/50' : ''}`} spotlight>
             {needsBreak && (
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-rose-500 via-orange-500 to-rose-500 animate-pulse" />
             )}

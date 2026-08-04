@@ -14,7 +14,7 @@ export function LevelSystem() {
     const rank = getRank(level);
 
     return (
-        <GlassCard className="p-4 flex items-center gap-4 relative overflow-hidden group" hover={true}>
+        <GlassCard className="p-4 h-full flex items-center gap-4 relative overflow-hidden group" hover={true}>
             {/* Background Glow */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
 
