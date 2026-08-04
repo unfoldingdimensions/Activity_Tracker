@@ -3,6 +3,7 @@
 use crate::tracker::Tracker;
 use crate::windows_api::ActiveWindow;
 use crate::database::{DailyStats, TimelineSegment, WindowEvent, UserStats};
+use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::{State, Manager, Emitter};
 use crate::icons;
@@ -53,6 +54,47 @@ pub fn set_track_window_titles(state: State<AppState>, enabled: bool) {
     } else {
         log::error!("Failed to lock tracker for set_track_window_titles");
     }
+}
+
+/// Get all stored settings (JSON key-value map). Defaults are applied
+/// client-side; only explicitly-set values are returned.
+#[tauri::command]
+pub fn get_settings(state: State<AppState>) -> HashMap<String, serde_json::Value> {
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_settings");
+        return HashMap::new();
+    };
+    tracker.get_settings_snapshot()
+}
+
+/// Persist settings to the database and apply them to the runtime tracker.
+#[tauri::command]
+pub fn set_settings(state: State<AppState>, settings: HashMap<String, serde_json::Value>) -> Result<(), String> {
+    // Persist to the database first
+    let db = {
+        let Ok(tracker) = state.tracker.lock() else {
+            return Err("Failed to lock tracker".to_string());
+        };
+        tracker.db.clone()
+    };
+
+    {
+        let conn = db.lock().map_err(|e| e.to_string())?;
+        for (key, value) in &settings {
+            if let Err(e) = crate::database::set_setting(&conn, key, &value.to_string()) {
+                log::error!("Failed to persist setting '{}': {}", key, e);
+            }
+        }
+    }
+
+    // Apply to the runtime cache so the loop/cleanup pick it up immediately
+    if let Ok(tracker) = state.tracker.lock() {
+        for (key, value) in settings {
+            tracker.apply_setting(key, value);
+        }
+    }
+
+    Ok(())
 }
 
 /// Check whether tracking is currently active

@@ -4,6 +4,7 @@ use crate::database;
 use crate::windows_api;
 use crate::input_monitor::InputMonitor;
 use rusqlite::Connection;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -17,11 +18,28 @@ pub struct Tracker {
     current_window: Arc<Mutex<Option<windows_api::ActiveWindow>>>,
     input_monitor: Arc<InputMonitor>,
     track_titles: Arc<AtomicBool>,
+    /// Cached settings (JSON values) read at runtime by the loop, cleanup
+    /// thread and commands. Seeded from the DB at startup; updated via
+    /// `set_settings`.
+    settings: Arc<Mutex<HashMap<String, serde_json::Value>>>,
 }
 
 impl Tracker {
     /// Create a new tracker instance
     pub fn new(db: Connection) -> Self {
+        let settings = Arc::new(Mutex::new(HashMap::new()));
+
+        // Seed the settings cache from the database
+        if let Ok(rows) = database::get_all_settings(&db) {
+            if let Ok(mut map) = settings.lock() {
+                for (key, value) in rows {
+                    if let Ok(parsed) = serde_json::from_str(&value) {
+                        map.insert(key, parsed);
+                    }
+                }
+            }
+        }
+
         Self {
             db: Arc::new(Mutex::new(db)),
             is_running: Arc::new(Mutex::new(false)),
@@ -29,7 +47,36 @@ impl Tracker {
             current_window: Arc::new(Mutex::new(None)),
             input_monitor: Arc::new(InputMonitor::new()),
             track_titles: Arc::new(AtomicBool::new(true)),
+            settings,
         }
+    }
+
+    /// Apply a setting to the runtime cache (and any live flags it controls).
+    pub fn apply_setting(&self, key: String, value: serde_json::Value) {
+        if key == "track_window_titles" {
+            if let Some(enabled) = value.as_bool() {
+                self.track_titles.store(enabled, Ordering::Relaxed);
+            }
+        }
+        if let Ok(mut map) = self.settings.lock() {
+            map.insert(key, value);
+        }
+    }
+
+    /// Snapshot of the settings cache (stored values only; the frontend
+    /// merges defaults).
+    pub fn get_settings_snapshot(&self) -> HashMap<String, serde_json::Value> {
+        self.settings.lock().unwrap().clone()
+    }
+
+    /// Idle threshold in seconds (setting `idle_threshold`, default 60).
+    fn get_idle_threshold(&self) -> u32 {
+        self.settings
+            .lock()
+            .unwrap()
+            .get("idle_threshold")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(60) as u32
     }
 
     /// Enable or disable recording of window titles (privacy setting)
@@ -50,6 +97,7 @@ impl Tracker {
         let input_monitor = self.input_monitor.clone();
         let track_titles = self.track_titles.clone();
         let loop_active = self.loop_active.clone();
+        let settings = self.settings.clone();
 
         // Re-assert the running flag so a still-alive loop keeps running
         // (resume semantics: Pause -> Resume must not spawn a duplicate loop).
@@ -93,10 +141,10 @@ impl Tracker {
             let last_cleanup = Arc::new(Mutex::new(std::time::Instant::now()));
             let cleanup_db = db.clone();
             let cleanup_running = is_running.clone();
+            let cleanup_settings = settings.clone();
             
             std::thread::spawn(move || {
                 const CLEANUP_INTERVAL: Duration = Duration::from_secs(86400);
-                const RETENTION_DAYS: u32 = 90;
                 
                 loop {
                     std::thread::sleep(Duration::from_secs(60)); // Check every minute
@@ -111,15 +159,23 @@ impl Tracker {
                     
                     if should_run {
                         log::info!("Background cleanup: Starting database maintenance...");
+
+                        // Retention is user-configurable (default 90 days)
+                        let retention_days = cleanup_settings
+                            .lock()
+                            .unwrap()
+                            .get("retention_days")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(90) as u32;
                         
                         if let Ok(conn) = cleanup_db.lock() {
-                            if let Err(e) = database::cleanup_old_snapshots(&conn, RETENTION_DAYS) {
+                            if let Err(e) = database::cleanup_old_snapshots(&conn, retention_days) {
                                 log::error!("Background cleanup: Error cleaning snapshots: {}", e);
                             }
-                            if let Err(e) = database::cleanup_old_input_activity(&conn, RETENTION_DAYS) {
+                            if let Err(e) = database::cleanup_old_input_activity(&conn, retention_days) {
                                 log::error!("Background cleanup: Error cleaning input: {}", e);
                             }
-                            if let Err(e) = database::cleanup_old_window_events(&conn, RETENTION_DAYS) {
+                            if let Err(e) = database::cleanup_old_window_events(&conn, retention_days) {
                                 log::error!("Background cleanup: Error cleaning events: {}", e);
                             }
                             // Note: no VACUUM here - it holds the DB write lock and would
@@ -146,7 +202,22 @@ impl Tracker {
 
                 // Get current state
                 let idle_seconds = windows_api::get_idle_seconds();
-                let is_idle = idle_seconds > 60;
+
+                // Runtime settings (cheap cache, updated via set_settings)
+                let (idle_threshold, blacklist) = {
+                    let guard = settings.lock().unwrap();
+                    let threshold = guard
+                        .get("idle_threshold")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(60) as u32;
+                    let blacklist: Vec<String> = guard
+                        .get("blacklisted_apps")
+                        .and_then(|v| serde_json::from_value(v.clone()).ok())
+                        .unwrap_or_default();
+                    (threshold, blacklist)
+                };
+
+                let is_idle = idle_seconds > idle_threshold;
                 let timestamp = windows_api::get_timestamp();
                 let today = windows_api::get_today();
 
@@ -190,6 +261,13 @@ impl Tracker {
                         // Track current app usage (1 second per tick)
                         if !is_idle {
                             if let Some(ref window) = active_window {
+                                // Blacklisted apps are not recorded (privacy / noise)
+                                let is_blacklisted = blacklist.iter().any(|b| {
+                                    !b.is_empty()
+                                        && window.process_name.to_lowercase().contains(&b.to_lowercase())
+                                });
+
+                                if !is_blacklisted {
                                 // Always record 1 second of usage for current app
                                 if let Err(e) = database::upsert_app_usage(&conn, &today, &window.process_name, 1) {
                                     log::error!("Failed to upsert app usage: {}", e);
@@ -249,6 +327,7 @@ impl Tracker {
                                         current_title = Some(title);
                                     }
                                 }
+                                } // end: !is_blacklisted
                             }
                         
                             // Achievement evaluation (daily + session based)
@@ -448,9 +527,9 @@ impl Tracker {
         }
     }
 
-    /// Check if currently idle
+    /// Check if currently idle (respects the `idle_threshold` setting)
     pub fn is_idle(&self) -> bool {
-        windows_api::is_system_idle()
+        windows_api::get_idle_seconds() > self.get_idle_threshold()
     }
 
     /// Get idle seconds

@@ -71,11 +71,43 @@ pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
             code TEXT NOT NULL UNIQUE,
             unlocked_at TEXT NOT NULL
         );
+
+        -- Key-value settings store (JSON values, machine-wide)
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
         "
     )?;
 
     log::info!("Database initialized at: {:?}", db_path);
     Ok(conn)
+}
+
+/// Read a single setting value (stored as JSON text)
+pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
+    match conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| row.get(0)) {
+        Ok(value) => Ok(Some(value)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e),
+    }
+}
+
+/// Write a single setting value (JSON text)
+pub fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<()> {
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, value),
+    )?;
+    Ok(())
+}
+
+/// Read every stored setting
+pub fn get_all_settings(conn: &Connection) -> Result<Vec<(String, String)>> {
+    let mut stmt = conn.prepare("SELECT key, value FROM settings")?;
+    let rows = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))?;
+    rows.collect()
 }
 
 /// Insert an activity snapshot

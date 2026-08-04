@@ -6,6 +6,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { isTauri } from '../../utils/isTauri';
 import { useVisibility } from '../../context/VisibilityContext';
+import { useSettings } from '../useSettings';
 import {
     getActiveWindow,
     getIdleSeconds,
@@ -59,14 +60,18 @@ export function useActiveWindow() {
  */
 export function useIdleStatus() {
     const { visible } = useVisibility();
+    // Idle threshold is user-configurable; keyed so the query refreshes on change
+    const { settings } = useSettings();
+    const idleThreshold = settings.idleThreshold;
+
     return useQuery({
-        queryKey: ['idleStatus'],
+        queryKey: ['idleStatus', idleThreshold],
         queryFn: async (): Promise<IdleStatus> => {
             if (isTauri()) {
                 const seconds = await getIdleSeconds();
                 return {
                     idleSeconds: seconds,
-                    isIdle: seconds > 60,
+                    isIdle: seconds > idleThreshold,
                 };
             }
             return {

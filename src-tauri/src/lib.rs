@@ -158,6 +158,8 @@ pub fn run() {
             commands::show_main_window, 
             commands::hide_tray_window,
             commands::set_track_window_titles,
+            commands::get_settings,
+            commands::set_settings,
             commands::is_tracking,
             commands::get_active_window,
             commands::get_app_usage,

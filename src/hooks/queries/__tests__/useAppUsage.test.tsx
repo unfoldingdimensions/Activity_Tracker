@@ -11,6 +11,8 @@ vi.mock('../../../api/tauri', () => ({
     getAppUsage: vi.fn(),
     getAppUsageRange: vi.fn(),
     setTrackWindowTitles: vi.fn(),
+    getSettings: vi.fn(),
+    setSettings: vi.fn(),
     isTauri: vi.fn(), // If needed, but we mock the whole module usually or separate utils
 }));
 

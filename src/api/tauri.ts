@@ -182,6 +182,20 @@ export async function isTracking(): Promise<boolean> {
 }
 
 /**
+ * Get all stored settings (JSON key-value map; defaults applied client-side)
+ */
+export async function getSettings(): Promise<Record<string, unknown>> {
+    return invoke<Record<string, unknown>>('get_settings');
+}
+
+/**
+ * Persist settings to the backend (database + runtime tracker)
+ */
+export async function setSettings(settings: Record<string, unknown>): Promise<void> {
+    return invoke<void>('set_settings', { settings });
+}
+
+/**
  * Clear all tracking data
  */
 export async function clearData(): Promise<void> {
