@@ -1,5 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+// Self-hosted variable fonts (declared in the design system but never shipped)
+import '@fontsource-variable/inter'
+import '@fontsource-variable/plus-jakarta-sans'
 import './index.css'
 import App from './App.tsx'
 

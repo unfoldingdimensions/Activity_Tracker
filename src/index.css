@@ -52,9 +52,9 @@
     0 8px 10px -6px rgba(28, 25, 23, 0.1);
   --shadow-glow: 0 0 20px rgba(28, 25, 23, 0.08);
 
-  /* Typography */
-  --font-display: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
+  /* Typography - self-hosted variable fonts (@fontsource-variable) */
+  --font-display: "Plus Jakarta Sans Variable", "Inter Variable", system-ui, sans-serif;
+  --font-body: "Inter Variable", system-ui, sans-serif;
 
   /* Animation Timing */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
