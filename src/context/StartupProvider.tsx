@@ -47,6 +47,10 @@ export const StartupProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
 };
 
+// Context module: provider + hook intentionally share one file (idiomatic
+// React). Fast refresh is sacrificed for this module, which is acceptable
+// in a desktop app (no remote HMR loop).
+// eslint-disable-next-line react-refresh/only-export-components
 export const useStartup = () => {
     const context = useContext(StartupContext);
     if (context === undefined) {

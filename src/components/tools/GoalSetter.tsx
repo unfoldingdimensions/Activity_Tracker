@@ -17,22 +17,21 @@ interface DailyGoal {
 
 export const GoalSetter: React.FC = () => {
     const { data: appUsage } = useAppUsage();
-    const [goals, setGoals] = useState<DailyGoal[]>([]);
-    const [isAdding, setIsAdding] = useState(false);
-    const [newGoalApp, setNewGoalApp] = useState('');
-    const [newGoalDuration, setNewGoalDuration] = useState('60');
-
-    // Load goals from local storage
-    useEffect(() => {
+    // Load goals from local storage once, lazily (avoids setState-in-effect)
+    const [goals, setGoals] = useState<DailyGoal[]>(() => {
         const saved = localStorage.getItem('activity_tracker_goals');
         if (saved) {
             try {
-                setGoals(JSON.parse(saved));
+                return JSON.parse(saved) as DailyGoal[];
             } catch (e) {
                 console.error('Failed to parse goals', e);
             }
         }
-    }, []);
+        return [];
+    });
+    const [isAdding, setIsAdding] = useState(false);
+    const [newGoalApp, setNewGoalApp] = useState('');
+    const [newGoalDuration, setNewGoalDuration] = useState('60');
 
     // Save goals
     useEffect(() => {

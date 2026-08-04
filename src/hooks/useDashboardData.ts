@@ -81,7 +81,7 @@ export function useDashboardData(timeRange: TimeRange) {
     const { start, chartStart, end, isToday, isSubDay, bucketSizeMs } = useMemo(() => {
         const now = new Date();
         const end = new Date(now);
-        let start = new Date(now);
+        const start = new Date(now);
         let isToday = false;
         let isSubDay = false; // Less than 24h, requiring client-side app usage calc
 
@@ -357,7 +357,7 @@ export function useDashboardData(timeRange: TimeRange) {
         return [];
 
 
-    }, [timeRange, start, chartStart, end, bucketSizeMs, isToday, rangeEventsQuery.data, timelineQuery.data]);
+    }, [timeRange, chartStart, end, bucketSizeMs, isToday, rangeEventsQuery.data, timelineQuery.data]);
 
 
     // 4. Calculate Unified Focus Score for the Stat Card

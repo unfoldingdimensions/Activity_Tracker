@@ -29,7 +29,7 @@ describe('useAppUsage', () => {
     it('fetches app usage data successfully when in Tauri environment', async () => {
         (isTauri as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
         const mockData = [{ name: 'Code.exe', seconds: 120 }];
-        (tauri.getAppUsage as any).mockResolvedValue(mockData);
+        vi.mocked(tauri.getAppUsage).mockResolvedValue(mockData);
 
         const { result } = renderHook(() => useAppUsage(), {
             wrapper: createWrapper(),
@@ -63,7 +63,7 @@ describe('useAppUsageRange', () => {
     it('fetches range data successfully', async () => {
         (isTauri as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
         const mockData = [{ name: 'Chrome.exe', seconds: 300 }];
-        (tauri.getAppUsageRange as any).mockResolvedValue(mockData);
+        vi.mocked(tauri.getAppUsageRange).mockResolvedValue(mockData);
 
         const { result } = renderHook(() => useAppUsageRange('2024-01-01', '2024-01-02'), {
             wrapper: createWrapper(),

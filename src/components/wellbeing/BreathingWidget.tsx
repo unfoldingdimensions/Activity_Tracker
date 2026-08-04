@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
@@ -8,32 +8,23 @@ interface BreathingWidgetProps {
     onClose: () => void;
 }
 
+const BREATH_PHASES = ['Inhale', 'Hold', 'Exhale'] as const;
+const PHASE_DURATION_MS = 4000;
+
 export const BreathingWidget: React.FC<BreathingWidgetProps> = ({ isOpen, onClose }) => {
     const [phase, setPhase] = useState<'Inhale' | 'Hold' | 'Exhale'>('Inhale');
-
-    const isActiveRef = useRef(isOpen);
-    isActiveRef.current = isOpen;
 
     useEffect(() => {
         if (!isOpen) return;
 
-        const cycle = async () => {
-            while (isActiveRef.current) {
-                setPhase('Inhale');
-                await new Promise(r => setTimeout(r, 4000));
-                if (!isActiveRef.current) break;
+        // Phase starts at 'Inhale' (initial state); advance every 4s.
+        let index = 0;
+        const interval = setInterval(() => {
+            index = (index + 1) % BREATH_PHASES.length;
+            setPhase(BREATH_PHASES[index]);
+        }, PHASE_DURATION_MS);
 
-                setPhase('Hold');
-                await new Promise(r => setTimeout(r, 4000));
-                if (!isActiveRef.current) break;
-
-                setPhase('Exhale');
-                await new Promise(r => setTimeout(r, 4000));
-                if (!isActiveRef.current) break;
-            }
-        };
-
-        cycle();
+        return () => clearInterval(interval);
     }, [isOpen]);
 
     return (

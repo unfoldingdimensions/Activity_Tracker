@@ -1,6 +1,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
+import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
 import { renderWithClient } from '../utils';
 import { Dashboard } from '../../pages/Dashboard';
 import { BrowserRouter } from 'react-router-dom';
@@ -9,7 +10,7 @@ vi.mock('recharts', async () => {
     const Original = await vi.importActual('recharts');
     return {
         ...Original,
-        ResponsiveContainer: ({ children }: any) => <div style={{ width: 800, height: 600 }}>{children}</div>,
+        ResponsiveContainer: ({ children }: { children?: ReactNode }) => <div style={{ width: 800, height: 600 }}>{children}</div>,
     };
 });
 
@@ -45,11 +46,11 @@ vi.mock('framer-motion', async () => {
     return {
         ...actual,
         motion: {
-            div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-            button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-            span: ({ children, ...props }: any) => <span {...props}>{children}</span>,
+            div: ({ children, ...props }: ComponentProps<'div'>) => <div {...props}>{children}</div>,
+            button: ({ children, ...props }: ComponentProps<'button'>) => <button {...props}>{children}</button>,
+            span: ({ children, ...props }: ComponentProps<'span'>) => <span {...props}>{children}</span>,
         },
-        AnimatePresence: ({ children }: any) => <>{children}</>,
+        AnimatePresence: ({ children }: PropsWithChildren) => <>{children}</>,
     };
 });
 

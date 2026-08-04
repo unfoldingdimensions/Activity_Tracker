@@ -6,11 +6,18 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip } 
 import { formatAppUsageForChart } from '../../hooks/useTrackerData';
 import { Tooltip } from '../ui/Tooltip';
 import type { AppUsageEntry, InputHistoryBucket } from '../../api/tauri';
+import type { ChartDataPoint } from '../../types';
 
 export const WorkPatterns: React.FC = () => {
     // 24 hours of input history for the heatmap
     const { data: inputHistory } = useInputHistory(60, true);
     const { data: appUsage } = useAppUsage();
+
+    // Placeholder buckets so the 24-cell heatmap renders before data arrives
+    const heatmapBuckets: InputHistoryBucket[] = inputHistory || Array.from(
+        { length: 24 },
+        () => ({ keystrokes: 0, mouse_clicks: 0, time: new Date().toISOString() })
+    );
 
     const chartData = useMemo(() => formatAppUsageForChart(appUsage), [appUsage]);
 
@@ -60,7 +67,7 @@ export const WorkPatterns: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-12 gap-1 h-32">
-                    {(inputHistory || Array.from({ length: 24 }).fill({ keystrokes: 0, time: new Date().toISOString() }) as any[]).slice(-24).map((bucket: any, i: number) => {
+                    {heatmapBuckets.slice(-24).map((bucket: InputHistoryBucket, i: number) => {
                         const date = new Date(bucket.time);
                         const dateLabel = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
                         const startHour = date.toLocaleTimeString([], { hour: 'numeric', hour12: true });
@@ -111,7 +118,7 @@ export const WorkPatterns: React.FC = () => {
                                     dataKey="value"
                                     stroke="none"
                                 >
-                                    {chartData.map((entry: any, index: number) => (
+                                    {chartData.map((entry: ChartDataPoint, index: number) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Pie>

@@ -35,9 +35,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
     // Cleanup all timeouts on unmount
     useEffect(() => {
+        // Copy the ref value: the Set instance itself never changes, and this
+        // avoids the stale-ref warning on the cleanup function.
+        const timeoutIds = timeoutIdsRef.current;
         return () => {
-            timeoutIdsRef.current.forEach(id => clearTimeout(id));
-            timeoutIdsRef.current.clear();
+            timeoutIds.forEach(id => clearTimeout(id));
+            timeoutIds.clear();
         };
     }, []);
 
@@ -73,6 +76,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 // ============ Hook ============
 
+// Context modules intentionally pair the provider with its hook in one file
+// (idiomatic React). Fast refresh is sacrificed for this module, which is
+// acceptable in a desktop app (no remote HMR loop).
+// eslint-disable-next-line react-refresh/only-export-components
 export function useToast(): ToastContextValue {
     const context = useContext(ToastContext);
     if (!context) {

@@ -9,31 +9,38 @@ interface ErgonomicMetricsProps {
     onStartBreathing?: () => void;
 }
 
+interface CircleProgressProps {
+    percentage: number;
+    color?: string;
+    size?: number;
+}
+
+// Circular Progress indicator (hoisted out of the component: creating
+// components during render is disallowed by react-hooks v7)
+function CircleProgress({ percentage, color = "stroke-emerald-500", size = 48 }: CircleProgressProps) {
+    const radius = size / 2 - 4;
+    const circumference = radius * 2 * Math.PI;
+    const offset = circumference - (percentage / 100) * circumference;
+
+    return (
+        <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+            <svg className="transform -rotate-90 w-full h-full">
+                <circle cx={size / 2} cy={size / 2} r={radius} stroke="currentColor" strokeWidth="3" fill="transparent" className="text-[var(--muted)]" />
+                <circle
+                    cx={size / 2} cy={size / 2} r={radius}
+                    stroke="currentColor" strokeWidth="3" fill="transparent"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={offset}
+                    strokeLinecap="round"
+                    className={`${color} transition-all duration-1000 ease-out`}
+                />
+            </svg>
+        </div>
+    );
+}
+
 export const ErgonomicMetrics: React.FC<ErgonomicMetricsProps> = ({ onStartBreathing }) => {
     const { typingFatigue, sedentaryMinutes, needsBreak, eyeStrainProgress } = useWellbeing();
-
-    // Circular Progress Component (Mini)
-    const CircleProgress = ({ percentage, color = "stroke-emerald-500", size = 48 }: any) => {
-        const radius = size / 2 - 4;
-        const circumference = radius * 2 * Math.PI;
-        const offset = circumference - (percentage / 100) * circumference;
-
-        return (
-            <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-                <svg className="transform -rotate-90 w-full h-full">
-                    <circle cx={size / 2} cy={size / 2} r={radius} stroke="currentColor" strokeWidth="3" fill="transparent" className="text-[var(--muted)]" />
-                    <circle
-                        cx={size / 2} cy={size / 2} r={radius}
-                        stroke="currentColor" strokeWidth="3" fill="transparent"
-                        strokeDasharray={circumference}
-                        strokeDashoffset={offset}
-                        strokeLinecap="round"
-                        className={`${color} transition-all duration-1000 ease-out`}
-                    />
-                </svg>
-            </div>
-        );
-    };
 
     return (
         <GlassCard className={`p-5 group relative overflow-hidden ${needsBreak ? 'border-rose-500/50' : ''}`} spotlight>

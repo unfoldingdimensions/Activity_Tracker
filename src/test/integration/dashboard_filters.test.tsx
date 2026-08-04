@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
+import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
 import { renderWithClient } from '../utils';
 import { Dashboard } from '../../pages/Dashboard';
 import { BrowserRouter } from 'react-router-dom';
@@ -9,7 +10,7 @@ vi.mock('recharts', async () => {
     const Original = await vi.importActual('recharts');
     return {
         ...Original,
-        ResponsiveContainer: ({ children }: any) => <div style={{ width: 800, height: 600 }}>{children}</div>,
+        ResponsiveContainer: ({ children }: { children?: ReactNode }) => <div style={{ width: 800, height: 600 }}>{children}</div>,
     };
 });
 
@@ -19,11 +20,11 @@ vi.mock('../../utils/isTauri', () => ({
 
 // Mock chart components
 vi.mock('../../components/dashboard/FocusFlowChart', () => ({
-    FocusFlowChart: ({ data }: any) => <div data-testid="focus-flow-chart">Focus Flow: {data?.length || 0} items</div>,
+    FocusFlowChart: ({ data }: { data?: unknown[] }) => <div data-testid="focus-flow-chart">Focus Flow: {data?.length || 0} items</div>,
 }));
 
 vi.mock('../../components/dashboard/AppUsageChart', () => ({
-    AppUsageChart: ({ data }: any) => <div data-testid="app-usage-chart">App Usage: {data?.length || 0} items</div>,
+    AppUsageChart: ({ data }: { data?: unknown[] }) => <div data-testid="app-usage-chart">App Usage: {data?.length || 0} items</div>,
 }));
 
 // Mock feature components
@@ -40,14 +41,10 @@ vi.mock('../../components/tools/PomodoroTimer', () => ({ PomodoroTimer: () => <d
 
 vi.mock('framer-motion', () => ({
     motion: {
-        div: ({ children, variants, initial, animate, whileInView, viewport, ...props }: any) => (
-            <div {...props}>{children}</div>
-        ),
-        button: ({ children, whileHover, whileTap, ...props }: any) => (
-            <button {...props}>{children}</button>
-        ),
+        div: ({ children, ...props }: ComponentProps<'div'>) => <div {...props}>{children}</div>,
+        button: ({ children, ...props }: ComponentProps<'button'>) => <button {...props}>{children}</button>,
     },
-    AnimatePresence: ({ children }: any) => <>{children}</>,
+    AnimatePresence: ({ children }: PropsWithChildren) => <>{children}</>,
 }));
 
 vi.mock('../../components/ui/AnimatedNumber', () => ({
@@ -77,13 +74,13 @@ vi.mock('../../hooks/useSettings', () => ({
 }));
 
 vi.mock('../../hooks/queries', () => ({
-    useDailyStats: (...args: any[]) => mocks.useDailyStats(...args),
-    useTimelineEventsRange: (...args: any[]) => mocks.useTimelineEventsRange(...args),
-    useTimeline: (...args: any[]) => mocks.useTimeline(...args),
-    useInputHistory: (...args: any[]) => mocks.useInputHistory(...args),
-    useAppUsage: (...args: any[]) => mocks.useAppUsage(...args),
-    useAppUsageRange: (...args: any[]) => mocks.useAppUsageRange(...args),
-    useStatsRange: (...args: any[]) => mocks.useStatsRange(...args),
+    useDailyStats: (...args: never[]) => mocks.useDailyStats(...args),
+    useTimelineEventsRange: (...args: never[]) => mocks.useTimelineEventsRange(...args),
+    useTimeline: (...args: never[]) => mocks.useTimeline(...args),
+    useInputHistory: (...args: never[]) => mocks.useInputHistory(...args),
+    useAppUsage: (...args: never[]) => mocks.useAppUsage(...args),
+    useAppUsageRange: (...args: never[]) => mocks.useAppUsageRange(...args),
+    useStatsRange: (...args: never[]) => mocks.useStatsRange(...args),
 }));
 
 describe('Dashboard Filters', () => {

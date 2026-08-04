@@ -11,23 +11,22 @@ interface AppIconProps {
     fallbackText?: string;
 }
 
-export const AppIcon = memo(function AppIcon({ processName, className = '', size = 24, fallbackText }: AppIconProps) {
-    const [iconData, setIconData] = useState<string | null>(iconCache[processName] || null);
+export const AppIcon = memo(function AppIcon(props: AppIconProps) {
+    // Keying by processName remounts the inner component whenever the app
+    // changes, so its state starts fresh from the cache (no reset needed
+    // inside an effect, which react-hooks v7 forbids).
+    return <AppIconInner key={props.processName} {...props} />;
+});
+
+function AppIconInner({ processName, className = '', size = 24, fallbackText }: AppIconProps) {
+    const [iconData, setIconData] = useState<string | null>(() => iconCache[processName] || null);
     const [error, setError] = useState(false);
 
     useEffect(() => {
         if (!processName) return;
 
-        // If in cache, update state immediately and stop
-        if (iconCache[processName]) {
-            setIconData(iconCache[processName]);
-            setError(false);
-            return;
-        }
-
-        // Reset state for new fetch
-        setIconData(null);
-        setError(false);
+        // Cache hit: initial state already used it; nothing to do.
+        if (iconCache[processName]) return;
 
         let isMounted = true;
 
@@ -79,4 +78,4 @@ export const AppIcon = memo(function AppIcon({ processName, className = '', size
             onError={() => setError(true)}
         />
     );
-});
+}

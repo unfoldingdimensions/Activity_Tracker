@@ -23,4 +23,13 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Test files: fast refresh never applies, and re-exporting testing-library
+    // helpers (render, screen, ...) from test utilities is intentional.
+    // Must come AFTER the main ts/tsx block so the rule override wins.
+    files: ['**/*.test.{ts,tsx}', 'src/test/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

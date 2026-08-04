@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeProvider';
 import { SettingsProvider } from './context/SettingsProvider';
 import { VisibilityProvider } from './context/VisibilityProvider';
@@ -27,16 +27,6 @@ const queryClient = new QueryClient({
       gcTime: 300_000, // 5 minutes garbage collection
     },
   },
-  queryCache: new QueryCache({
-    // @ts-ignore - onError is deprecated in v5 but still available in types, 
-    // but here we want to set limits if supported or just manage it via gcTime
-    // Actually v5 removed maxSize from QueryCacheConfig, we'll rely on gcTime.
-    // However, the plan asked for maxSize to limit memory. 
-    // In v5, garbage collection is the primary way. 
-    // We will stick to standard gcTime config.
-    // If we wanted to actally limit count, we'd need a custom cache or external manager.
-    // Let's stick to the high gcTime to clean up unused queries.
-  }),
 });
 
 function App() {

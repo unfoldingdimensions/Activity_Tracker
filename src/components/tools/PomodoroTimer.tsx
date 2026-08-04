@@ -1,45 +1,65 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useReducer } from 'react';
 import { GlassCard } from '../GlassCard';
 import { Play, Pause, RefreshCw } from 'lucide-react';
 
+const WORK_SECONDS = 25 * 60;
+const BREAK_SECONDS = 5 * 60;
+
+interface TimerState {
+    timeLeft: number;
+    isActive: boolean;
+    mode: 'Work' | 'Break';
+    sessions: number;
+}
+
+type TimerAction =
+    | { type: 'TICK' }
+    | { type: 'TOGGLE' }
+    | { type: 'RESET' };
+
+function timerReducer(state: TimerState, action: TimerAction): TimerState {
+    switch (action.type) {
+        case 'TOGGLE':
+            return { ...state, isActive: !state.isActive };
+        case 'RESET':
+            return { ...state, timeLeft: WORK_SECONDS, isActive: false, mode: 'Work' };
+        case 'TICK': {
+            if (!state.isActive) return state;
+            const next = state.timeLeft - 1;
+            if (next > 0) return { ...state, timeLeft: next };
+
+            // Timer finished: switch mode and count the completed session.
+            // Pure transition inside the reducer (no setState inside effects).
+            const nextMode = state.mode === 'Work' ? 'Break' : 'Work';
+            return {
+                timeLeft: nextMode === 'Work' ? WORK_SECONDS : BREAK_SECONDS,
+                isActive: false,
+                mode: nextMode,
+                sessions: state.sessions + 1,
+            };
+        }
+    }
+}
+
 export const PomodoroTimer: React.FC = () => {
-    const [timeLeft, setTimeLeft] = useState(25 * 60);
-    const [isActive, setIsActive] = useState(false);
-    const [mode, setMode] = useState<'Work' | 'Break'>('Work');
-    const [sessionsCompleted, setSessionsCompleted] = useState(0);
+    const [state, dispatch] = useReducer(timerReducer, {
+        timeLeft: WORK_SECONDS,
+        isActive: false,
+        mode: 'Work',
+        sessions: 0,
+    });
+    const { timeLeft, isActive, mode, sessions } = state;
 
     useEffect(() => {
-        let interval: any = null;
-        if (isActive && timeLeft > 0) {
-            interval = setInterval(() => {
-                setTimeLeft(prevTimeLeft => prevTimeLeft - 1);
-            }, 1000);
-        } else if (timeLeft === 0) {
-            setIsActive(false);
-            if (mode === 'Work') {
-                setSessionsCompleted(s => s + 1);
-                // Auto switch to break? Or wait for user? 
-                // Let's wait for user, but switch mode
-                setMode('Break');
-                setTimeLeft(5 * 60);
-            } else {
-                setMode('Work');
-                setTimeLeft(25 * 60);
-            }
-        }
+        if (!isActive) return;
+        const interval = setInterval(() => dispatch({ type: 'TICK' }), 1000);
         return () => clearInterval(interval);
-    }, [isActive, timeLeft, mode]);
+    }, [isActive]);
 
-    const toggleTimer = () => {
-        setIsActive(!isActive);
-    };
+    const toggleTimer = () => dispatch({ type: 'TOGGLE' });
 
-    const resetTimer = () => {
-        setIsActive(false);
-        setMode('Work');
-        setTimeLeft(25 * 60);
-    };
+    const resetTimer = () => dispatch({ type: 'RESET' });
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -48,8 +68,8 @@ export const PomodoroTimer: React.FC = () => {
     };
 
     const progress = mode === 'Work'
-        ? ((25 * 60 - timeLeft) / (25 * 60)) * 100
-        : ((5 * 60 - timeLeft) / (5 * 60)) * 100;
+        ? ((WORK_SECONDS - timeLeft) / WORK_SECONDS) * 100
+        : ((BREAK_SECONDS - timeLeft) / BREAK_SECONDS) * 100;
 
     return (
         <GlassCard className="relative overflow-hidden p-4" spotlight>
@@ -64,7 +84,7 @@ export const PomodoroTimer: React.FC = () => {
             <div className="flex justify-between items-start mb-4">
                 <div>
                     <h3 className="text-sm font-medium text-(--muted-foreground)">Focus Timer</h3>
-                    <p className="text-xs text-(--muted-foreground)">{sessionsCompleted} sessions done</p>
+                    <p className="text-xs text-(--muted-foreground)">{sessions} sessions done</p>
                 </div>
                 <div className={`px-2 py-0.5 rounded text-xs font-bold ${mode === 'Work' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
                     {mode}
