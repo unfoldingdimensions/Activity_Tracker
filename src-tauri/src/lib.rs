@@ -68,6 +68,7 @@ pub fn run() {
                 .unwrap_or(false);
 
             tracker.start(app.handle().clone());
+            tracker.start_power_sampling();
 
             // Store in app state
             app.manage(AppState {
@@ -180,6 +181,8 @@ pub fn run() {
             commands::get_settings,
             commands::set_settings,
             commands::export_data,
+            commands::get_all_app_usage,
+            commands::get_cpu_snapshot,
             commands::is_tracking,
             commands::get_active_window,
             commands::get_app_usage,

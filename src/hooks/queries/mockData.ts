@@ -34,6 +34,15 @@ export const MOCK_ACTIVE_WINDOW: ActiveWindow = {
     window_title: 'Dashboard.tsx - Activity Tracker',
 };
 
+// Top-CPU processes for the Power page in browser dev mode
+export const MOCK_CPU_SNAPSHOT: [string, number][] = [
+    ['Code.exe', 14.2],
+    ['chrome.exe', 11.8],
+    ['slack.exe', 4.6],
+    ['WindowsTerminal.exe', 2.1],
+    ['Spotify.exe', 1.3],
+];
+
 export const MOCK_TIMELINE: TimelineSegment[] = Array.from({ length: 12 }, (_, i) => ({
     time: `${i + 9}:00`,
     active_seconds: Math.random() * 3000,

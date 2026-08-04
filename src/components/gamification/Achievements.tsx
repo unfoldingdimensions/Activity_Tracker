@@ -1,4 +1,4 @@
-import { Lock, Zap, Sun, Moon, Clock } from 'lucide-react';
+import { Lock, Zap, Sun, Moon, Clock, Flame, Trophy } from 'lucide-react';
 import { GlassCard } from '../GlassCard';
 import { useUnlockedAchievements } from '../../hooks/useTrackerData';
 import { cn } from '../../utils/cn';
@@ -39,6 +39,20 @@ const ACHIEVEMENTS_DATA: Achievement[] = [
         description: 'Maintain a 7-day streak',
         icon: Clock,
         xpReward: 200
+    },
+    {
+        code: 'streak_30',
+        title: 'Month Marathon',
+        description: 'Maintain a 30-day streak',
+        icon: Flame,
+        xpReward: 500
+    },
+    {
+        code: 'streak_100',
+        title: 'Century Club',
+        description: 'Maintain a 100-day streak',
+        icon: Trophy,
+        xpReward: 2000
     }
 ];
 

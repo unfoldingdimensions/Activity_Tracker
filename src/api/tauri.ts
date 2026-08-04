@@ -203,6 +203,20 @@ export async function exportData(path: string, format: 'csv' | 'json'): Promise<
 }
 
 /**
+ * All app-usage rows across all dates ([date, process_name, seconds][])
+ */
+export async function getAppUsageAll(): Promise<[string, string, number][]> {
+    return invoke<[string, string, number][]>('get_all_app_usage');
+}
+
+/**
+ * Top-CPU processes sampled by the backend ([name, cpuPercent][])
+ */
+export async function getCpuSnapshot(): Promise<[string, number][]> {
+    return invoke<[string, number][]>('get_cpu_snapshot');
+}
+
+/**
  * Clear all tracking data
  */
 export async function clearData(): Promise<void> {

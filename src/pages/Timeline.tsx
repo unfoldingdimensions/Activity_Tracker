@@ -27,6 +27,7 @@ import { formatDuration, formatAppName, toLocalDateString } from '../utils/forma
 import { useAppClassifier } from '../hooks/useAppClassifier';
 import { computeFocusSessions } from '../utils/focusSessions';
 import { DeepWorkSessions } from '../components/dashboard/DeepWorkSessions';
+import { FocusCalendar } from '../components/insights/FocusCalendar';
 
 type TimeRange = 'today' | 'yesterday' | 'week' | 'prev_week' | 'month';
 type ViewMode = 'all' | 'apps' | 'sessions';
@@ -267,6 +268,9 @@ export function Timeline() {
             />
 
             <div className="p-8 pt-6 space-y-6 flex-1">
+                {/* Year overview - presence patterns */}
+                <FocusCalendar />
+
                 <AnimatePresence mode="wait">
                     {viewMode === 'sessions' && !selectedApp ? (
                         <motion.div

@@ -172,6 +172,9 @@ pub struct Tracker {
     /// thread and commands. Seeded from the DB at startup; updated via
     /// `set_settings`.
     settings: Arc<Mutex<HashMap<String, serde_json::Value>>>,
+    /// Latest top-CPU processes sampled by the power thread
+    /// (process name, cpu percent)
+    cpu_snapshot: Arc<Mutex<Vec<(String, f32)>>>,
 }
 
 impl Tracker {
@@ -198,7 +201,46 @@ impl Tracker {
             input_monitor: Arc::new(InputMonitor::new()),
             track_titles: Arc::new(AtomicBool::new(true)),
             settings,
+            cpu_snapshot: Arc::new(Mutex::new(Vec::new())),
         }
+    }
+
+    /// Snapshot of the top-CPU processes (name, cpu %)
+    pub fn get_cpu_snapshot(&self) -> Vec<(String, f32)> {
+        self.cpu_snapshot.lock().unwrap().clone()
+    }
+
+    /// Start a lightweight thread that samples top-CPU processes every 5s
+    /// (powers the Power page's live CPU view).
+    pub fn start_power_sampling(&self) {
+        let snapshot = self.cpu_snapshot.clone();
+        std::thread::spawn(move || {
+            let mut sys = sysinfo::System::new_all();
+            loop {
+                sys.refresh_processes(
+                    sysinfo::ProcessRefreshKind::everything(),
+                    true,
+                );
+                let mut top: Vec<(String, f32)> = sys
+                    .processes()
+                    .iter()
+                    .filter_map(|(_, process)| {
+                        let cpu = process.cpu_usage();
+                        if cpu > 0.5 {
+                            Some((process.name().to_string_lossy().to_string(), cpu))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                top.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+                top.truncate(15);
+                if let Ok(mut guard) = snapshot.lock() {
+                    *guard = top;
+                }
+                std::thread::sleep(Duration::from_secs(5));
+            }
+        });
     }
 
     /// Apply a setting to the runtime cache (and any live flags it controls).
@@ -575,6 +617,22 @@ impl Tracker {
                                     // Streak milestones: 7 / 30 / 100 days
                                     if stats.current_streak == 7 || stats.current_streak == 30 || stats.current_streak == 100 {
                                         notify_streak_milestone(&app, stats.current_streak);
+                                    }
+
+                                    // Streak achievements
+                                    if stats.current_streak >= 30 {
+                                        if let Ok(unlocked) = database::unlock_achievement_with_reward(&conn, "streak_30", &timestamp, 500) {
+                                            if unlocked {
+                                                notify_achievement(&app, "Month Marathon", 500);
+                                            }
+                                        }
+                                    }
+                                    if stats.current_streak >= 100 {
+                                        if let Ok(unlocked) = database::unlock_achievement_with_reward(&conn, "streak_100", &timestamp, 2000) {
+                                            if unlocked {
+                                                notify_achievement(&app, "Century Club", 2000);
+                                            }
+                                        }
                                     }
                                 }
                             }

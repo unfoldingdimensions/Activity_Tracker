@@ -123,6 +123,29 @@ pub fn export_data(state: State<AppState>, path: String, format: String) -> Resu
     Ok(())
 }
 
+/// All app-usage rows (date, process_name, total_seconds) - powers the
+/// focus calendar heatmap.
+#[tauri::command]
+pub fn get_all_app_usage(state: State<AppState>) -> Result<Vec<(String, String, u32)>, String> {
+    let db = {
+        let Ok(tracker) = state.tracker.lock() else {
+            return Err("Failed to lock tracker".to_string());
+        };
+        tracker.db.clone()
+    };
+    let conn = db.lock().map_err(|e| e.to_string())?;
+    crate::database::get_all_app_usage(&conn).map_err(|e| e.to_string())
+}
+
+/// Top-CPU processes sampled by the power thread ([name, cpu%][])
+#[tauri::command]
+pub fn get_cpu_snapshot(state: State<AppState>) -> Vec<(String, f32)> {
+    let Ok(tracker) = state.tracker.lock() else {
+        return Vec::new();
+    };
+    tracker.get_cpu_snapshot()
+}
+
 /// Get all stored settings (JSON key-value map). Defaults are applied
 /// client-side; only explicitly-set values are returned.
 #[tauri::command]

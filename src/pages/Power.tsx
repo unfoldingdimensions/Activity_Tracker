@@ -5,6 +5,7 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import {
     ScatterChart,
     Scatter,
@@ -15,10 +16,13 @@ import {
     ResponsiveContainer,
     CartesianGrid,
 } from 'recharts';
-import { Zap, Cpu, Monitor } from 'lucide-react';
+import { Zap, Cpu, Monitor, Activity } from 'lucide-react';
 
 // Hooks
 import { useAppUsage, useDailyStats } from '../hooks/useTrackerData';
+import { isTauri } from '../utils/isTauri';
+import { getCpuSnapshot } from '../api/tauri';
+import { MOCK_CPU_SNAPSHOT } from '../hooks/queries/mockData';
 
 // Components
 import { GlassCard } from '../components/GlassCard';
@@ -59,6 +63,17 @@ function estimateCPU(appName: string): number {
 export function Power() {
     const { data: appUsage, isLoading } = useAppUsage();
     const { data: stats } = useDailyStats();
+
+    // Live top-CPU processes sampled by the backend (5s cadence)
+    const { data: cpuSnapshot } = useQuery({
+        queryKey: ['cpuSnapshot'],
+        queryFn: async (): Promise<[string, number][]> => {
+            if (!isTauri()) return MOCK_CPU_SNAPSHOT;
+            return getCpuSnapshot();
+        },
+        refetchInterval: 5000,
+        staleTime: 4000,
+    });
 
     // Transform and calculate data
     const { powerData, topConsumers, avgPower, avgCPU } = useMemo(() => {
@@ -132,6 +147,54 @@ export function Power() {
                             useStringValue
                         />
                     </motion.div>
+                </motion.div>
+
+                {/* Live CPU Usage */}
+                <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="show"
+                >
+                    <GlassCard className="p-6" hover={false}>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 rounded-lg bg-cyan-500/10">
+                                <Activity size={20} className="text-cyan-500" />
+                            </div>
+                            <div>
+                                <h3 className="font-display text-lg font-semibold text-[var(--foreground)]">
+                                    Live CPU Usage
+                                </h3>
+                                <p className="text-sm text-[var(--muted-foreground)]">
+                                    Top processes right now (sampled every 5s)
+                                </p>
+                            </div>
+                        </div>
+
+                        {cpuSnapshot && cpuSnapshot.length > 0 ? (
+                            <div className="space-y-2">
+                                {cpuSnapshot.slice(0, 8).map(([name, cpu]) => (
+                                    <div key={name} className="flex items-center gap-3">
+                                        <span className="text-sm text-[var(--foreground)] w-44 truncate">
+                                            {name}
+                                        </span>
+                                        <div className="flex-1 h-2 rounded-full bg-[var(--secondary)]/60 overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full bg-cyan-500/70 transition-all duration-700"
+                                                style={{ width: `${Math.min(100, cpu * 2)}%` }}
+                                            />
+                                        </div>
+                                        <span className="font-mono text-xs text-[var(--muted-foreground)] w-12 text-right">
+                                            {cpu.toFixed(1)}%
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-[var(--muted-foreground)]">
+                                Sampling CPU usage…
+                            </p>
+                        )}
+                    </GlassCard>
                 </motion.div>
 
                 <motion.div
