@@ -13,6 +13,8 @@ import { RefreshButton } from '../components/shared/RefreshButton';
 
 // Data Hook
 import { useDashboardData } from '../hooks/useDashboardData';
+import { DailyDigest } from '../components/dashboard/DailyDigest';
+import { DeepWorkSessions } from '../components/dashboard/DeepWorkSessions';
 import { useSettings } from '../hooks/useSettings';
 import { formatDistance } from '../utils/formatters';
 
@@ -39,7 +41,7 @@ export function Dashboard() {
     const [showBreathing, setShowBreathing] = useState(false);
 
     // Fetch unified data
-    const { stats, rawStats, appUsage, timelineData, isLoading } = useDashboardData(timeRange);
+    const { stats, rawStats, appUsage, timelineData, focusSessions, digest, isLoading } = useDashboardData(timeRange);
 
     // Build stats configuration for cards
     const statCards = useMemo(() => [
@@ -129,6 +131,15 @@ export function Dashboard() {
                     ))}
                 </motion.div>
 
+                {/* 1b. Daily Digest - today at a glance */}
+                <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="show"
+                >
+                    <DailyDigest digest={digest} isLoading={isLoading} />
+                </motion.div>
+
                 {/* 2. Core Visual Analytics - charts get the most space */}
                 <motion.div
                     variants={containerVariants}
@@ -181,6 +192,16 @@ export function Dashboard() {
                     <motion.div variants={itemVariants} className="lg:col-span-2">
                         <Achievements />
                     </motion.div>
+                </motion.div>
+
+                {/* 4b. Deep Work Sessions */}
+                <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={{ once: true, amount: 0.2 }}
+                >
+                    <DeepWorkSessions sessions={focusSessions} isLoading={isLoading} />
                 </motion.div>
 
                 {/* 5. Wellbeing & Tools */}

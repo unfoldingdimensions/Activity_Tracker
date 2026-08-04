@@ -5,7 +5,7 @@
 
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Calendar, CheckCircle2, LayoutList, List, ArrowLeft, ArrowUpRight } from 'lucide-react';
+import { Clock, Calendar, CheckCircle2, LayoutList, List, ArrowLeft, ArrowUpRight, Flame } from 'lucide-react';
 
 // Hooks
 import { useTimelineEventsRange, useAppUsageRange, useTimelineRangeForApp } from '../hooks/useTrackerData';
@@ -25,9 +25,11 @@ import { AppIcon } from '../components/shared/AppIcon';
 import { containerVariantsFast, itemVariantsSubtle } from '../constants/animations';
 import { formatDuration, formatAppName, toLocalDateString } from '../utils/formatters';
 import { useAppClassifier } from '../hooks/useAppClassifier';
+import { computeFocusSessions } from '../utils/focusSessions';
+import { DeepWorkSessions } from '../components/dashboard/DeepWorkSessions';
 
 type TimeRange = 'today' | 'yesterday' | 'week' | 'prev_week' | 'month';
-type ViewMode = 'all' | 'apps';
+type ViewMode = 'all' | 'apps' | 'sessions';
 
 export function Timeline() {
     const [range, setRange] = useState<TimeRange>('today');
@@ -97,7 +99,7 @@ export function Timeline() {
     const { data: events, isLoading: eventsLoading } = useTimelineEventsRange(
         startIso,
         endIso,
-        viewMode === 'all' && !selectedApp
+        (viewMode === 'all' || viewMode === 'sessions') && !selectedApp
     );
     const { data: appUsage, isLoading: appsLoading } = useAppUsageRange(
         startDate,
@@ -113,6 +115,10 @@ export function Timeline() {
 
     // Group events logic
     const displayEvents = selectedApp ? appEvents : events;
+    const sessions = useMemo(
+        () => computeFocusSessions(events ?? [], classify),
+        [events, classify]
+    );
     const groupedEvents = useMemo(() => {
         if (!displayEvents) return [];
         const groups: { [key: string]: typeof displayEvents } = {};
@@ -163,6 +169,16 @@ export function Timeline() {
                     >
                         <LayoutList size={16} />
                         App Wise
+                    </button>
+                    <button
+                        onClick={() => setViewMode('sessions')}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === 'sessions'
+                            ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+                            : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                            }`}
+                    >
+                        <Flame size={16} />
+                        Sessions
                     </button>
                 </div>
             )}
@@ -252,7 +268,17 @@ export function Timeline() {
 
             <div className="p-8 pt-6 space-y-6 flex-1">
                 <AnimatePresence mode="wait">
-                    {viewMode === 'all' || selectedApp ? (
+                    {viewMode === 'sessions' && !selectedApp ? (
+                        <motion.div
+                            key="sessions-list"
+                            variants={containerVariantsFast}
+                            initial="hidden"
+                            animate="show"
+                            exit={{ opacity: 0 }}
+                        >
+                            <DeepWorkSessions sessions={sessions} isLoading={eventsLoading} />
+                        </motion.div>
+                    ) : viewMode === 'all' || selectedApp ? (
                         <motion.div
                             key="timeline-list"
                             variants={containerVariantsFast}

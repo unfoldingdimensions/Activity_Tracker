@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Maximize2, Activity, MousePointer, Keyboard, Zap, X, Settings as SettingsIcon } from 'lucide-react';
+import { Maximize2, Activity, MousePointer, Keyboard, Zap, X, Settings as SettingsIcon, Flame, Clock3, TrendingUp } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
 // Hooks & Context
@@ -18,7 +18,7 @@ export function TrayPopup() {
     const selectedRange: TimeRange = 'today';
 
     // We use the setting's default range for the tray view
-    const { stats, appUsage, isLoading } = useDashboardData(selectedRange);
+    const { stats, appUsage, digest, isLoading } = useDashboardData(selectedRange);
     const { data: userStats } = useUserStats();
 
     const topApp = useMemo(() => appUsage && appUsage.length > 0 ? appUsage[0] : null, [appUsage]);
@@ -118,6 +118,29 @@ export function TrayPopup() {
                             </span>
                         </div>
                     </div>
+                </div>
+
+                {/* Digest line - today at a glance */}
+                <div className="flex items-center justify-center gap-4 mb-5 text-[10px] text-[var(--muted-foreground)]">
+                    <span className="flex items-center gap-1">
+                        <Flame size={11} className="text-orange-500" />
+                        {isLoading ? '…' : `${digest?.sessionCount ?? 0} deep session${digest?.sessionCount === 1 ? '' : 's'}`}
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-[var(--border)]" />
+                    <span className="flex items-center gap-1">
+                        <Clock3 size={11} />
+                        peak {digest?.peakHour ?? '—'}
+                    </span>
+                    {digest && digest.deltaVsPrevious !== null && (
+                        <>
+                            <span className="w-1 h-1 rounded-full bg-[var(--border)]" />
+                            <span className="flex items-center gap-1">
+                                <TrendingUp size={11} className={digest.deltaVsPrevious >= 0 ? 'text-emerald-500' : 'text-rose-500'} />
+                                {digest.deltaVsPrevious >= 0 ? '+' : '−'}
+                                {formatDuration(Math.abs(digest.deltaVsPrevious))}
+                            </span>
+                        </>
+                    )}
                 </div>
 
                 {/* Top App Section */}

@@ -12,6 +12,7 @@ import type { AppUsageEntry, WindowEvent } from '../api/tauri';
 import { formatStatsForCards, formatAppUsageForChart } from './useTrackerData';
 import { parseTimestamp, toLocalDateString } from '../utils/formatters';
 import { useAppClassifier } from './useAppClassifier';
+import { computeFocusSessions, buildDigest } from '../utils/focusSessions';
 
 /** Re-exported for callers that only need the built-in default behavior */
 export { isProductiveAppDefault as isProductiveApp } from '../utils/appClassification';
@@ -355,11 +356,55 @@ export function useDashboardData(timeRange: TimeRange) {
         stats.focusScore = reconciledFocusScore;
     }
 
+    // 6. Focus sessions (contiguous deep-work blocks) + daily digest
+    const focusSessions = useMemo(() => {
+        const events = rangeEventsQuery.data ?? [];
+        if (events.length === 0) return [];
+        return computeFocusSessions(events, classify);
+    }, [rangeEventsQuery.data, classify]);
+
+    // Previous-day app usage, only fetched when viewing "today" (for the delta)
+    const yesterdayWindow = useMemo(() => {
+        const start = new Date();
+        start.setDate(start.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setHours(23, 59, 59, 999);
+        return { start: start.toISOString(), end: end.toISOString() };
+    }, []);
+    const yesterdayUsageQuery = useAppUsageRange(yesterdayWindow.start, yesterdayWindow.end, isToday);
+
+    const digest = useMemo(() => {
+        let focusSeconds = 0;
+        (unifiedAppUsage ?? []).forEach((app) => {
+            if (classify(app.name) === 'focus') focusSeconds += app.seconds;
+        });
+
+        let yesterdayFocusSeconds: number | null = null;
+        if (yesterdayUsageQuery.data) {
+            let seconds = 0;
+            yesterdayUsageQuery.data.forEach((app) => {
+                if (classify(app.name) === 'focus') seconds += app.seconds;
+            });
+            yesterdayFocusSeconds = seconds;
+        }
+
+        return buildDigest({
+            focusSeconds,
+            sessions: focusSessions,
+            timeline: unifiedTimeline.map((b) => ({ time: b.time, focus: b.focus })),
+            appUsage: unifiedAppUsage ?? [],
+            previousFocusSeconds: yesterdayFocusSeconds,
+        });
+    }, [unifiedAppUsage, unifiedTimeline, focusSessions, classify, yesterdayUsageQuery.data]);
+
     return {
         stats,
         rawStats: unifiedStats,
         appUsage: formatAppUsageForChart(unifiedAppUsage),
         timelineData: unifiedTimeline,
+        focusSessions,
+        digest,
         isLoading
     };
 }
