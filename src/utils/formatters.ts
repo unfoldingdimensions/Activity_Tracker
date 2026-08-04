@@ -147,7 +147,7 @@ const LEVEL_RANKS = [
 ] as const;
 
 export function getRank(level: number): string {
-    let rank = LEVEL_RANKS[0].name;
+    let rank: string = LEVEL_RANKS[0].name;
     for (const r of LEVEL_RANKS) {
         if (level >= r.min) rank = r.name;
     }
