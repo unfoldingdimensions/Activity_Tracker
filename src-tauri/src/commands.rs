@@ -56,6 +56,73 @@ pub fn set_track_window_titles(state: State<AppState>, enabled: bool) {
     }
 }
 
+/// Escape a field for CSV (quote + double inner quotes)
+fn csv_field(value: &str) -> String {
+    if value.contains(',') || value.contains('"') || value.contains('\n') {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
+/// Export all tracking data as CSV or JSON to the given path.
+/// CSV contains three sheets joined by blank lines: app_usage, window_events,
+/// input_activity. JSON is a single snapshot object.
+#[tauri::command]
+pub fn export_data(state: State<AppState>, path: String, format: String) -> Result<(), String> {
+    let db = {
+        let Ok(tracker) = state.tracker.lock() else {
+            return Err("Failed to lock tracker".to_string());
+        };
+        tracker.db.clone()
+    };
+    let conn = db.lock().map_err(|e| e.to_string())?;
+
+    let app_usage = crate::database::get_all_app_usage(&conn).map_err(|e| e.to_string())?;
+    let window_events = crate::database::get_all_window_events(&conn).map_err(|e| e.to_string())?;
+    let input_activity = crate::database::get_all_input_activity(&conn).map_err(|e| e.to_string())?;
+
+    let contents = if format.eq_ignore_ascii_case("csv") {
+        let mut csv = String::from("date,process_name,total_seconds\n");
+        for (date, name, seconds) in &app_usage {
+            csv.push_str(&format!("{},{},{}\n", csv_field(date), csv_field(name), seconds));
+        }
+        csv.push_str("\nwindow_events\ntimestamp,process_name,window_title,duration_seconds\n");
+        for (timestamp, name, title, duration) in &window_events {
+            csv.push_str(&format!(
+                "{},{},{},{}\n",
+                csv_field(timestamp),
+                csv_field(name),
+                csv_field(title.as_deref().unwrap_or("")),
+                duration
+            ));
+        }
+        csv.push_str("\ninput_activity\ntimestamp,keystrokes,mouse_clicks,mouse_distance\n");
+        for (timestamp, keys, clicks, distance) in &input_activity {
+            csv.push_str(&format!("{},{},{},{}\n", csv_field(timestamp), keys, clicks, distance));
+        }
+        csv
+    } else {
+        let snapshot = serde_json::json!({
+            "exported_at": chrono::Utc::now().to_rfc3339(),
+            "app_usage": app_usage.iter().map(|(date, name, seconds)| serde_json::json!({
+                "date": date, "process_name": name, "total_seconds": seconds
+            })).collect::<Vec<_>>(),
+            "window_events": window_events.iter().map(|(timestamp, name, title, duration)| serde_json::json!({
+                "timestamp": timestamp, "process_name": name, "window_title": title, "duration_seconds": duration
+            })).collect::<Vec<_>>(),
+            "input_activity": input_activity.iter().map(|(timestamp, keys, clicks, distance)| serde_json::json!({
+                "timestamp": timestamp, "keystrokes": keys, "mouse_clicks": clicks, "mouse_distance": distance
+            })).collect::<Vec<_>>(),
+        });
+        serde_json::to_string_pretty(&snapshot).map_err(|e| e.to_string())?
+    };
+
+    std::fs::write(&path, contents).map_err(|e| format!("Failed to write {}: {}", path, e))?;
+    log::info!("Exported {} bytes of data to {}", contents.len(), path);
+    Ok(())
+}
+
 /// Get all stored settings (JSON key-value map). Defaults are applied
 /// client-side; only explicitly-set values are returned.
 #[tauri::command]

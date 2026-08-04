@@ -23,6 +23,7 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // Initialize logging in debug mode
             if cfg!(debug_assertions) {
@@ -178,6 +179,7 @@ pub fn run() {
             commands::set_track_window_titles,
             commands::get_settings,
             commands::set_settings,
+            commands::export_data,
             commands::is_tracking,
             commands::get_active_window,
             commands::get_app_usage,

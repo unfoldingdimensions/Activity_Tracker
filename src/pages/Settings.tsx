@@ -1,11 +1,11 @@
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
-import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2, Play, Pause, LayoutGrid, Clock, Rocket, Minimize2, Gauge, ShieldBan, Lock, CalendarClock, ListFilter, ShieldAlert } from 'lucide-react';
+import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2, Play, Pause, LayoutGrid, Clock, Rocket, Minimize2, Gauge, ShieldBan, Lock, CalendarClock, ListFilter, ShieldAlert, Download } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../context/useTheme';
 import { useSettings } from '../hooks/useSettings';
 import { isTauri } from '../utils/isTauri';
-import { startTracking, stopTracking, clearData, isTracking as fetchTrackingState } from '../api/tauri';
+import { startTracking, stopTracking, clearData, isTracking as fetchTrackingState, exportData } from '../api/tauri';
 import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useToast } from '../components/ui/Toast';
@@ -189,6 +189,33 @@ export function Settings() {
             } finally {
                 setIsClearing(false);
             }
+        }
+    };
+
+    const handleExport = async () => {
+        if (!isTauri()) {
+            showToast('info', 'Export is only available in the desktop app.');
+            return;
+        }
+
+        try {
+            const { save } = await import('@tauri-apps/plugin-dialog');
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const path = await save({
+                defaultPath: `activity-tracker-${dateStr}.json`,
+                filters: [
+                    { name: 'JSON', extensions: ['json'] },
+                    { name: 'CSV', extensions: ['csv'] },
+                ],
+            });
+            if (!path) return; // cancelled
+
+            const format = path.toLowerCase().endsWith('.csv') ? 'csv' : 'json';
+            await exportData(path, format);
+            showToast('success', 'Activity history exported successfully.');
+        } catch (error) {
+            console.error('Failed to export data:', error);
+            showToast('error', 'Failed to export data.');
         }
     };
 
@@ -803,6 +830,24 @@ export function Settings() {
                                 <option value={180}>180 days</option>
                                 <option value={0}>Keep forever</option>
                             </select>
+                        </div>
+
+                        {/* Export Data */}
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
+                                    <Download size={18} className="text-[var(--foreground)]" />
+                                </div>
+                                <div>
+                                    <p className="font-medium text-[var(--foreground)]">Export Data</p>
+                                    <p className="text-sm text-[var(--muted-foreground)]">
+                                        Download your activity history as JSON or CSV
+                                    </p>
+                                </div>
+                            </div>
+                            <Button variant="secondary" size="sm" onClick={handleExport}>
+                                Export
+                            </Button>
                         </div>
 
                         {/* Clear Data */}

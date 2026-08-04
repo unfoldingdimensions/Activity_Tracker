@@ -84,6 +84,49 @@ pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
     Ok(conn)
 }
 
+/// Read every stored app-usage row (date, process_name, total_seconds)
+pub fn get_all_app_usage(conn: &Connection) -> Result<Vec<(String, String, u32)>> {
+    let mut stmt = conn.prepare(
+        "SELECT date, process_name, total_seconds FROM app_usage ORDER BY date, total_seconds DESC"
+    )?;
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, u32>(2)?))
+    })?;
+    rows.collect()
+}
+
+/// Read every stored window event (timestamp, process_name, window_title, duration)
+pub fn get_all_window_events(conn: &Connection) -> Result<Vec<(String, String, Option<String>, u32)>> {
+    let mut stmt = conn.prepare(
+        "SELECT timestamp, process_name, window_title, duration_seconds FROM window_events ORDER BY timestamp"
+    )?;
+    let rows = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, Option<String>>(2)?,
+            row.get::<_, u32>(3)?,
+        ))
+    })?;
+    rows.collect()
+}
+
+/// Read every stored input-activity row (timestamp, keystrokes, clicks, distance)
+pub fn get_all_input_activity(conn: &Connection) -> Result<Vec<(String, u32, u32, u32)>> {
+    let mut stmt = conn.prepare(
+        "SELECT timestamp, keystrokes, mouse_clicks, mouse_distance FROM input_activity ORDER BY timestamp"
+    )?;
+    let rows = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, u32>(1)?,
+            row.get::<_, u32>(2)?,
+            row.get::<_, u32>(3)?,
+        ))
+    })?;
+    rows.collect()
+}
+
 /// Read a single setting value (stored as JSON text)
 pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
     match conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| row.get(0)) {

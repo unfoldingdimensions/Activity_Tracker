@@ -196,6 +196,13 @@ export async function setSettings(settings: Record<string, unknown>): Promise<vo
 }
 
 /**
+ * Export all tracking data to a file ('csv' | 'json')
+ */
+export async function exportData(path: string, format: 'csv' | 'json'): Promise<void> {
+    return invoke<void>('export_data', { path, format });
+}
+
+/**
  * Clear all tracking data
  */
 export async function clearData(): Promise<void> {
