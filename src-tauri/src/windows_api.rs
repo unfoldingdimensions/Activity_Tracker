@@ -3,7 +3,7 @@
 
 #[cfg(windows)]
 use windows::{
-    Win32::Foundation::{HWND, MAX_PATH},
+    Win32::Foundation::{CloseHandle, HWND, MAX_PATH},
     Win32::UI::WindowsAndMessaging::{
         GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
     },
@@ -45,14 +45,8 @@ pub fn get_active_window() -> Option<ActiveWindow> {
         GetWindowThreadProcessId(hwnd, Some(&mut process_id));
 
         // Get process name
-        let process_name = get_process_name(process_id).unwrap_or_else(|| {
-             // Fallback: use window title if it exists and looks like an app
-             if !window_title.is_empty() {
-                 "Unknown".to_string() 
-             } else {
-                 "Unknown".to_string()
-             }
-        });
+        let process_name = get_process_name(process_id)
+            .unwrap_or_else(|| "Unknown".to_string());
 
         Some(ActiveWindow {
             process_name,
@@ -92,10 +86,11 @@ fn get_process_name(process_id: u32) -> Option<String> {
         // Try GetModuleBaseNameW
         let mut name_buffer = [0u16; MAX_PATH as usize];
         let len = GetModuleBaseNameW(handle, None, &mut name_buffer);
-        
-        // Close handle (Windows crate handles often drop automatically but explicit closing via dropping wrapper if needed, 
-        // here `handle` is a `HANDLE` which struct implements Drop or we assume it's fine for now)
-        // Actually windows crate handles are Owned usually.
+
+        // The windows crate returns raw (non-owning) HANDLEs from OpenProcess,
+        // so we must close it explicitly. Called once per second by the
+        // tracking loop, so leaking here would grow the process table over time.
+        let _ = CloseHandle(handle);
 
         if len > 0 {
             Some(String::from_utf16_lossy(&name_buffer[..len as usize]))
