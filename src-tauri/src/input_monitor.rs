@@ -44,11 +44,12 @@ impl InputMonitor {
                                 // cursor positions (screen pixels). The first event
                                 // after a (re)start has no reference point and is
                                 // skipped. Lock order: counts -> last_mouse_pos.
-                                let mut last = last_mouse_pos.lock().unwrap();
-                                if let Some((lx, ly)) = *last {
-                                    c.mouse_distance += ((x - lx).abs() + (y - ly).abs()) as u32;
+                                if let Ok(mut last) = last_mouse_pos.lock() {
+                                    if let Some((lx, ly)) = *last {
+                                        c.mouse_distance += ((x - lx).abs() + (y - ly).abs()) as u32;
+                                    }
+                                    *last = Some((x, y));
                                 }
-                                *last = Some((x, y));
                             },
                             _ => {}
                         }
@@ -74,7 +75,7 @@ impl InputMonitor {
             log::info!("InputMonitor: Thread exited");
         });
 
-        Self { counts }
+        Self { counts, last_mouse_pos }
     }
 
     /// Zero out accumulated counts (e.g. when tracking is (re)started).
