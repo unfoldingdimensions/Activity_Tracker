@@ -109,7 +109,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                 {isLoading ? (
                     <LoadingState message="Loading timeline..." />
                 ) : hasData ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={minHeight ?? 260}>
                         <AreaChart data={data}>
                             <CartesianGrid
                                 strokeDasharray="3 3"

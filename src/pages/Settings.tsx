@@ -9,6 +9,7 @@ import { startTracking, stopTracking, clearData, isTracking as fetchTrackingStat
 import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useToast } from '../components/ui/Toast';
+import { APP_VERSION } from '../constants/config';
 import type { TimeRange } from '../components/dashboard/TimeRangeFilter';
 
 export function Settings() {
@@ -327,7 +328,7 @@ export function Settings() {
                 {/* About */}
                 <div className="text-center pt-8 pb-4">
                     <p className="text-xs text-[var(--muted-foreground)]">
-                        Activity Tracker v0.1.0 • Built with Tauri + React
+                        Activity Tracker v{APP_VERSION} • Built with Tauri + React
                     </p>
                     <p className="text-[10px] text-[var(--muted-foreground)]/60 mt-1">
                         All data is stored locally. No information is uploaded to any server.

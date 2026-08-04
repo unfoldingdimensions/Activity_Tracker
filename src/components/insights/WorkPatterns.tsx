@@ -110,7 +110,7 @@ export const WorkPatterns: React.FC = () => {
 
                 <div className="flex items-center gap-6">
                     <div className="w-24 h-24 relative">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minHeight={96}>
                             <PieChart>
                                 <Pie
                                     data={chartData}

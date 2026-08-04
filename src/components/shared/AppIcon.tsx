@@ -1,5 +1,6 @@
 import { useState, useEffect, memo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { isTauri } from '../../utils/isTauri';
 
 // Memory cache to avoid repeated invokes for the same process
 const iconCache: Record<string, string> = {};
@@ -31,6 +32,8 @@ function AppIconInner({ processName, className = '', size = 24, fallbackText }: 
         let isMounted = true;
 
         async function fetchIcon() {
+            // Browser dev mode has no Tauri icon backend; keep the letter tile.
+            if (!isTauri()) return;
             try {
                 const data = await invoke<string | null>('get_app_icon', { processName });
                 if (data && isMounted) {

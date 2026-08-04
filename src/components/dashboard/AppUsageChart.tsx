@@ -52,7 +52,7 @@ export const AppUsageChart = memo(function AppUsageChart({
                         <Skeleton variant="circular" className="w-32 h-32" />
                     </div>
                 ) : hasData ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={192}>
                         <PieChart>
                             <Pie
                                 data={data}
