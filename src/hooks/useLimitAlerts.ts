@@ -10,6 +10,11 @@ interface LimitPayload {
     usage_seconds: number;
 }
 
+interface AchievementPayload {
+    title: string;
+    xp: number;
+}
+
 /**
  * Subscribes to backend "limit-reached" events (distraction guard) and
  * surfaces them as in-app toasts. Safe no-op in browser mode.
@@ -41,6 +46,41 @@ export function useLimitAlerts() {
                 else fn();
             })
             .catch((err) => console.error('Failed to listen for limit alerts:', err));
+
+        return () => {
+            active = false;
+            unlisten?.();
+        };
+    }, []);
+}
+
+/**
+ * Subscribes to backend "achievement-unlocked" events and surfaces them as
+ * in-app toasts. Safe no-op in browser mode.
+ */
+export function useAchievementAlerts() {
+    const { showToast } = useToast();
+
+    const showToastRef = useRef(showToast);
+    useEffect(() => {
+        showToastRef.current = showToast;
+    }, [showToast]);
+
+    useEffect(() => {
+        if (!isTauri()) return;
+        let active = true;
+        let unlisten: (() => void) | undefined;
+
+        listen<AchievementPayload>('achievement-unlocked', (event) => {
+            if (!active) return;
+            const { title, xp } = event.payload;
+            showToastRef.current('success', `Achievement unlocked: ${title} (+${xp} XP)`);
+        })
+            .then((fn) => {
+                if (active) unlisten = fn;
+                else fn();
+            })
+            .catch((err) => console.error('Failed to listen for achievement alerts:', err));
 
         return () => {
             active = false;

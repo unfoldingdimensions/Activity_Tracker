@@ -23,6 +23,35 @@ fn format_duration_compact(seconds: u64) -> String {
     }
 }
 
+/// Native notification + frontend event for an unlocked achievement
+fn notify_achievement(app: &tauri::AppHandle, title: &str, xp: u32) {
+    let _ = app
+        .notification()
+        .builder()
+        .title(format!("Achievement unlocked: {}", title))
+        .body(format!("+{} XP", xp))
+        .show();
+    let _ = app.emit(
+        "achievement-unlocked",
+        serde_json::json!({ "title": title, "xp": xp }),
+    );
+    log::info!("Achievement unlocked: {} (+{} XP)", title, xp);
+}
+
+/// Native notification for streak milestones
+fn notify_streak_milestone(app: &tauri::AppHandle, streak: u32) {
+    let title = format!("{} day streak!", streak);
+    let body = if streak >= 30 {
+        "Remarkable consistency. Your habits are compounding."
+    } else if streak >= 7 {
+        "A full week of activity. Keep the momentum going."
+    } else {
+        "Keep showing up every day."
+    };
+    let _ = app.notification().builder().title(&title).body(body).show();
+    log::info!("Streak milestone reached: {} days", streak);
+}
+
 /// Distraction guard: fire a notification (once per app per day) when an
 /// app's usage crosses its configured daily limit.
 fn check_app_limits(
@@ -476,20 +505,32 @@ impl Tracker {
 
                             // Early Bird: active before 7 AM local time
                             if !early_bird_checked && chrono::Local::now().hour() < 7 {
-                                let _ = database::unlock_achievement_with_reward(&conn, "early_bird", &timestamp, 50);
+                                if let Ok(unlocked) = database::unlock_achievement_with_reward(&conn, "early_bird", &timestamp, 50) {
+                                    if unlocked {
+                                        notify_achievement(&app, "Early Bird", 50);
+                                    }
+                                }
                                 early_bird_checked = true;
                             }
 
                             // Night Owl: active after 10 PM local time
                             if !night_owl_checked && chrono::Local::now().hour() >= 22 {
-                                let _ = database::unlock_achievement_with_reward(&conn, "night_owl", &timestamp, 50);
+                                if let Ok(unlocked) = database::unlock_achievement_with_reward(&conn, "night_owl", &timestamp, 50) {
+                                    if unlocked {
+                                        notify_achievement(&app, "Night Owl", 50);
+                                    }
+                                }
                                 night_owl_checked = true;
                             }
 
                             // Deep Diver: 4 hours of contiguous focus
                             consecutive_active_seconds += 1;
                             if consecutive_active_seconds >= 4 * 3600 {
-                                let _ = database::unlock_achievement_with_reward(&conn, "deep_diver", &timestamp, 100);
+                                if let Ok(unlocked) = database::unlock_achievement_with_reward(&conn, "deep_diver", &timestamp, 100) {
+                                    if unlocked {
+                                        notify_achievement(&app, "Deep Diver", 100);
+                                    }
+                                }
                                 consecutive_active_seconds = 0;
                             }
 
@@ -525,7 +566,15 @@ impl Tracker {
                                 // Consistency King: maintain a 7-day streak
                                 if let Ok(stats) = database::get_user_stats(&conn) {
                                     if stats.current_streak >= 7 {
-                                        let _ = database::unlock_achievement_with_reward(&conn, "consistency_king", &timestamp, 200);
+                                        if let Ok(unlocked) = database::unlock_achievement_with_reward(&conn, "consistency_king", &timestamp, 200) {
+                                            if unlocked {
+                                                notify_achievement(&app, "Consistency King", 200);
+                                            }
+                                        }
+                                    }
+                                    // Streak milestones: 7 / 30 / 100 days
+                                    if stats.current_streak == 7 || stats.current_streak == 30 || stats.current_streak == 100 {
+                                        notify_streak_milestone(&app, stats.current_streak);
                                     }
                                 }
                             }

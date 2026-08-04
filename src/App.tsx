@@ -10,7 +10,7 @@ import { StartupProvider } from './context/StartupProvider';
 import { ErrorBoundary } from './components/errors/ErrorBoundary';
 import { ToastProvider } from './components/ui/Toast';
 import { RefreshHandler } from './components/shared/RefreshHandler';
-import { useLimitAlerts } from './hooks/useLimitAlerts';
+import { useLimitAlerts, useAchievementAlerts } from './hooks/useLimitAlerts';
 
 // Route-level code splitting: each page (and its chart/gamification deps)
 // is loaded on demand, keeping the initial bundle small.
@@ -49,6 +49,7 @@ function RouteFallback() {
  */
 function LimitAlerts() {
     useLimitAlerts();
+    useAchievementAlerts();
     return null;
 }
 

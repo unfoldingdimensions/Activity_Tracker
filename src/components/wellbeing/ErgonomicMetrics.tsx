@@ -1,9 +1,11 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { GlassCard } from '../GlassCard';
 import { useWellbeing } from '../../hooks/useWellbeing';
 import { Eye, Clock, Activity, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { sendNotification } from '@tauri-apps/plugin-notification';
+import { isTauri } from '../../utils/isTauri';
 
 interface ErgonomicMetricsProps {
     onStartBreathing?: () => void;
@@ -41,6 +43,19 @@ function CircleProgress({ percentage, color = "stroke-emerald-500", size = 48 }:
 
 export const ErgonomicMetrics: React.FC<ErgonomicMetricsProps> = ({ onStartBreathing }) => {
     const { typingFatigue, sedentaryMinutes, needsBreak, eyeStrainProgress } = useWellbeing();
+
+    // Fire a native notification when a break becomes needed (once per
+    // break session - re-arms when the alert clears)
+    const wasNeedingBreak = useRef(false);
+    useEffect(() => {
+        if (needsBreak && !wasNeedingBreak.current && isTauri()) {
+            sendNotification({
+                title: 'Time for a break',
+                body: "You've been working for a while. Stand up, stretch, and rest your eyes.",
+            });
+        }
+        wasNeedingBreak.current = needsBreak;
+    }, [needsBreak]);
 
     return (
         <GlassCard className={`p-5 group relative overflow-hidden ${needsBreak ? 'border-rose-500/50' : ''}`} spotlight>
