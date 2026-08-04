@@ -28,3 +28,5 @@ GITHUB_PUSH.md
 .agent/
 .windsurf/
 .gitignore
+# Generated graph tooling output
+graphify-out/
