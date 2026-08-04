@@ -5,6 +5,7 @@ import { Activity, Brain } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip } from 'recharts';
 import { formatAppUsageForChart } from '../../hooks/useTrackerData';
 import { Tooltip } from '../ui/Tooltip';
+import { parseTimestamp } from '../../utils/formatters';
 import type { AppUsageEntry, InputHistoryBucket } from '../../api/tauri';
 import type { ChartDataPoint } from '../../types';
 
@@ -68,12 +69,13 @@ export const WorkPatterns: React.FC = () => {
 
                 <div className="grid grid-cols-12 gap-1 h-32">
                     {heatmapBuckets.slice(-24).map((bucket: InputHistoryBucket, i: number) => {
-                        const date = new Date(bucket.time);
-                        const dateLabel = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-                        const startHour = date.toLocaleTimeString([], { hour: 'numeric', hour12: true });
-                        const nextDate = new Date(date);
-                        nextDate.setHours(date.getHours() + 1);
-                        const endHour = nextDate.toLocaleTimeString([], { hour: 'numeric', hour12: true });
+                        const ts = parseTimestamp(bucket.time);
+                        const date = ts ? new Date(ts) : null;
+                        const dateLabel = date ? date.toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+                        const startHour = date ? date.toLocaleTimeString([], { hour: 'numeric', hour12: true }) : '';
+                        const endHour = date
+                            ? new Date(date.getTime() + 3600_000).toLocaleTimeString([], { hour: 'numeric', hour12: true })
+                            : '';
                         const timeRangeLabel = `${startHour} - ${endHour}`;
 
                         return (

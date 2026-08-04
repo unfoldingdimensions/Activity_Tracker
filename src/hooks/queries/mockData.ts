@@ -47,15 +47,18 @@ export const MOCK_EVENTS: WindowEvent[] = [
 
 export const MOCK_USER_STATS: UserStats = {
     total_xp: 450,
-    current_level: 2,
+    // Must match the level curve (floor(sqrt(450/100)) + 1 = 3)
+    current_level: 3,
     current_streak: 3,
     last_activity_date: new Date().toISOString().split('T')[0],
 };
 
 export const MOCK_ACHIEVEMENTS: string[] = ['early_bird'];
 
+// ISO-8601 timestamps (what the backend returns); kept parseable so charts
+// in browser-dev mode don't render "Invalid Date"
 export const MOCK_INPUT_HISTORY: InputHistoryBucket[] = Array.from({ length: 24 }, (_, i) => ({
-    time: `${i}:00`,
+    time: new Date(Date.now() - i * 3600_000).toISOString(),
     keystrokes: Math.floor(Math.random() * 500),
     mouse_clicks: Math.floor(Math.random() * 100),
 }));

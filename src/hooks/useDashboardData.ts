@@ -10,7 +10,7 @@ import {
 import type { TimeRange } from '../components/dashboard/TimeRangeFilter';
 import type { AppUsageEntry, WindowEvent } from '../api/tauri';
 import { formatStatsForCards, formatAppUsageForChart } from './useTrackerData';
-import { toLocalDateString } from '../utils/formatters';
+import { parseTimestamp, toLocalDateString } from '../utils/formatters';
 
 /**
  * Shared app categorization logic
@@ -38,24 +38,6 @@ export const isProductiveApp = (name: string) => {
         n.includes('activity_tracker') || n.includes('activity tracker')
     );
 };
-
-/**
- * Helper to ensure timestamp is treated as UTC if naive
- */
-function parseValues(timestamp: string): number {
-    if (!timestamp) return 0;
-    // Handle SQL format (space instead of T, missing Z)
-    let formatted = timestamp.trim();
-    if (!formatted.includes('T') && !formatted.includes('Z')) {
-        formatted = formatted.replace(' ', 'T');
-        // If it looks like a naive timestamp, assume it's UTC from backend
-        if (formatted.split('T')[1]?.split(':').length >= 2) {
-            formatted += 'Z';
-        }
-    }
-    const date = new Date(formatted);
-    return isNaN(date.getTime()) ? 0 : date.getTime();
-}
 
 /**
  * Calculate overlap duration between an event and a time window
@@ -220,7 +202,7 @@ export function useDashboardData(timeRange: TimeRange) {
         const usageMap = new Map<string, number>();
 
         rangeEventsQuery.data.forEach(e => {
-            const eTime = parseValues(e.timestamp);
+            const eTime = parseTimestamp(e.timestamp);
             const duration = calculateOverlap(eTime, e.duration_seconds, startTime, endTime);
 
             if (duration > 0) {
@@ -260,7 +242,7 @@ export function useDashboardData(timeRange: TimeRange) {
 
             // Fill buckets
             events.forEach(e => {
-                const eTime = parseValues(e.timestamp);
+                const eTime = parseTimestamp(e.timestamp);
                 const duration = e.duration_seconds;
                 const productive = isProductive(e.process_name);
 

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { GlassCard } from './GlassCard';
 import { X } from 'lucide-react';
 import { useInputHistory } from '../hooks/useTrackerData';
+import { parseTimestamp } from '../utils/formatters';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid
 } from 'recharts';
@@ -100,8 +101,9 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                                     axisLine={true}
                                     interval={interval === 60 ? 'preserveStartEnd' : 0}
                                     tickFormatter={(timeStr) => {
-                                        const date = new Date(timeStr);
-                                        return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+                                        const ts = parseTimestamp(timeStr);
+                                        if (!ts) return timeStr;
+                                        return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
                                     }}
 
                                     style={{ fontFamily: 'var(--font-body)' }}
@@ -120,7 +122,9 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                                 />
                                 <Tooltip
                                     labelFormatter={(timeStr) => {
-                                        const date = new Date(timeStr);
+                                        const ts = parseTimestamp(timeStr);
+                                        if (!ts) return timeStr;
+                                        const date = new Date(ts);
                                         const dateLabel = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
                                         // For tooltip, always show precise time 5:10:00 AM
                                         const timeLabel = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });

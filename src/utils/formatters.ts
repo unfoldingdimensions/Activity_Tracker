@@ -164,6 +164,29 @@ export function formatDistance(pixels: number): string {
 }
 
 /**
+ * Tolerant timestamp → epoch-millis parser.
+ * The backend stores UTC ISO-8601 strings, but some legacy rows can be
+ * "YYYY-MM-DD HH:MM:SS" (space instead of T, no Z). Treat naive timestamps
+ * as UTC and return 0 for anything unparseable.
+ * @param timestamp Raw timestamp string
+ * @returns Epoch millis, or 0 if unparseable
+ */
+export function parseTimestamp(timestamp: string): number {
+    if (!timestamp) return 0;
+    // Handle SQL format (space instead of T, missing Z)
+    let formatted = timestamp.trim();
+    if (!formatted.includes('T') && !formatted.includes('Z')) {
+        formatted = formatted.replace(' ', 'T');
+        // If it looks like a naive timestamp, assume it's UTC from backend
+        if (formatted.split('T')[1]?.split(':').length >= 2) {
+            formatted += 'Z';
+        }
+    }
+    const date = new Date(formatted);
+    return isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+/**
  * Derive level and progress-to-next-level from total XP.
  * Mirrors the backend level curve: level = floor(sqrt(xp / 100)) + 1
  * (level N requires 100*(N-1)^2 XP, next level at 100*N^2).
