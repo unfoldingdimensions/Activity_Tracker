@@ -18,6 +18,10 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .setup(|app| {
             // Initialize logging in debug mode
             if cfg!(debug_assertions) {
@@ -53,6 +57,14 @@ pub fn run() {
 
             // Create tracker and start it
             let tracker = tracker::Tracker::new(db);
+
+            // Read the start-minimized flag before the tracker moves into state
+            let start_minimized = tracker
+                .get_settings_snapshot()
+                .get("start_minimized")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+
             tracker.start();
 
             // Store in app state
@@ -122,6 +134,11 @@ pub fn run() {
 
             // Configure main window behavior
             if let Some(main_window) = app.get_webview_window("main") {
+                // Start minimized to tray when the setting is enabled
+                if start_minimized {
+                    let _ = main_window.hide();
+                }
+
                 let main_window_clone = main_window.clone();
                 main_window.on_window_event(move |event| {
                     match event {

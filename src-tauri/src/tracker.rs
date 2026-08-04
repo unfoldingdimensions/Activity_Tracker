@@ -10,6 +10,43 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use chrono::{Datelike, TimeZone};
 
+/// Replace every occurrence of each keyword (case-insensitive) in `title`
+/// with a mask of bullet characters ("•"). Byte-slicing is clamped to char
+/// boundaries so non-ASCII titles never panic.
+fn redact_title(title: &str, keywords: &[String]) -> String {
+    if title.is_empty() || keywords.is_empty() {
+        return title.to_string();
+    }
+
+    let mut result = title.to_string();
+    for keyword in keywords {
+        if keyword.is_empty() {
+            continue;
+        }
+        let needle = keyword.to_lowercase();
+        let mask: String = "•".repeat(keyword.chars().count());
+
+        let mut out = String::with_capacity(result.len());
+        let mut rest = result.as_str();
+        while let Some(pos) = rest.to_lowercase().find(&needle) {
+            out.push_str(&rest[..pos]);
+            out.push_str(&mask);
+            // Advance past the match, clamped to a char boundary
+            let mut end = pos + keyword.len();
+            if end > rest.len() {
+                end = rest.len();
+            }
+            while end > pos && !rest.is_char_boundary(end) {
+                end -= 1;
+            }
+            rest = &rest[end..];
+        }
+        out.push_str(rest);
+        result = out;
+    }
+    result
+}
+
 /// The main tracker state
 pub struct Tracker {
     pub db: Arc<Mutex<Connection>>,
@@ -160,15 +197,18 @@ impl Tracker {
                     if should_run {
                         log::info!("Background cleanup: Starting database maintenance...");
 
-                        // Retention is user-configurable (default 90 days)
+                        // Retention is user-configurable (default 90 days);
+                        // 0 means "keep forever" (skip cleanup entirely).
                         let retention_days = cleanup_settings
                             .lock()
                             .unwrap()
                             .get("retention_days")
                             .and_then(|v| v.as_u64())
                             .unwrap_or(90) as u32;
-                        
-                        if let Ok(conn) = cleanup_db.lock() {
+
+                        if retention_days == 0 {
+                            log::info!("Background cleanup: retention set to forever, skipping");
+                        } else if let Ok(conn) = cleanup_db.lock() {
                             if let Err(e) = database::cleanup_old_snapshots(&conn, retention_days) {
                                 log::error!("Background cleanup: Error cleaning snapshots: {}", e);
                             }
@@ -204,7 +244,7 @@ impl Tracker {
                 let idle_seconds = windows_api::get_idle_seconds();
 
                 // Runtime settings (cheap cache, updated via set_settings)
-                let (idle_threshold, blacklist) = {
+                let (idle_threshold, blacklist, redact_keywords) = {
                     let guard = settings.lock().unwrap();
                     let threshold = guard
                         .get("idle_threshold")
@@ -214,7 +254,11 @@ impl Tracker {
                         .get("blacklisted_apps")
                         .and_then(|v| serde_json::from_value(v.clone()).ok())
                         .unwrap_or_default();
-                    (threshold, blacklist)
+                    let keywords: Vec<String> = guard
+                        .get("redacted_keywords")
+                        .and_then(|v| serde_json::from_value(v.clone()).ok())
+                        .unwrap_or_default();
+                    (threshold, blacklist, keywords)
                 };
 
                 let is_idle = idle_seconds > idle_threshold;
@@ -224,10 +268,14 @@ impl Tracker {
                 // Get active window
                 let active_window = windows_api::get_active_window();
 
-                // Update current window for frontend queries
+                // Update current window for frontend queries (title redacted)
                 {
                     let mut cw = current_window.lock().unwrap();
-                    *cw = active_window.clone();
+                    let mut window_for_state = active_window.clone();
+                    if let Some(w) = window_for_state.as_mut() {
+                        w.window_title = redact_title(&w.window_title, &redact_keywords);
+                    }
+                    *cw = window_for_state;
                 }
 
                 // Get input counts since last tick
@@ -306,7 +354,7 @@ impl Tracker {
                                     log::info!("Window changed to: {}", window.process_name);
                                     current_process = Some(window.process_name.clone());
                                     let title = if track_titles.load(Ordering::Relaxed) {
-                                        window.window_title.clone()
+                                        redact_title(&window.window_title, &redact_keywords)
                                     } else {
                                         String::new()
                                     };
@@ -315,7 +363,7 @@ impl Tracker {
                                 } else {
                                     // Update current title if changed
                                     let title = if track_titles.load(Ordering::Relaxed) {
-                                        window.window_title.clone()
+                                        redact_title(&window.window_title, &redact_keywords)
                                     } else {
                                         String::new()
                                     };

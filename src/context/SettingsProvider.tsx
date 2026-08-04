@@ -10,6 +10,8 @@ const DEFAULT_SETTINGS: UserSettings = {
     blacklistedApps: [],
     retentionDays: 90,
     launchOnStartup: false,
+    startMinimized: false,
+    redactedKeywords: [],
     appLimits: {},
     appClassification: {},
 };
@@ -22,6 +24,8 @@ const BACKEND_KEYS: Record<keyof UserSettings, string> = {
     blacklistedApps: 'blacklisted_apps',
     retentionDays: 'retention_days',
     launchOnStartup: 'launch_on_startup',
+    startMinimized: 'start_minimized',
+    redactedKeywords: 'redacted_keywords',
     appLimits: 'app_limits',
     appClassification: 'app_classification',
 };
