@@ -11,33 +11,10 @@ import type { TimeRange } from '../components/dashboard/TimeRangeFilter';
 import type { AppUsageEntry, WindowEvent } from '../api/tauri';
 import { formatStatsForCards, formatAppUsageForChart } from './useTrackerData';
 import { parseTimestamp, toLocalDateString } from '../utils/formatters';
+import { useAppClassifier } from './useAppClassifier';
 
-/**
- * Shared app categorization logic
- */
-export const isProductiveApp = (name: string) => {
-    const n = name.toLowerCase();
-    return (
-        // IDEs & Editors
-        n.includes('code') || n.includes('studio') || n.includes('intellij') ||
-        n.includes('vim') || n.includes('sublime') || n.includes('xcrun') ||
-        // Terminal
-        n.includes('terminal') || n.includes('iterm') || n.includes('powershell') ||
-        n.includes('cmd.exe') || n.includes('bash') ||
-        // Communication
-        n.includes('slack') || n.includes('teams') || n.includes('zoom') ||
-        n.includes('discord') || n.includes('outlook') || n.includes('thunderbird') ||
-        // Browsers (Development/Research)
-        n.includes('chrome') || n.includes('firefox') || n.includes('edge') ||
-        n.includes('safari') || n.includes('arc') || n.includes('brave') ||
-        // Productivity Tools
-        n.includes('notion') || n.includes('figma') || n.includes('linear') ||
-        n.includes('jira') || n.includes('trello') || n.includes('word') ||
-        n.includes('excel') || n.includes('powerpoint') || n.includes('obsidian') ||
-        // The App itself
-        n.includes('activity_tracker') || n.includes('activity tracker')
-    );
-};
+/** Re-exported for callers that only need the built-in default behavior */
+export { isProductiveAppDefault as isProductiveApp } from '../utils/appClassification';
 
 /**
  * Calculate overlap duration between an event and a time window
@@ -59,6 +36,8 @@ function calculateOverlap(
 }
 
 export function useDashboardData(timeRange: TimeRange) {
+    // User-customizable per-app classifier (defaults + overrides)
+    const classify = useAppClassifier();
     // 1. Calculate Date Range
     const { start, chartStart, end, isToday, isSubDay, bucketSizeMs } = useMemo(() => {
         const now = new Date();
@@ -226,9 +205,6 @@ export function useDashboardData(timeRange: TimeRange) {
         const startTime = chartStart.getTime();
         const endTime = end.getTime();
 
-        // Classification helper
-        const isProductive = isProductiveApp;
-
         // Helper to determine focus score for a bucket
         const processEvents = (events: WindowEvent[]) => {
             // Init buckets
@@ -244,7 +220,10 @@ export function useDashboardData(timeRange: TimeRange) {
             events.forEach(e => {
                 const eTime = parseTimestamp(e.timestamp);
                 const duration = e.duration_seconds;
-                const productive = isProductive(e.process_name);
+                const cls = classify(e.process_name);
+                // 'ignore' removes the app from focus analytics entirely
+                if (cls === 'ignore') return;
+                const productive = cls === 'focus';
 
                 // Iterate buckets and add overlap
                 timestamps.forEach(bucketStart => {
@@ -339,7 +318,7 @@ export function useDashboardData(timeRange: TimeRange) {
         return [];
 
 
-    }, [timeRange, chartStart, end, bucketSizeMs, isToday, rangeEventsQuery.data, timelineQuery.data]);
+    }, [timeRange, chartStart, end, bucketSizeMs, isToday, rangeEventsQuery.data, timelineQuery.data, classify]);
 
 
     // 4. Calculate Unified Focus Score for the Stat Card
@@ -351,14 +330,17 @@ export function useDashboardData(timeRange: TimeRange) {
         let totalFocus = 0;
 
         unifiedAppUsage.forEach(app => {
+            const cls = classify(app.name);
+            // 'ignore' removes the app from the focus equation entirely
+            if (cls === 'ignore') return;
             totalActive += app.seconds;
-            if (isProductiveApp(app.name)) {
+            if (cls === 'focus') {
                 totalFocus += app.seconds;
             }
         });
 
         return totalActive > 0 ? Math.round((totalFocus / totalActive) * 100) : 0;
-    }, [unifiedAppUsage]);
+    }, [unifiedAppUsage, classify]);
 
     // 5. Return data
     const isLoading =

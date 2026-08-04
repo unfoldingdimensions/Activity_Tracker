@@ -67,7 +67,15 @@ vi.mock('../../hooks/useSettings', () => ({
     useSettings: () => ({
         settings: {
             dashboardDefaultRange: 'today',
-            trackWindowTitles: true
+            trackWindowTitles: true,
+            idleThreshold: 60,
+            blacklistedApps: [],
+            retentionDays: 90,
+            launchOnStartup: false,
+            startMinimized: false,
+            redactedKeywords: [],
+            appLimits: {},
+            appClassification: {}
         },
         updateSettings: vi.fn()
     })

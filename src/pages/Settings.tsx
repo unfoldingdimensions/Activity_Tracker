@@ -1,6 +1,6 @@
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
-import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2, Play, Pause, LayoutGrid, Clock, Rocket, Minimize2, Gauge, ShieldBan, Lock, CalendarClock } from 'lucide-react';
+import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2, Play, Pause, LayoutGrid, Clock, Rocket, Minimize2, Gauge, ShieldBan, Lock, CalendarClock, ListFilter } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../context/useTheme';
 import { useSettings } from '../hooks/useSettings';
@@ -21,6 +21,8 @@ export function Settings() {
     const [isToggling, setIsToggling] = useState(false);
     const [isClearing, setIsClearing] = useState(false);
     const [blacklistInput, setBlacklistInput] = useState('');
+    const [classInput, setClassInput] = useState('');
+    const [classSelect, setClassSelect] = useState<'focus' | 'distraction'>('distraction');
 
     const queryClient = useQueryClient();
 
@@ -119,6 +121,28 @@ export function Settings() {
 
     const removeFromBlacklist = (name: string) => {
         updateSettings({ blacklistedApps: settings.blacklistedApps.filter((b) => b !== name) });
+    };
+
+    const addClassification = () => {
+        const name = classInput.trim();
+        if (!name) return;
+        updateSettings({
+            appClassification: { ...settings.appClassification, [name]: classSelect },
+        });
+        setClassInput('');
+        showToast('success', `${name} classified as ${classSelect}.`);
+    };
+
+    const setClassification = (name: string, cls: 'focus' | 'distraction' | 'ignore') => {
+        updateSettings({
+            appClassification: { ...settings.appClassification, [name]: cls },
+        });
+    };
+
+    const removeClassification = (name: string) => {
+        const next = { ...settings.appClassification };
+        delete next[name];
+        updateSettings({ appClassification: next });
     };
 
     const handleClearData = async () => {
@@ -388,6 +412,87 @@ export function Settings() {
                                     No apps blacklisted. Add one to keep it out of your stats.
                                 </p>
                             )}
+                        </div>
+                    </div>
+                </GlassCard>
+
+                {/* App Classification */}
+                <GlassCard className="p-6" hover={false} spotlight>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 rounded-lg bg-rose-500/10">
+                            <ListFilter size={20} className="text-rose-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
+                                App Classification
+                            </h3>
+                            <p className="text-sm text-[var(--muted-foreground)]">
+                                Override how apps count toward your Focus Score
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {Object.keys(settings.appClassification).length > 0 && (
+                            <div className="space-y-2">
+                                {Object.entries(settings.appClassification).map(([name, cls]) => (
+                                    <div
+                                        key={name}
+                                        className="flex items-center justify-between p-3 rounded-xl bg-[var(--background)] border border-[var(--border)]"
+                                    >
+                                        <span className="text-sm font-medium text-[var(--foreground)] truncate mr-2">
+                                            {name}
+                                        </span>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            <select
+                                                value={cls}
+                                                onChange={(e) => setClassification(name, e.target.value as 'focus' | 'distraction' | 'ignore')}
+                                                className="bg-[var(--secondary)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg p-1.5 outline-none cursor-pointer"
+                                            >
+                                                <option value="focus">Focus</option>
+                                                <option value="distraction">Distraction</option>
+                                                <option value="ignore">Ignore</option>
+                                            </select>
+                                            <button
+                                                onClick={() => removeClassification(name)}
+                                                className="text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors text-lg leading-none"
+                                                aria-label={`Remove classification for ${name}`}
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)]">
+                            <div className="flex gap-2">
+                                <input
+                                    value={classInput}
+                                    onChange={(e) => setClassInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') addClassification();
+                                    }}
+                                    placeholder="App name, e.g. figma or Figma.exe"
+                                    className="flex-1 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg focus:ring-[var(--primary)] focus:border-[var(--primary)] px-3 py-2 outline-none placeholder:text-[var(--muted-foreground)]/50"
+                                />
+                                <select
+                                    value={classSelect}
+                                    onChange={(e) => setClassSelect(e.target.value as 'focus' | 'distraction')}
+                                    className="bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-2 outline-none cursor-pointer"
+                                >
+                                    <option value="focus">Focus</option>
+                                    <option value="distraction">Distraction</option>
+                                </select>
+                                <Button variant="secondary" size="sm" onClick={addClassification}>
+                                    Add
+                                </Button>
+                            </div>
+                            <p className="text-[10px] text-[var(--muted-foreground)]/60 mt-2">
+                                Overrides the built-in defaults. Names match by fragment (chrome matches Chrome.exe).
+                                Ignore removes an app from Focus Score, Focus Flow and Timeline badges.
+                            </p>
                         </div>
                     </div>
                 </GlassCard>

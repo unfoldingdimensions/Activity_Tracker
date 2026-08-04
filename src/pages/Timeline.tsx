@@ -24,7 +24,7 @@ import { AppIcon } from '../components/shared/AppIcon';
 // Utils & Constants
 import { containerVariantsFast, itemVariantsSubtle } from '../constants/animations';
 import { formatDuration, formatAppName, toLocalDateString } from '../utils/formatters';
-import { isProductiveApp } from '../hooks/useDashboardData';
+import { useAppClassifier } from '../hooks/useAppClassifier';
 
 type TimeRange = 'today' | 'yesterday' | 'week' | 'prev_week' | 'month';
 type ViewMode = 'all' | 'apps';
@@ -34,6 +34,14 @@ export function Timeline() {
     const [viewMode, setViewMode] = useState<ViewMode>('all');
     const [showRangePicker, setShowRangePicker] = useState(false);
     const [selectedApp, setSelectedApp] = useState<string | null>(null);
+
+    // User-customizable per-app classifier (defaults + overrides)
+    const classify = useAppClassifier();
+
+    const categoryLabel = (name: string) => {
+        const cls = classify(name);
+        return cls === 'focus' ? 'Focus' : cls === 'ignore' ? 'Ignored' : 'Other';
+    };
 
     // Calculate dates
     const { startIso, endIso, startDate, endDate, rangeLabel } = useMemo(() => {
@@ -345,7 +353,7 @@ export function Timeline() {
                                                             {formatAppName(app.name)}
                                                         </p>
                                                         <p className="text-xs text-[var(--muted-foreground)]">
-                                                            {isProductiveApp(app.name) ? 'Focus' : 'Other'}
+                                                            {categoryLabel(app.name)}
                                                         </p>
                                                     </div>
                                                 </div>
