@@ -14,6 +14,7 @@ import { RefreshButton } from '../components/shared/RefreshButton';
 // Data Hook
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useSettings } from '../hooks/useSettings';
+import { formatDistance } from '../utils/formatters';
 
 // Feature components
 import { InputHistoryModal } from '../components/InputHistoryModal';
@@ -64,7 +65,7 @@ export function Dashboard() {
             value: stats.mouseActivity,
             numericValue: rawStats?.total_mouse_clicks || 0,
             icon: MousePointer,
-            subtitle: 'clicks',
+            subtitle: `clicks · ${formatDistance(rawStats?.total_mouse_distance || 0)}`,
             clickable: true,
         },
         {

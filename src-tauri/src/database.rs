@@ -172,15 +172,15 @@ pub fn get_daily_stats(
     ).unwrap_or(0);
     
     // Get input totals for the UTC range
-    let (total_keystrokes, total_mouse_clicks): (u32, u32) = conn.query_row(
-        "SELECT COALESCE(SUM(keystrokes), 0), COALESCE(SUM(mouse_clicks), 0) 
+    let (total_keystrokes, total_mouse_clicks, total_mouse_distance): (u32, u32, u32) = conn.query_row(
+        "SELECT COALESCE(SUM(keystrokes), 0), COALESCE(SUM(mouse_clicks), 0), COALESCE(SUM(mouse_distance), 0) 
          FROM input_activity WHERE timestamp >= ?1 AND timestamp <= ?2",
         [start_timestamp, end_timestamp],
-        |row| Ok((row.get(0)?, row.get(1)?))
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))
     ).map_err(|e| {
         log::error!("Error getting input stats: {:?}", e);
         e
-    }).unwrap_or((0, 0));
+    }).unwrap_or((0, 0, 0));
 
     // If no data yet, return None
     if total_active == 0 && idle_count == 0 && total_keystrokes == 0 {
@@ -192,7 +192,7 @@ pub fn get_daily_stats(
         total_idle_seconds: idle_count,
         total_keystrokes,
         total_mouse_clicks,
-        total_mouse_distance: 0,
+        total_mouse_distance,
     }))
 }
 
@@ -216,19 +216,19 @@ pub fn get_stats_range(
     ).unwrap_or(0);
 
     // Inputs from input_activity
-    let (total_keystrokes, total_mouse_clicks): (u32, u32) = conn.query_row(
-        "SELECT COALESCE(SUM(keystrokes), 0), COALESCE(SUM(mouse_clicks), 0) 
+    let (total_keystrokes, total_mouse_clicks, total_mouse_distance): (u32, u32, u32) = conn.query_row(
+        "SELECT COALESCE(SUM(keystrokes), 0), COALESCE(SUM(mouse_clicks), 0), COALESCE(SUM(mouse_distance), 0) 
          FROM input_activity WHERE timestamp >= ?1 AND timestamp <= ?2",
         [start_timestamp, end_timestamp],
-        |row| Ok((row.get(0)?, row.get(1)?))
-    ).unwrap_or((0, 0));
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+    ).unwrap_or((0, 0, 0));
 
     Ok(DailyStats {
         total_active_seconds: active_count,
         total_idle_seconds: idle_count,
         total_keystrokes,
         total_mouse_clicks,
-        total_mouse_distance: 0,
+        total_mouse_distance,
     })
 }
 

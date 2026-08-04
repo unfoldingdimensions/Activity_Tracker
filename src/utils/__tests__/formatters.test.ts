@@ -10,7 +10,8 @@ import {
     formatRelativeTime,
     formatTimeOfDay,
     toLocalDateString,
-    getLevelInfo
+    getLevelInfo,
+    formatDistance
 } from '../formatters';
 
 describe('formatters', () => {
@@ -161,6 +162,24 @@ describe('formatters', () => {
             // Late evening local in a UTC+X timezone must NOT roll to the next UTC date
             const date = new Date(2024, 7, 3, 23, 30, 0);
             expect(toLocalDateString(date)).toBe('2024-08-03');
+        });
+    });
+
+    describe('formatDistance', () => {
+        it('treats zero and negative pixels as 0 m', () => {
+            expect(formatDistance(0)).toBe('0 m');
+            expect(formatDistance(-500)).toBe('0 m');
+        });
+
+        it('converts pixels to metres at 96 DPI', () => {
+            // 96 px per inch, 1 inch = 0.0254 m  →  ≈3779.5 px per metre
+            expect(formatDistance(3779)).toBe('1 m');
+            expect(formatDistance(100_000)).toBe('26 m');
+            expect(formatDistance(1_000_000)).toBe('265 m');
+        });
+
+        it('switches to km above 1000 m', () => {
+            expect(formatDistance(5_000_000)).toBe('1.3 km');
         });
     });
 

@@ -148,6 +148,22 @@ export function toLocalDateString(date: Date): string {
 }
 
 /**
+ * Approximate cursor travel distance from raw pixel counts.
+ * Assumes standard 96 DPI Windows scaling (96 px ≈ 1 inch ≈ 0.0254 m).
+ * @param pixels Total cursor travel in screen pixels
+ * @returns Human-readable distance like "265 m" or "1.3 km"
+ */
+export function formatDistance(pixels: number): string {
+    const pxPerMeter = 96 / 0.0254; // pixels per metre at 96 DPI
+    const meters = Math.max(0, pixels) / pxPerMeter;
+
+    if (meters >= 1000) {
+        return `${(meters / 1000).toFixed(1)} km`;
+    }
+    return `${Math.round(meters)} m`;
+}
+
+/**
  * Derive level and progress-to-next-level from total XP.
  * Mirrors the backend level curve: level = floor(sqrt(xp / 100)) + 1
  * (level N requires 100*(N-1)^2 XP, next level at 100*N^2).
