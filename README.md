@@ -6,16 +6,22 @@ A premium, privacy-first activity and productivity tracker for Windows. Built wi
 
 -   **🔒 Privacy-First**: All data is stored locally in an encrypted-at-rest SQLite database. On Windows, data is stored in `C:\ProgramData\ActivityTracker` to allow shared access across different user profiles on the same machine.
 -   **⏱️ Real-Time Tracking**: Automatically monitors active windows and application usage with zero-lag background monitoring.
--   **⌨️ Input Monitoring**: Track global keystroke and mouse click volume in real-time. View detailed activity heatmaps with adjustable granularity (10m, 30m, 1h).
+-   **⌨️ Input Monitoring**: Track global keystroke, mouse click volume, and mouse distance in real-time. View detailed activity heatmaps with adjustable granularity (10m, 30m, 1h).
 -   **📅 Historical Analysis**: 
     -   Filter your activity records by date range: **Today**, **Yesterday**, **This Week**, **Previous Week**, and **This Month**.
-    -   Switch between **Chronological Log** and **App-wise Aggregation**.
--   **🔍 smart Branding**: Process names are automatically cleaned and formatted (e.g., `visual_studio_code.exe` → `Visual Studio Code`) with support for common acronyms.
+    -   Switch between **Chronological Log**, **App-wise Aggregation**, and **Deep Work Sessions**.
+    -   **Focus Calendar**: a GitHub-style 52-week heatmap of your focused days.
+-   **🔍 Smart Branding**: Process names are automatically cleaned and formatted (e.g., `visual_studio_code.exe` → `Visual Studio Code`) with support for common acronyms.
 -   **📊 Enhanced Visual Analytics**:
-    -   **The Pulse**: A high-level overview of focus scores and screen time.
-    -   **Focus Flow**: Continuous 24-hour timeline visualization with strict interval alignment (e.g., exactly starting at 5:00 AM).
-    -   **Vibrant Accessibility**: A bespoke high-contrast color palette designed specifically for clarity in dark mode.
--   **🎨 Premium UI**: Sleek design featuring **Plus Jakarta Sans** typography, glassmorphism, spotlight hover effects, and smooth transitions.
+    -   **The Pulse**: A high-level overview of focus scores, screen time, and a daily digest (focus time, deep sessions, peak hour, top app, delta vs. yesterday).
+    -   **Focus Flow**: Continuous 24-hour timeline visualization with strict interval alignment.
+    -   **Deep Work Sessions**: contiguous focus blocks (≥ 25 min) with duration, dominant app, and interruptions.
+    -   **Live CPU Usage**: real per-process CPU sampling on the Power page.
+-   **🎯 Gamification**: XP, levels, streaks, and six achievements (Early Bird, Night Owl, Deep Diver, Consistency King, Month Marathon, Century Club) — with native notifications on unlock and streak milestones.
+-   **🛡️ Distraction Guard**: set daily time limits per app; when crossed you get one native notification per day, an in-app alert, and the tray icon turns amber.
+-   **🗂️ Settings Store**: machine-wide persisted settings — launch on startup, start minimized to tray, idle threshold, app blacklist, per-app Focus/Distraction/Ignore classification, sensitive-title redaction, data retention (30/90/180 days or forever).
+-   **📤 Data Export**: download your entire history as JSON or CSV from the native save dialog.
+-   **🎨 Premium UI**: Sleek design featuring **Plus Jakarta Sans** typography (self-hosted variable fonts), glassmorphism, spotlight hover effects, and smooth transitions.
 
 
 ## 🏗️ Architecture
@@ -111,6 +117,8 @@ We believe your data belongs to you. This application:
 2.  Does **not** capture screenshots or window contents.
 3.  Does **not** include any tracking pixels, telemetry, or cloud sync.
 4.  Stores everything in a local `activity.db` file in the shared application data folder (`C:\ProgramData` on Windows).
+5.  Can **redact window titles at record time** — sensitive keywords you configure (e.g. `password`, `bank`) are masked before anything is stored.
+6.  Lets you **blacklist apps** so they are excluded from tracking entirely, and **export or delete** your data at any time.
 
 ## 📜 License
 
