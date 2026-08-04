@@ -83,7 +83,8 @@ pub fn run() {
                let menu = tauri::menu::Menu::with_items(&handle, &[&show, &quit]).unwrap();
                
                let _ = tauri::tray::TrayIconBuilder::new()
-                 .icon(handle.default_window_icon().unwrap().clone())
+                .id("main")
+                .icon(handle.default_window_icon().unwrap().clone())
                  .menu(&menu)
                  .on_menu_event(|app: &tauri::AppHandle, event| {
                     match event.id().as_ref() {

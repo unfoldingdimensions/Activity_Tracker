@@ -144,6 +144,34 @@ pub fn get_app_icon_base64(process_name: &str, cache_dir: &Path) -> Option<Strin
     Some(format!("data:image/png;base64,{}", general_purpose::STANDARD.encode(icon_data)))
 }
 
+/// Render the app's default icon tinted amber (distraction-guard state).
+/// Non-transparent pixels are blended 60% toward amber (255, 170, 30).
+pub fn amber_tray_icon_png(app: &tauri::AppHandle) -> Option<Vec<u8>> {
+    let icon = app.default_window_icon()?;
+    let rgba = icon.rgba();
+    let width = icon.width();
+    let height = icon.height();
+
+    let mut tinted = rgba.to_vec();
+    for px in tinted.chunks_exact_mut(4) {
+        if px[3] > 0 {
+            px[0] = (px[0] as u16 * 40 / 100 + 255 * 60 / 100) as u8;
+            px[1] = (px[1] as u16 * 40 / 100 + 170 * 60 / 100) as u8;
+            px[2] = (px[2] as u16 * 40 / 100 + 30 * 60 / 100) as u8;
+        }
+    }
+
+    let mut png = Vec::new();
+    {
+        use image::ImageEncoder;
+        let mut cursor = std::io::Cursor::new(&mut png);
+        image::codecs::png::PngEncoder::new(&mut cursor)
+            .write_image(&tinted, width, height, image::ExtendedColorType::Rgba8)
+            .ok()?;
+    }
+    Some(png)
+}
+
 fn extract_icon_to_png(exe_path: &Path) -> Option<Vec<u8>> {
     unsafe {
         let path_hstring = HSTRING::from(exe_path.to_str()?);

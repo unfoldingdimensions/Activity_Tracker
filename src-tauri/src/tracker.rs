@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use chrono::{Datelike, TimeZone};
 use tauri::Emitter;
+use tauri::Manager;
 use tauri_plugin_notification::NotificationExt;
 
 /// Compact duration like "2h 5m" / "45m" for limit notifications
@@ -118,6 +119,14 @@ fn check_app_limits(
                     "usage_seconds": seconds,
                 }),
             );
+            // Amber tray state: swap the tray icon to the amber variant
+            if let Some(tray) = app.tray_by_id("main") {
+                if let Some(png) = crate::icons::amber_tray_icon_png(app) {
+                    if let Ok(image) = tauri::image::Image::from_bytes(png) {
+                        let _ = tray.set_icon(Some(image));
+                    }
+                }
+            }
             log::info!("Distraction guard: {} exceeded its daily limit", app_name);
         }
     }
@@ -333,6 +342,8 @@ impl Tracker {
 
             // Distraction guard: check daily app limits once per minute
             let mut last_limit_check = std::time::Instant::now();
+            // Day the tray icon was last reset (amber limit state is per-day)
+            let mut tray_reset_day = String::new();
 
             // Cleanup scheduling - run in separate thread to avoid blocking
             let last_cleanup = Arc::new(Mutex::new(std::time::Instant::now()));
@@ -645,6 +656,15 @@ impl Tracker {
                             check_app_limits(&guard_conn, &today, &settings, &app, &limit_notified);
                         }
                         last_limit_check = std::time::Instant::now();
+                    }
+
+                    // Reset the tray icon to the default at the start of each day
+                    // (the amber limit state applies per-day)
+                    if tray_reset_day != today {
+                        tray_reset_day = today.clone();
+                        if let Some(tray) = app.tray_by_id("main") {
+                            let _ = tray.set_icon(app.default_window_icon().cloned());
+                        }
                     }
 
                 // Sleep for 1 second
