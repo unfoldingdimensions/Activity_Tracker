@@ -1,6 +1,5 @@
 import type { DailyDigest, FocusSession } from './focusSessions';
 import type { AppUsageEntry } from '../api/tauri';
-import type { AppClassification } from '../context/SettingsContext';
 import { formatDuration } from './formatters';
 
 /**
@@ -38,41 +37,8 @@ export function longestSession(sessions: FocusSession[]): FocusSession | null {
     return sessions.reduce((a, b) => (b.durationSeconds > a.durationSeconds ? b : a));
 }
 
-/**
- * The top focus-classified app and its share of TOTAL active time (all
- * apps), for "X led at Y% of active time" insights. Returns null when
- * there is no focus usage at all.
- */
-export function focusLeader(
-    appUsage: AppUsageEntry[],
-    classify: (name: string) => AppClassification
-): { name: string; seconds: number; sharePct: number } | null {
-    let totalSeconds = 0;
-    let focusSeconds = 0;
-    let topName: string | null = null;
-    let topSeconds = -1;
-
-    appUsage.forEach((app) => {
-        const cls = classify(app.name);
-        // 'ignore' removes the app from the focus equation entirely
-        // (same rule as the dashboard's reconciled focus score).
-        if (cls === 'ignore') return;
-        totalSeconds += app.seconds;
-        if (cls !== 'focus') return;
-        focusSeconds += app.seconds;
-        if (app.seconds > topSeconds) {
-            topSeconds = app.seconds;
-            topName = app.name;
-        }
-    });
-
-    if (!topName || focusSeconds <= 0) return null;
-    return { name: topName, seconds: topSeconds, sharePct: pct(topSeconds, totalSeconds) };
-}
-
 // ---------------------------------------------------------------------------
-// Builders — one per surface. Implemented task-by-task; each returns [] until
-// its inputs are present, and [] again when the data is empty or too thin.
+// Builders — one per surface. Empty data yields [] — the lede covers it.
 // ---------------------------------------------------------------------------
 
 export function buildDashboardInsights(
@@ -154,7 +120,6 @@ export function buildActivityInsights(
 }
 
 export function buildPowerInsights(
-    avgPower: number,
     topConsumers: { app: string; power: number }[],
     totalCpu: number,
     processCount: number
@@ -181,16 +146,12 @@ export function buildPowerInsights(
         });
     }
 
-    void avgPower;
     return insights.slice(0, 3);
 }
 
 export function buildTimelineInsights(
-    rangeLabel: string,
     hourlyGroups: { time: string; items: unknown[] }[],
-    events: unknown[],
-    sessions: FocusSession[],
-    selectedApp: string | null
+    sessions: FocusSession[]
 ): EditorialInsight[] {
     const insights: EditorialInsight[] = [];
 
@@ -221,7 +182,6 @@ export function buildTimelineInsights(
         });
     }
 
-    void rangeLabel; void events; void selectedApp;
     return insights.slice(0, 3);
 }
 
@@ -232,7 +192,6 @@ export function buildToolsInsights(
     wellbeing: {
         needsBreak: boolean;
         sedentaryMinutes: number;
-        timeSinceLastBreak: number;
     }
 ): EditorialInsight[] {
     const insights: EditorialInsight[] = [];
@@ -248,7 +207,7 @@ export function buildToolsInsights(
             const gap = goalCount - goalsMet;
             insights.push({
                 label: 'TARGETS',
-                text: `${goalsMet} of ${goalCount} ${pluralize(goalCount, 'target', 'targets')} met — ${gap} ${pluralize(gap, 'still to reach', 'still to reach')}.`,
+                text: `${goalsMet} of ${goalCount} ${pluralize(goalCount, 'target', 'targets')} met — ${gap} still to reach.`,
             });
         }
     }
@@ -269,9 +228,5 @@ export function buildToolsInsights(
         });
     }
 
-    void wellbeing.timeSinceLastBreak;
     return insights.slice(0, 3);
 }
-
-// Re-exported so builders and callers share one duration formatter.
-export { formatDuration };

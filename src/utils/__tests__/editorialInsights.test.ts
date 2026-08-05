@@ -8,17 +8,9 @@ import {
     pct,
     pluralize,
     longestSession,
-    focusLeader,
 } from '../editorialInsights';
 import type { DailyDigest, FocusSession } from '../focusSessions';
 import type { AppUsageEntry } from '../../api/tauri';
-import type { AppClassification } from '../../context/SettingsContext';
-
-const classify = (name: string): AppClassification => {
-    if (name.includes('Code')) return 'focus';
-    if (name.includes('Chrome')) return 'distraction';
-    return 'ignore';
-};
 
 const digest = (overrides: Partial<DailyDigest> = {}): DailyDigest => ({
     focusSeconds: 3600,
@@ -60,20 +52,6 @@ describe('shared helpers', () => {
         expect(longestSession([short, long])).toBe(long);
     });
 
-    it('focusLeader finds the top focus app and its share of active time', () => {
-        const leader = focusLeader(
-            [usage('Code.exe', 1800), usage('Chrome.exe', 600), usage('Terminal.exe', 200)],
-            classify
-        );
-        // Share is vs non-ignore active seconds (the dashboard's focus
-        // equation removes ignore apps entirely): 1800 / 2400 = 75%.
-        expect(leader).toEqual({ name: 'Code.exe', seconds: 1800, sharePct: 75 });
-    });
-
-    it('focusLeader returns null with no focus-classified apps', () => {
-        expect(focusLeader([usage('Chrome.exe', 600)], classify)).toBeNull();
-        expect(focusLeader([], classify)).toBeNull();
-    });
 });
 
 describe('buildDashboardInsights', () => {
@@ -202,7 +180,7 @@ describe('buildActivityInsights', () => {
 
 describe('buildPowerInsights', () => {
     it('reports the top consumer and its share of the draw', () => {
-        const insights = buildPowerInsights(12, [
+        const insights = buildPowerInsights([
             { app: 'Chrome.exe', power: 18 },
             { app: 'Code.exe', power: 9 },
         ], 23, 12);
@@ -213,7 +191,7 @@ describe('buildPowerInsights', () => {
     });
 
     it('reports CPU and process count', () => {
-        const insights = buildPowerInsights(12, [{ app: 'Chrome.exe', power: 18 }], 23, 12);
+        const insights = buildPowerInsights([{ app: 'Chrome.exe', power: 18 }], 23, 12);
         expect(insights).toContainEqual({
             label: 'LOAD',
             text: '12 processes sampled at 23% CPU.',
@@ -221,7 +199,7 @@ describe('buildPowerInsights', () => {
     });
 
     it('returns [] when nothing is sampled', () => {
-        expect(buildPowerInsights(0, [], 0, 0)).toEqual([]);
+        expect(buildPowerInsights([], 0, 0)).toEqual([]);
     });
 });
 
@@ -231,10 +209,9 @@ describe('buildTimelineInsights', () => {
         { time: '08/06/2026 15:00', items: Array.from({ length: 14 }, () => ({ id: 'x' })) },
         { time: '08/06/2026 09:00', items: Array.from({ length: 6 }, () => ({ id: 'y' })) },
     ];
-    const events = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
 
     it('reports the busiest hour group', () => {
-        const insights = buildTimelineInsights('Today', groups, events, [], null);
+        const insights = buildTimelineInsights(groups, []);
         expect(insights[0]).toEqual({
             label: 'BUSIEST HOUR',
             text: '3 PM was the busiest hour — 14 window events.',
@@ -243,11 +220,8 @@ describe('buildTimelineInsights', () => {
 
     it('reports the longest session in the range', () => {
         const insights = buildTimelineInsights(
-            'Today',
             groups,
-            events,
-            [session({ durationSeconds: 4500, appName: 'Code.exe', interruptions: 1 })],
-            null
+            [session({ durationSeconds: 4500, appName: 'Code.exe', interruptions: 1 })]
         );
         expect(insights).toContainEqual({
             label: 'LONGEST RUN',
@@ -256,12 +230,12 @@ describe('buildTimelineInsights', () => {
     });
 
     it('returns [] when the range is empty', () => {
-        expect(buildTimelineInsights('Today', [], [], [], null)).toEqual([]);
+        expect(buildTimelineInsights([], [])).toEqual([]);
     });
 });
 
 describe('buildToolsInsights', () => {
-    const wellbeing = { needsBreak: false, sedentaryMinutes: 30, timeSinceLastBreak: 30 };
+    const wellbeing = { needsBreak: false, sedentaryMinutes: 30 };
 
     it('reports goals met and the gap to an unmet goal', () => {
         const insights = buildToolsInsights(3, 2, 3, wellbeing);
@@ -283,7 +257,7 @@ describe('buildToolsInsights', () => {
         const ok = buildToolsInsights(3, 2, 3, wellbeing);
         expect(ok.find((i) => i.label === 'BREAK')).toBeUndefined();
 
-        const due = buildToolsInsights(3, 2, 3, { needsBreak: true, sedentaryMinutes: 160, timeSinceLastBreak: 160 });
+        const due = buildToolsInsights(3, 2, 3, { needsBreak: true, sedentaryMinutes: 160 });
         expect(due).toContainEqual({
             label: 'BREAK',
             text: 'You have been seated 2h 40m — time for a walk.',

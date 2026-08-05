@@ -160,8 +160,8 @@ export function Timeline() {
     }, [displayEvents]);
 
     const insights = useMemo(
-        () => buildTimelineInsights(rangeLabel, groupedEvents, events ?? [], sessions, selectedApp),
-        [rangeLabel, groupedEvents, events, sessions, selectedApp]
+        () => buildTimelineInsights(groupedEvents, sessions),
+        [groupedEvents, sessions]
     );
 
 
@@ -437,6 +437,12 @@ export function Timeline() {
                 }
                 actions={headerActions}
                 leftAction={backAction}
+            />
+
+            <EditorialIntro
+                sentence={`${rangeLabel} ran in ${groupedEvents.length} hourly ${groupedEvents.length === 1 ? 'block' : 'blocks'} of activity, ${(events ?? []).length} ${(events ?? []).length === 1 ? 'window event' : 'window events'} in all.`}
+                note={`${selectedApp ? selectedApp.replace('.exe', '') : 'all apps'} · ${rangeLabel.toUpperCase()}`}
+                insights={insights}
             />
 
             <div className="p-8 pt-6 space-y-6 flex-1">

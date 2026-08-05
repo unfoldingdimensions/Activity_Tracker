@@ -161,7 +161,6 @@ export function Tools() {
         () => buildToolsInsights(timer.workSessions, goalsMet, goals.length, {
             needsBreak,
             sedentaryMinutes,
-            timeSinceLastBreak: 0,
         }),
         [timer.workSessions, goalsMet, goals.length, needsBreak, sedentaryMinutes]
     );
@@ -212,7 +211,7 @@ export function Tools() {
             <PageHeader title="Tools" meta={statusLine} />
             <EditorialIntro
                 sentence={`You closed ${timer.workSessions} ${timer.workSessions === 1 ? 'pomodoro' : 'pomodoros'} and ${breathingSessions} ${breathingSessions === 1 ? 'breathing session' : 'breathing sessions'} today — the timer is the only thing here that isn't a record.`}
-                note={`${goalsMet} OF ${goals.length} TARGETS MET · BREAK DUE IN ${breakDue}`}
+                note={breakDue === 'NOW' ? undefined : `BREAK DUE IN ${breakDue}`}
                 insights={insights}
             />
             <BreathingWidget isOpen={showBreathing} onClose={closeBreathing} />

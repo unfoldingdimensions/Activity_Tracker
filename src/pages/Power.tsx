@@ -105,8 +105,8 @@ export function Power() {
     const topConsumer = topConsumers[0];
 
     const insights = useMemo(
-        () => buildPowerInsights(avgPower, topConsumers, totalCpu, memUsed),
-        [avgPower, topConsumers, totalCpu, memUsed]
+        () => buildPowerInsights(topConsumers, totalCpu, memUsed),
+        [topConsumers, totalCpu, memUsed]
     );
 
     return (
@@ -119,7 +119,7 @@ export function Power() {
 
             <EditorialIntro
                 sentence={`Across today's apps the estimated draw averages ${avgPower}W${topConsumer ? ` — ${topConsumer.app.replace(/\.exe$/i, '')} asks for the most` : ''}.`}
-                note={`ESTIMATES · ${topConsumer ? `${topConsumer.power}W TOP DRAW` : 'NO USAGE YET'}`}
+                note={topConsumer ? 'ESTIMATES' : 'NO USAGE YET'}
                 insights={insights}
             />
 
