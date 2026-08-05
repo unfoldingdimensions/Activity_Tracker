@@ -226,7 +226,11 @@ describe('buildPowerInsights', () => {
 });
 
 describe('buildTimelineInsights', () => {
-    const groups = [{ hour: '3 PM', count: 14 }, { hour: '9 AM', count: 6 }];
+    // Real shape from Timeline.tsx: { time: "08/06/2026 15:00", items: WindowEvent[] }
+    const groups = [
+        { time: '08/06/2026 15:00', items: Array.from({ length: 14 }, () => ({ id: 'x' })) },
+        { time: '08/06/2026 09:00', items: Array.from({ length: 6 }, () => ({ id: 'y' })) },
+    ];
     const events = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
 
     it('reports the busiest hour group', () => {

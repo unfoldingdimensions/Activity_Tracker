@@ -187,13 +187,42 @@ export function buildPowerInsights(
 
 export function buildTimelineInsights(
     rangeLabel: string,
-    hourlyGroups: unknown[],
+    hourlyGroups: { time: string; items: unknown[] }[],
     events: unknown[],
     sessions: FocusSession[],
     selectedApp: string | null
 ): EditorialInsight[] {
-    void rangeLabel; void hourlyGroups; void events; void sessions; void selectedApp;
-    return [];
+    const insights: EditorialInsight[] = [];
+
+    // 1. Busiest hour group — most window events in a single hour block.
+    if (hourlyGroups.length > 0) {
+        const busiest = hourlyGroups.reduce((a, b) => (b.items.length > a.items.length ? b : a));
+        if (busiest.items.length > 0) {
+            const hourNum = Number(busiest.time.split(' ')[1]?.split(':')[0]);
+            const hourLabel = !Number.isNaN(hourNum)
+                ? new Date(2000, 0, 1, hourNum).toLocaleTimeString([], { hour: 'numeric' })
+                : busiest.time;
+            insights.push({
+                label: 'BUSIEST HOUR',
+                text: `${hourLabel} was the busiest hour — ${busiest.items.length} ${pluralize(busiest.items.length, 'window event', 'window events')}.`,
+            });
+        }
+    }
+
+    // 2. Longest uninterrupted run inside the range.
+    const longest = longestSession(sessions);
+    if (longest && longest.durationSeconds >= 25 * 60) {
+        const inter = longest.interruptions > 0
+            ? ` — ${longest.interruptions} ${pluralize(longest.interruptions, 'interruption', 'interruptions')}`
+            : '';
+        insights.push({
+            label: 'LONGEST RUN',
+            text: `${formatDuration(longest.durationSeconds)} uninterrupted in ${longest.appName}${inter}.`,
+        });
+    }
+
+    void rangeLabel; void events; void selectedApp;
+    return insights.slice(0, 3);
 }
 
 export function buildToolsInsights(

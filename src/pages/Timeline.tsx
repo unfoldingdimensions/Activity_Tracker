@@ -32,6 +32,7 @@ import { computeFocusSessions } from '../utils/focusSessions';
 import { DeepWorkSessions } from '../components/dashboard/DeepWorkSessions';
 import { FocusCalendar } from '../components/insights/FocusCalendar';
 import { EditorialIntro } from '../components/shared/EditorialIntro';
+import { buildTimelineInsights } from '../utils/editorialInsights';
 
 type TimeRange = 'today' | 'yesterday' | 'week' | 'prev_week' | 'month';
 type ViewMode = 'all' | 'apps' | 'sessions';
@@ -157,6 +158,11 @@ export function Timeline() {
             .map(([time, items]) => ({ time, items }))
             .sort((a, b) => b.time.localeCompare(a.time));
     }, [displayEvents]);
+
+    const insights = useMemo(
+        () => buildTimelineInsights(rangeLabel, groupedEvents, events ?? [], sessions, selectedApp),
+        [rangeLabel, groupedEvents, events, sessions, selectedApp]
+    );
 
 
     const isLoading = selectedApp
@@ -310,6 +316,7 @@ export function Timeline() {
                 <EditorialIntro
                     sentence={`${rangeLabel} ran in ${groupedEvents.length} hourly ${groupedEvents.length === 1 ? 'block' : 'blocks'} of activity, ${(events ?? []).length} ${(events ?? []).length === 1 ? 'window event' : 'window events'} in all.`}
                     note={`${selectedApp ? selectedApp.replace('.exe', '') : 'all apps'} · ${rangeLabel.toUpperCase()}`}
+                    insights={insights}
                 />
 
                 <div className="w-full px-8 pt-2 pb-10 space-y-4">
