@@ -1,21 +1,190 @@
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
-import { Settings as SettingsIcon, Moon, Sun, Eye, EyeOff, Trash2, Play, Pause, LayoutGrid, Clock, Rocket, Minimize2, Gauge, ShieldBan, Lock, CalendarClock, ListFilter, ShieldAlert, Download } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { Settings as SettingsIcon, Moon, Sun, Play, Pause, Download } from 'lucide-react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useTheme } from '../context/useTheme';
 import { useSettings } from '../hooks/useSettings';
+import { useVisualTheme } from '../hooks/useVisualTheme';
 import { isTauri } from '../utils/isTauri';
 import { startTracking, stopTracking, clearData, isTracking as fetchTrackingState, exportData } from '../api/tauri';
 import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useToast } from '../components/ui/Toast';
 import { APP_VERSION } from '../constants/config';
+import { SegTabs } from '../components/ui/SegTabs';
+import { Toggle } from '../components/ui/Toggle';
+import { Chip } from '../components/ui/Chip';
+import { Bar } from '../components/ui/Bar';
+import { cn } from '../utils/cn';
 import type { TimeRange } from '../components/dashboard/TimeRangeFilter';
+import { useAppUsage } from '../hooks/useTrackerData';
 import { enable as enableAutostart, disable as disableAutostart, isEnabled as isAutostartEnabled } from '@tauri-apps/plugin-autostart';
+
+/* ------------------------------------------------------------------ */
+/* Section shell: flat = ruled two-column band, glass = GlassCard      */
+/* ------------------------------------------------------------------ */
+
+function Section({ title, desc, icon, children }: { title: string; desc: string; icon?: ReactNode; children: ReactNode }) {
+    const theme = useVisualTheme();
+
+    if (theme === 'flat') {
+        return (
+            <div className="grid grid-cols-[232px_1fr]">
+                <div className="py-4 pr-6 border-r border-[var(--border)]">
+                    <h3 className="section-title text-[var(--foreground)]">{title}</h3>
+                    <p className="text-[11.5px] leading-relaxed text-[var(--muted-foreground)] mt-1.5">{desc}</p>
+                </div>
+                <div className="py-1 pl-6">{children}</div>
+            </div>
+        );
+    }
+
+    return (
+        <GlassCard className="p-6" hover={false} spotlight>
+            <div className="flex items-center gap-3 mb-6">
+                {icon && <div className="p-2 rounded-lg bg-[var(--secondary)]">{icon}</div>}
+                <div>
+                    <h3 className="text-lg font-semibold text-[var(--foreground)]">{title}</h3>
+                    <p className="text-sm text-[var(--muted-foreground)]">{desc}</p>
+                </div>
+            </div>
+            {children}
+        </GlassCard>
+    );
+}
+
+/* Control row: flat = label + control on a hairline rule, glass = card row */
+function Row({
+    label,
+    caption,
+    control,
+    destructive,
+}: {
+    label: ReactNode;
+    caption?: string;
+    control: ReactNode;
+    destructive?: boolean;
+}) {
+    const theme = useVisualTheme();
+
+    if (theme === 'flat') {
+        return (
+            <div className="flex items-center justify-between gap-6 py-3 border-b border-[var(--border)] last:border-b-0">
+                <div>
+                    <div className="text-[12.5px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{label}</div>
+                    {caption && <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5">{caption}</div>}
+                </div>
+                <div className="flex-shrink-0">{control}</div>
+            </div>
+        );
+    }
+
+    return (
+        <div
+            className={cn(
+                'flex items-center justify-between p-4 rounded-xl border transition-colors',
+                destructive
+                    ? 'bg-[var(--secondary)]/50 border-[var(--destructive)]/20 hover:border-[var(--destructive)]/50'
+                    : 'bg-[var(--secondary)]/50 border-[var(--border)] group hover:border-[var(--primary)]/30'
+            )}
+        >
+            <div>
+                <p className="font-medium text-[var(--foreground)]">{label}</p>
+                {caption && <p className="text-sm text-[var(--muted-foreground)]">{caption}</p>}
+            </div>
+            {control}
+        </div>
+    );
+}
+
+/** Flat-style text input (dashed underline in flat, rounded in glass) */
+function TextField({
+    value,
+    onChange,
+    onEnter,
+    placeholder,
+    ariaLabel,
+    mono = false,
+}: {
+    value: string;
+    onChange: (v: string) => void;
+    onEnter?: () => void;
+    placeholder?: string;
+    ariaLabel?: string;
+    mono?: boolean;
+}) {
+    const theme = useVisualTheme();
+    if (theme === 'flat') {
+        return (
+            <input
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') onEnter?.();
+                }}
+                placeholder={placeholder}
+                aria-label={ariaLabel}
+                className={cn(
+                    'flex-1 bg-transparent border-b border-dashed border-[var(--border)] focus:border-[var(--foreground)] outline-none text-[var(--foreground)] py-1.5 transition-colors placeholder:text-[var(--muted-foreground)]/60',
+                    mono ? 'font-mono text-[11px]' : 'text-[12.5px]'
+                )}
+            />
+        );
+    }
+    return (
+        <input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter') onEnter?.();
+            }}
+            placeholder={placeholder}
+            aria-label={ariaLabel}
+            className="flex-1 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg focus:ring-[var(--primary)] focus:border-[var(--primary)] px-3 py-2 outline-none placeholder:text-[var(--muted-foreground)]/50"
+        />
+    );
+}
+
+/** Flat: dashed "ADD" button; glass: secondary Button */
+function AddButton({ onClick, children = 'Add' }: { onClick: () => void; children?: ReactNode }) {
+    const theme = useVisualTheme();
+    if (theme === 'flat') {
+        return (
+            <button
+                onClick={onClick}
+                className="px-3 py-1.5 border border-dashed border-[var(--border)] hover:border-[var(--foreground)] font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+            >
+                {children}
+            </button>
+        );
+    }
+    return (
+        <Button variant="secondary" size="sm" onClick={onClick}>
+            {children}
+        </Button>
+    );
+}
+
+const RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
+    { value: 'past_hour', label: 'Hour' },
+    { value: 'past_6h', label: '6h' },
+    { value: 'past_12h', label: '12h' },
+    { value: 'today', label: 'Today' },
+    { value: 'this_week', label: 'Week' },
+    { value: 'this_month', label: 'Month' },
+];
+
+const CLASS_COLUMNS: { key: 'focus' | 'distraction' | 'ignore'; label: string; color: string }[] = [
+    { key: 'focus', label: 'Focus', color: 'var(--accent-focus)' },
+    { key: 'distraction', label: 'Distraction', color: 'var(--accent-warning)' },
+    { key: 'ignore', label: 'Ignore', color: 'var(--foreground)' },
+];
 
 export function Settings() {
     const { theme, toggleTheme } = useTheme();
     const { settings, updateSettings } = useSettings();
+    const visualTheme = useVisualTheme();
+    const isFlat = visualTheme === 'flat';
     const { showToast } = useToast();
     const [isTracking, setIsTracking] = useState(true);
     const [isToggling, setIsToggling] = useState(false);
@@ -27,6 +196,7 @@ export function Settings() {
     const [limitMinutes, setLimitMinutes] = useState(120);
 
     const queryClient = useQueryClient();
+    const { data: appUsage } = useAppUsage();
 
     // Latest-ref for updateSettings so effects can call it without
     // re-running on every settings change (which would loop)
@@ -219,179 +389,81 @@ export function Settings() {
         }
     };
 
+    // Live usage for the distraction-guard bars (minutes used today per limited app)
+    const usageFor = (name: string): number => {
+        const entry = (appUsage ?? []).find((a) => a.name.toLowerCase().includes(name.toLowerCase()));
+        return entry ? Math.round(entry.seconds / 60) : 0;
+    };
+
+    const classificationEntries = Object.entries(settings.appClassification);
+    const limitEntries = Object.entries(settings.appLimits);
+
     return (
-        <div className="flex flex-col min-h-full font-sans">
-            <PageHeader
-                title="Settings"
-                subtitle="Configure your tracking preferences and application settings"
-            />
+        <div className="flex flex-col min-h-full">
+            <PageHeader title="Settings" meta="TRACKING · APPEARANCE · PRIVACY" />
 
-
-
-            <div className="p-8 pt-6 space-y-6 flex-1 max-w-4xl mx-auto w-full">
-                {/* Tracking Control */}
-                <GlassCard className="p-6" hover={false} spotlight>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className={`p-2 rounded-lg ${isTracking ? 'bg-emerald-500/10' : 'bg-gray-500/10'}`}>
-                            {isTracking ? (
-                                <Play size={20} className="text-emerald-500" />
+            <div
+                className={cn(
+                    isFlat
+                        ? 'max-w-[760px] mx-auto w-full px-8 pt-2 pb-10 divide-y divide-[var(--border)]'
+                        : 'p-8 pt-6 space-y-6 flex-1 max-w-4xl mx-auto w-full'
+                )}
+            >
+                {/* ============ Tracking status ============ */}
+                <Section
+                    title="Tracking status"
+                    desc="Whether the app is collecting activity right now."
+                    icon={isTracking ? <Play size={20} className="text-emerald-500" /> : <Pause size={20} className="text-[var(--muted-foreground)]" />}
+                >
+                    <Row
+                        label="Capturing window, keystroke count and clicks"
+                        caption={isFlat ? undefined : isTracking ? 'Recording your activity in the background' : 'Activity tracking is currently paused'}
+                        control={
+                            isFlat ? (
+                                <Toggle checked={isTracking} onChange={handleTrackingToggle} label="Tracking status" />
                             ) : (
-                                <Pause size={20} className="text-[var(--muted-foreground)]" />
-                            )}
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
-                                Tracking Status
-                            </h3>
-                            <p className="text-sm text-[var(--muted-foreground)]">
-                                Control data collection
-                            </p>
-                        </div>
-                    </div>
+                                <Button
+                                    variant={isTracking ? 'secondary' : 'primary'}
+                                    size="sm"
+                                    onClick={handleTrackingToggle}
+                                    loading={isToggling}
+                                    className="min-w-[100px]"
+                                >
+                                    {isTracking ? 'Pause' : 'Resume'}
+                                </Button>
+                            )
+                        }
+                    />
+                    {isFlat && <div className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] pt-1.5">5S CADENCE</div>}
+                </Section>
 
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg transition-transform duration-200 group-hover:scale-110 ${isTracking ? 'bg-emerald-500/10' : 'bg-[var(--muted)]'}`}>
-                                {isTracking ? (
-                                    <Play size={18} className="text-emerald-500" />
-                                ) : (
-                                    <Pause size={18} className="text-[var(--muted-foreground)]" />
-                                )}
-                            </div>
-                            <div>
-                                <p className="font-medium text-[var(--foreground)]">
-                                    {isTracking ? 'Tracking Active' : 'Tracking Paused'}
-                                </p>
-                                <p className="text-sm text-[var(--muted-foreground)]">
-                                    {isTracking
-                                        ? 'Recording your activity in the background'
-                                        : 'Activity tracking is currently paused'
-                                    }
-                                </p>
-                            </div>
-                        </div>
-                        <Button
-                            variant={isTracking ? 'secondary' : 'primary'}
-                            size="sm"
-                            onClick={handleTrackingToggle}
-                            loading={isToggling}
-                            className="min-w-[100px]"
-                        >
-                            {isTracking ? 'Pause' : 'Resume'}
-                        </Button>
-                    </div>
-                </GlassCard>
+                {/* ============ General ============ */}
+                <Section title="General" desc="How the app launches and behaves." icon={<SettingsIcon size={20} className="text-blue-500" />}>
+                    <Row
+                        label="Launch on startup"
+                        caption="Start tracking automatically when you sign in"
+                        control={<Toggle checked={settings.launchOnStartup} onChange={handleLaunchOnStartupToggle} label="Launch on startup" />}
+                    />
+                    <Row
+                        label="Start minimised to tray"
+                        caption="Hide the window on launch; keep running in the tray"
+                        control={
+                            <Toggle
+                                checked={settings.startMinimized}
+                                onChange={(v) => updateSettings({ startMinimized: v })}
+                                label="Start minimised to tray"
+                            />
+                        }
+                    />
+                </Section>
 
-                {/* General */}
-                <GlassCard className="p-6" hover={false} spotlight>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 rounded-lg bg-violet-500/10">
-                            <Rocket size={20} className="text-violet-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
-                                General
-                            </h3>
-                            <p className="text-sm text-[var(--muted-foreground)]">
-                                How the app launches and behaves
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {/* Launch on Startup */}
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
-                                    <Rocket size={18} className="text-[var(--foreground)]" />
-                                </div>
-                                <div>
-                                    <p className="font-medium text-[var(--foreground)]">Launch on Startup</p>
-                                    <p className="text-sm text-[var(--muted-foreground)]">
-                                        Start tracking automatically when you sign in
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={handleLaunchOnStartupToggle}
-                                className={`
-                  relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary)]
-                  ${settings.launchOnStartup ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}
-                `}
-                            >
-                                <div
-                                    className={`
-                    absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm
-                    transition-transform duration-200
-                    ${settings.launchOnStartup ? 'translate-x-7' : 'translate-x-1'}
-                  `}
-                                />
-                            </button>
-                        </div>
-
-                        {/* Start Minimized to Tray */}
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
-                                    <Minimize2 size={18} className="text-[var(--foreground)]" />
-                                </div>
-                                <div>
-                                    <p className="font-medium text-[var(--foreground)]">Start Minimized to Tray</p>
-                                    <p className="text-sm text-[var(--muted-foreground)]">
-                                        Hide the window on launch; keep running in the tray
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => updateSettings({ startMinimized: !settings.startMinimized })}
-                                className={`
-                  relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary)]
-                  ${settings.startMinimized ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}
-                `}
-                            >
-                                <div
-                                    className={`
-                    absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm
-                    transition-transform duration-200
-                    ${settings.startMinimized ? 'translate-x-7' : 'translate-x-1'}
-                  `}
-                                />
-                            </button>
-                        </div>
-                    </div>
-                </GlassCard>
-
-                {/* Tracking Behavior */}
-                <GlassCard className="p-6" hover={false} spotlight>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 rounded-lg bg-cyan-500/10">
-                            <Gauge size={20} className="text-cyan-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
-                                Tracking Behavior
-                            </h3>
-                            <p className="text-sm text-[var(--muted-foreground)]">
-                                Idle detection and app exclusions
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {/* Idle Threshold */}
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
-                                    <Gauge size={18} className="text-[var(--foreground)]" />
-                                </div>
-                                <div>
-                                    <p className="font-medium text-[var(--foreground)]">Idle Threshold</p>
-                                    <p className="text-sm text-[var(--muted-foreground)]">
-                                        Seconds without input before you count as idle
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3 min-w-[180px]">
+                {/* ============ Tracking behaviour ============ */}
+                <Section title="Tracking behaviour" desc="Idle detection, exclusions and title capture." icon={<SettingsIcon size={20} className="text-cyan-500" />}>
+                    <Row
+                        label="Idle threshold"
+                        caption="Seconds without input before you count as idle"
+                        control={
+                            <div className="flex items-center gap-3 min-w-[200px]">
                                 <input
                                     type="range"
                                     min={30}
@@ -399,396 +471,60 @@ export function Settings() {
                                     step={15}
                                     value={settings.idleThreshold}
                                     onChange={(e) => updateSettings({ idleThreshold: Number(e.target.value) })}
-                                    className="flex-1 accent-[var(--primary)] cursor-pointer"
+                                    className={cn('cursor-pointer', isFlat ? 'slider-flat flex-1' : 'flex-1 accent-[var(--primary)]')}
                                     aria-label="Idle threshold in seconds"
                                 />
-                                <span className="font-mono text-sm text-[var(--foreground)] w-12 text-right">
+                                <span className="font-mono text-[11px] text-[var(--foreground)] w-10 text-right">
                                     {settings.idleThreshold}s
                                 </span>
                             </div>
-                        </div>
-
-                        {/* Blacklisted Apps */}
-                        <div className="p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
-                                    <ShieldBan size={18} className="text-[var(--foreground)]" />
+                        }
+                    />
+                    <Row
+                        label="Blacklisted apps"
+                        caption="Excluded from tracking entirely"
+                        control={
+                            <div className={cn('flex gap-2', isFlat ? 'flex-col items-stretch w-full gap-2' : 'w-full')}>
+                                <div className="flex gap-2">
+                                    <TextField
+                                        value={blacklistInput}
+                                        onChange={setBlacklistInput}
+                                        onEnter={addToBlacklist}
+                                        placeholder="e.g. chrome.exe or Chrome"
+                                        ariaLabel="Blacklist app name"
+                                        mono
+                                    />
+                                    <AddButton onClick={addToBlacklist}>Add</AddButton>
                                 </div>
-                                <div>
-                                    <p className="font-medium text-[var(--foreground)]">Blacklisted Apps</p>
-                                    <p className="text-sm text-[var(--muted-foreground)]">
-                                        These apps are excluded from tracking entirely
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2 mb-3">
-                                <input
-                                    value={blacklistInput}
-                                    onChange={(e) => setBlacklistInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') addToBlacklist();
-                                    }}
-                                    placeholder="e.g. chrome.exe or Chrome"
-                                    className="flex-1 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg focus:ring-[var(--primary)] focus:border-[var(--primary)] px-3 py-2 outline-none placeholder:text-[var(--muted-foreground)]/50"
-                                />
-                                <Button variant="secondary" size="sm" onClick={addToBlacklist}>
-                                    Add
-                                </Button>
-                            </div>
-
-                            {settings.blacklistedApps.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
-                                    {settings.blacklistedApps.map((name) => (
-                                        <span
-                                            key={name}
-                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--background)] border border-[var(--border)] text-xs text-[var(--foreground)]"
-                                        >
-                                            {name}
-                                            <button
-                                                onClick={() => removeFromBlacklist(name)}
-                                                className="text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors"
-                                                aria-label={`Remove ${name} from blacklist`}
-                                            >
-                                                ×
-                                            </button>
-                                        </span>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-xs text-[var(--muted-foreground)]/60">
-                                    No apps blacklisted. Add one to keep it out of your stats.
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                </GlassCard>
-
-                {/* App Classification */}
-                <GlassCard className="p-6" hover={false} spotlight>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 rounded-lg bg-rose-500/10">
-                            <ListFilter size={20} className="text-rose-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
-                                App Classification
-                            </h3>
-                            <p className="text-sm text-[var(--muted-foreground)]">
-                                Override how apps count toward your Focus Score
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {Object.keys(settings.appClassification).length > 0 && (
-                            <div className="space-y-2">
-                                {Object.entries(settings.appClassification).map(([name, cls]) => (
-                                    <div
-                                        key={name}
-                                        className="flex items-center justify-between p-3 rounded-xl bg-[var(--background)] border border-[var(--border)]"
-                                    >
-                                        <span className="text-sm font-medium text-[var(--foreground)] truncate mr-2">
-                                            {name}
-                                        </span>
-                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                            <select
-                                                value={cls}
-                                                onChange={(e) => setClassification(name, e.target.value as 'focus' | 'distraction' | 'ignore')}
-                                                className="bg-[var(--secondary)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg p-1.5 outline-none cursor-pointer"
-                                            >
-                                                <option value="focus">Focus</option>
-                                                <option value="distraction">Distraction</option>
-                                                <option value="ignore">Ignore</option>
-                                            </select>
-                                            <button
-                                                onClick={() => removeClassification(name)}
-                                                className="text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors text-lg leading-none"
-                                                aria-label={`Remove classification for ${name}`}
-                                            >
-                                                ×
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)]">
-                            <div className="flex gap-2">
-                                <input
-                                    value={classInput}
-                                    onChange={(e) => setClassInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') addClassification();
-                                    }}
-                                    placeholder="App name, e.g. figma or Figma.exe"
-                                    className="flex-1 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg focus:ring-[var(--primary)] focus:border-[var(--primary)] px-3 py-2 outline-none placeholder:text-[var(--muted-foreground)]/50"
-                                />
-                                <select
-                                    value={classSelect}
-                                    onChange={(e) => setClassSelect(e.target.value as 'focus' | 'distraction')}
-                                    className="bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-2 outline-none cursor-pointer"
-                                >
-                                    <option value="focus">Focus</option>
-                                    <option value="distraction">Distraction</option>
-                                </select>
-                                <Button variant="secondary" size="sm" onClick={addClassification}>
-                                    Add
-                                </Button>
-                            </div>
-                            <p className="text-[10px] text-[var(--muted-foreground)]/60 mt-2">
-                                Overrides the built-in defaults. Names match by fragment (chrome matches Chrome.exe).
-                                Ignore removes an app from Focus Score, Focus Flow and Timeline badges.
-                            </p>
-                        </div>
-                    </div>
-                </GlassCard>
-
-                {/* Distraction Guard */}
-                <GlassCard className="p-6" hover={false} spotlight>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 rounded-lg bg-red-500/10">
-                            <ShieldAlert size={20} className="text-red-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
-                                Distraction Guard
-                            </h3>
-                            <p className="text-sm text-[var(--muted-foreground)]">
-                                Daily time limits per app — notified once when crossed
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {Object.keys(settings.appLimits).length > 0 && (
-                            <div className="space-y-2">
-                                {Object.entries(settings.appLimits).map(([name, seconds]) => (
-                                    <div
-                                        key={name}
-                                        className="flex items-center justify-between p-3 rounded-xl bg-[var(--background)] border border-[var(--border)]"
-                                    >
-                                        <span className="text-sm font-medium text-[var(--foreground)] truncate mr-2">
-                                            {name}
-                                        </span>
-                                        <div className="flex items-center gap-2 flex-shrink-0">
-                                            <input
-                                                type="number"
-                                                min={5}
-                                                step={5}
-                                                value={Math.round(seconds / 60)}
-                                                onChange={(e) => setAppLimit(name, Number(e.target.value))}
-                                                className="w-20 bg-[var(--secondary)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-2 py-1.5 outline-none"
-                                                aria-label={`Daily limit for ${name} in minutes`}
-                                            />
-                                            <span className="text-xs text-[var(--muted-foreground)]">min</span>
-                                            <button
-                                                onClick={() => removeAppLimit(name)}
-                                                className="text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors text-lg leading-none"
-                                                aria-label={`Remove limit for ${name}`}
-                                            >
-                                                ×
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)]">
-                            <div className="flex gap-2">
-                                <input
-                                    value={limitInput}
-                                    onChange={(e) => setLimitInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') addAppLimit();
-                                    }}
-                                    placeholder="App name, e.g. chrome or YouTube"
-                                    className="flex-1 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg focus:ring-[var(--primary)] focus:border-[var(--primary)] px-3 py-2 outline-none placeholder:text-[var(--muted-foreground)]/50"
-                                />
-                                <input
-                                    type="number"
-                                    min={5}
-                                    step={5}
-                                    value={limitMinutes}
-                                    onChange={(e) => setLimitMinutes(Number(e.target.value))}
-                                    className="w-20 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-2 py-2 outline-none"
-                                    aria-label="Daily limit in minutes"
-                                />
-                                <span className="flex items-center text-xs text-[var(--muted-foreground)]">min</span>
-                                <Button variant="secondary" size="sm" onClick={addAppLimit}>
-                                    Add
-                                </Button>
-                            </div>
-                            <p className="text-[10px] text-[var(--muted-foreground)]/60 mt-2">
-                                When an app passes its limit you get one notification per day, plus an in-app alert.
-                            </p>
-                        </div>
-                    </div>
-                </GlassCard>
-
-                {/* Dashboard Settings */}
-                <GlassCard className="p-6" hover={false} spotlight>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 rounded-lg bg-indigo-500/10">
-                            <LayoutGrid size={20} className="text-indigo-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
-                                Dashboard Preferences
-                            </h3>
-                            <p className="text-sm text-[var(--muted-foreground)]">
-                                Customize your dashboard view
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
-                                <Clock size={18} className="text-[var(--foreground)]" />
-                            </div>
-                            <div>
-                                <p className="font-medium text-[var(--foreground)]">Default Date Range</p>
-                                <p className="text-sm text-[var(--muted-foreground)]">
-                                    Initial range shown on the dashboard
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <select
-                                value={settings.dashboardDefaultRange}
-                                onChange={(e) => updateSettings({ dashboardDefaultRange: e.target.value as TimeRange })}
-                                className="bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg focus:ring-[var(--primary)] focus:border-[var(--primary)] block w-full p-2.5 outline-none cursor-pointer hover:bg-[var(--secondary)] transition-colors min-w-[150px]"
-                            >
-                                <option value="past_hour">Past Hour</option>
-                                <option value="past_6h">Past 6 Hours</option>
-                                <option value="past_12h">Past 12 Hours</option>
-                                <option value="today">Today</option>
-                                <option value="yesterday">Yesterday</option>
-                                <option value="this_week">This Week</option>
-                                <option value="this_month">This Month</option>
-                            </select>
-                        </div>
-                    </div>
-                </GlassCard>
-
-                {/* Appearance */}
-                <GlassCard className="p-6" hover={false} spotlight>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 rounded-lg bg-blue-500/10">
-                            <SettingsIcon size={20} className="text-blue-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
-                                Appearance
-                            </h3>
-                            <p className="text-sm text-[var(--muted-foreground)]">
-                                Customize the interface
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
-                                {isDarkMode ? (
-                                    <Moon size={18} className="text-[var(--foreground)]" />
-                                ) : (
-                                    <Sun size={18} className="text-[var(--foreground)]" />
-                                )}
-                            </div>
-                            <div>
-                                <p className="font-medium text-[var(--foreground)]">Dark Mode</p>
-                                <p className="text-sm text-[var(--muted-foreground)]">
-                                    Switch between light and dark themes
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={toggleTheme}
-                            className={`
-                relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary)]
-                ${isDarkMode ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}
-              `}
-                        >
-                            <div
-                                className={`
-                  absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm
-                  transition-transform duration-200
-                  ${isDarkMode ? 'translate-x-7' : 'translate-x-1'}
-                `}
-                            />
-                        </button>
-                    </div>
-                </GlassCard>
-
-                {/* Privacy & Data */}
-                <GlassCard className="p-6" hover={false} spotlight>
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 rounded-lg bg-amber-500/10">
-                            <Eye size={20} className="text-amber-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-[var(--foreground)]">
-                                Privacy & Data
-                            </h3>
-                            <p className="text-sm text-[var(--muted-foreground)]">
-                                Manage your data and privacy settings
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {/* Track Window Titles */}
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
-                                    {settings.trackWindowTitles ? (
-                                        <Eye size={18} className="text-[var(--foreground)]" />
+                                    {settings.blacklistedApps.length === 0 ? (
+                                        <span className="text-[11px] text-[var(--muted-foreground)]/60">No apps blacklisted.</span>
                                     ) : (
-                                        <EyeOff size={18} className="text-[var(--muted-foreground)]" />
+                                        settings.blacklistedApps.map((name) => (
+                                            <Chip key={name} onRemove={() => removeFromBlacklist(name)}>
+                                                {name}
+                                            </Chip>
+                                        ))
                                     )}
                                 </div>
-                                <div>
-                                    <p className="font-medium text-[var(--foreground)]">Track Window Titles</p>
-                                    <p className="text-sm text-[var(--muted-foreground)]">
-                                        Record detailed window titles for better insights
-                                    </p>
-                                </div>
                             </div>
-                            <button
-                                onClick={() => updateSettings({ trackWindowTitles: !settings.trackWindowTitles })}
-                                className={`
-                  relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary)]
-                  ${settings.trackWindowTitles ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}
-                `}
-                            >
-                                <div
-                                    className={`
-                    absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm
-                    transition-transform duration-200
-                    ${settings.trackWindowTitles ? 'translate-x-7' : 'translate-x-1'}
-                  `}
-                                />
-                            </button>
-                        </div>
-
-                        {/* Sensitive Title Redaction */}
-                        <div className="p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
-                                    <Lock size={18} className="text-[var(--foreground)]" />
-                                </div>
-                                <div>
-                                    <p className="font-medium text-[var(--foreground)]">Redact Sensitive Titles</p>
-                                    <p className="text-sm text-[var(--muted-foreground)]">
-                                        Replace these words in window titles with ••• (comma-separated)
-                                    </p>
-                                </div>
-                            </div>
+                        }
+                    />
+                    <Row
+                        label="Record window titles"
+                        caption="Store window titles for the timeline log"
+                        control={
+                            <Toggle
+                                checked={settings.trackWindowTitles}
+                                onChange={(v) => updateSettings({ trackWindowTitles: v })}
+                                label="Record window titles"
+                            />
+                        }
+                    />
+                    <Row
+                        label="Redact these keywords"
+                        caption="Replaced with ••• at record time — never stored"
+                        control={
                             <input
                                 key={settings.redactedKeywords.join(',')}
                                 defaultValue={settings.redactedKeywords.join(', ')}
@@ -800,80 +536,372 @@ export function Settings() {
                                     updateSettings({ redactedKeywords: keywords });
                                 }}
                                 placeholder="password, bank, secret"
-                                className="w-full bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg focus:ring-[var(--primary)] focus:border-[var(--primary)] px-3 py-2 outline-none placeholder:text-[var(--muted-foreground)]/50"
+                                aria-label="Redaction keywords"
+                                className={cn(
+                                    isFlat
+                                        ? 'w-full bg-transparent border-b border-dashed border-[var(--border)] focus:border-[var(--foreground)] outline-none font-mono text-[11px] py-1.5 text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/60'
+                                        : 'w-full bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-3 py-2 outline-none placeholder:text-[var(--muted-foreground)]/50'
+                                )}
                             />
-                            <p className="text-[10px] text-[var(--muted-foreground)]/60 mt-1.5">
-                                Applied at record time — redacted titles are never stored.
-                            </p>
-                        </div>
+                        }
+                    />
+                </Section>
 
-                        {/* Data Retention */}
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
-                                    <CalendarClock size={18} className="text-[var(--foreground)]" />
+                {/* ============ App classification ============ */}
+                <Section
+                    title="App classification"
+                    desc="Override how apps count toward your Focus Score. SET marks the active column."
+                    icon={<SettingsIcon size={20} className="text-rose-500" />}
+                >
+                    {isFlat ? (
+                        <>
+                            <div className="grid grid-cols-[1fr_92px_116px_92px_30px] font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] py-2 border-b border-[var(--border)]">
+                                <span>App</span>
+                                <span>Focus</span>
+                                <span>Distraction</span>
+                                <span>Ignore</span>
+                                <span />
+                            </div>
+                            {classificationEntries.length === 0 && (
+                                <div className="py-3 text-[11px] text-[var(--muted-foreground)]/60">
+                                    No overrides yet — the built-in defaults apply.
                                 </div>
-                                <div>
-                                    <p className="font-medium text-[var(--foreground)]">Data Retention</p>
-                                    <p className="text-sm text-[var(--muted-foreground)]">
-                                        How long activity history is kept
-                                    </p>
+                            )}
+                            {classificationEntries.map(([name, cls]) => (
+                                <div key={name} className="grid grid-cols-[1fr_92px_116px_92px_30px] items-center py-2.5 border-b border-[var(--border)] last:border-b-0">
+                                    <span className="text-[12.5px] font-semibold text-[var(--foreground)] truncate pr-2">{name}</span>
+                                    {CLASS_COLUMNS.map((col) => (
+                                        <button
+                                            key={col.key}
+                                            onClick={() => setClassification(name, col.key)}
+                                            className="text-left font-mono text-[9px] uppercase tracking-[0.08em] py-0.5"
+                                            style={cls === col.key ? { color: col.color } : undefined}
+                                            aria-label={`Set ${name} as ${col.label}`}
+                                        >
+                                            {cls === col.key ? (
+                                                <span className="border-b-[1.5px] pb-0.5 font-bold" style={{ borderColor: col.color }}>
+                                                    SET
+                                                </span>
+                                            ) : (
+                                                <span className="text-[var(--muted-foreground)]">—</span>
+                                            )}
+                                        </button>
+                                    ))}
+                                    <button
+                                        onClick={() => removeClassification(name)}
+                                        aria-label={`Remove classification for ${name}`}
+                                        className="text-[var(--muted-foreground)] hover:text-[var(--accent-negative)] transition-colors text-lg leading-none"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                            <div className="flex gap-2 pt-2">
+                                <TextField
+                                    value={classInput}
+                                    onChange={setClassInput}
+                                    onEnter={addClassification}
+                                    placeholder="App name, e.g. figma"
+                                    ariaLabel="Classification app name"
+                                    mono
+                                />
+                                <select
+                                    value={classSelect}
+                                    onChange={(e) => setClassSelect(e.target.value as 'focus' | 'distraction')}
+                                    aria-label="Classification choice"
+                                    className="bg-transparent border-b border-dashed border-[var(--border)] font-mono text-[11px] text-[var(--foreground)] py-1.5 outline-none cursor-pointer"
+                                >
+                                    <option value="focus">Focus</option>
+                                    <option value="distraction">Distraction</option>
+                                </select>
+                                <AddButton onClick={addClassification}>Add</AddButton>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="space-y-4">
+                            {classificationEntries.length > 0 && (
+                                <div className="space-y-2">
+                                    {classificationEntries.map(([name, cls]) => (
+                                        <div key={name} className="flex items-center justify-between p-3 rounded-xl bg-[var(--background)] border border-[var(--border)]">
+                                            <span className="text-sm font-medium text-[var(--foreground)] truncate mr-2">{name}</span>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <select
+                                                    value={cls}
+                                                    onChange={(e) => setClassification(name, e.target.value as 'focus' | 'distraction' | 'ignore')}
+                                                    className="bg-[var(--secondary)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg p-1.5 outline-none cursor-pointer"
+                                                >
+                                                    <option value="focus">Focus</option>
+                                                    <option value="distraction">Distraction</option>
+                                                    <option value="ignore">Ignore</option>
+                                                </select>
+                                                <button
+                                                    onClick={() => removeClassification(name)}
+                                                    className="text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors text-lg leading-none"
+                                                    aria-label={`Remove classification for ${name}`}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)]">
+                                <div className="flex gap-2">
+                                    <input
+                                        value={classInput}
+                                        onChange={(e) => setClassInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') addClassification();
+                                        }}
+                                        placeholder="App name, e.g. figma or Figma.exe"
+                                        className="flex-1 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-3 py-2 outline-none placeholder:text-[var(--muted-foreground)]/50"
+                                    />
+                                    <select
+                                        value={classSelect}
+                                        onChange={(e) => setClassSelect(e.target.value as 'focus' | 'distraction')}
+                                        className="bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-2 outline-none cursor-pointer"
+                                    >
+                                        <option value="focus">Focus</option>
+                                        <option value="distraction">Distraction</option>
+                                    </select>
+                                    <AddButton onClick={addClassification}>Add</AddButton>
                                 </div>
                             </div>
-                            <select
-                                value={settings.retentionDays}
-                                onChange={(e) => updateSettings({ retentionDays: Number(e.target.value) })}
-                                className="bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg focus:ring-[var(--primary)] focus:border-[var(--primary)] block p-2.5 outline-none cursor-pointer hover:bg-[var(--secondary)] transition-colors min-w-[130px]"
-                            >
-                                <option value={30}>30 days</option>
-                                <option value={90}>90 days</option>
-                                <option value={180}>180 days</option>
-                                <option value={0}>Keep forever</option>
-                            </select>
                         </div>
+                    )}
+                </Section>
 
-                        {/* Export Data */}
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)] group hover:border-[var(--primary)]/30 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--muted)] transition-transform duration-200 group-hover:scale-110">
-                                    <Download size={18} className="text-[var(--foreground)]" />
+                {/* ============ Distraction guard ============ */}
+                <Section
+                    title="Distraction guard"
+                    desc="Daily time limits per app — notified once when crossed."
+                    icon={<SettingsIcon size={20} className="text-red-500" />}
+                >
+                    {isFlat ? (
+                        <>
+                            {limitEntries.length === 0 && (
+                                <div className="py-3 text-[11px] text-[var(--muted-foreground)]/60">No limits set.</div>
+                            )}
+                            {limitEntries.map(([name, seconds]) => {
+                                const used = usageFor(name);
+                                const limitMin = Math.round(seconds / 60);
+                                return (
+                                    <div key={name} className="grid grid-cols-[160px_1fr_150px_30px] items-center gap-4 py-2.5 border-b border-[var(--border)] last:border-b-0">
+                                        <span className="text-[12.5px] font-semibold text-[var(--foreground)] truncate">{name}</span>
+                                        <Bar value={(used / Math.max(1, limitMin)) * 100} color="var(--accent-warning)" height="thin" />
+                                        <span className="font-mono text-[10px] text-[var(--muted-foreground)]">
+                                            {used} / {limitMin} min
+                                        </span>
+                                        <button
+                                            onClick={() => removeAppLimit(name)}
+                                            aria-label={`Remove limit for ${name}`}
+                                            className="text-[var(--muted-foreground)] hover:text-[var(--accent-negative)] transition-colors text-lg leading-none"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                            <div className="flex gap-2 pt-2">
+                                <TextField
+                                    value={limitInput}
+                                    onChange={setLimitInput}
+                                    onEnter={addAppLimit}
+                                    placeholder="App name, e.g. chrome"
+                                    ariaLabel="Limit app name"
+                                    mono
+                                />
+                                <input
+                                    type="number"
+                                    min={5}
+                                    step={5}
+                                    value={limitMinutes}
+                                    onChange={(e) => setLimitMinutes(Number(e.target.value))}
+                                    aria-label="Daily limit in minutes"
+                                    className="w-16 bg-transparent border-b border-dashed border-[var(--border)] font-mono text-[11px] text-[var(--foreground)] py-1.5 outline-none"
+                                />
+                                <span className="flex items-center font-mono text-[10px] text-[var(--muted-foreground)]">min</span>
+                                <AddButton onClick={addAppLimit}>Add</AddButton>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="space-y-4">
+                            {limitEntries.length > 0 && (
+                                <div className="space-y-2">
+                                    {limitEntries.map(([name, seconds]) => (
+                                        <div key={name} className="flex items-center justify-between p-3 rounded-xl bg-[var(--background)] border border-[var(--border)]">
+                                            <span className="text-sm font-medium text-[var(--foreground)] truncate mr-2">{name}</span>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <input
+                                                    type="number"
+                                                    min={5}
+                                                    step={5}
+                                                    value={Math.round(seconds / 60)}
+                                                    onChange={(e) => setAppLimit(name, Number(e.target.value))}
+                                                    className="w-20 bg-[var(--secondary)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-2 py-1.5 outline-none"
+                                                    aria-label={`Daily limit for ${name} in minutes`}
+                                                />
+                                                <span className="text-xs text-[var(--muted-foreground)]">min</span>
+                                                <button
+                                                    onClick={() => removeAppLimit(name)}
+                                                    className="text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors text-lg leading-none"
+                                                    aria-label={`Remove limit for ${name}`}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div>
-                                    <p className="font-medium text-[var(--foreground)]">Export Data</p>
-                                    <p className="text-sm text-[var(--muted-foreground)]">
-                                        Download your activity history as JSON or CSV
-                                    </p>
+                            )}
+                            <div className="p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--border)]">
+                                <div className="flex gap-2">
+                                    <input
+                                        value={limitInput}
+                                        onChange={(e) => setLimitInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') addAppLimit();
+                                        }}
+                                        placeholder="App name, e.g. chrome or YouTube"
+                                        className="flex-1 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-3 py-2 outline-none placeholder:text-[var(--muted-foreground)]/50"
+                                    />
+                                    <input
+                                        type="number"
+                                        min={5}
+                                        step={5}
+                                        value={limitMinutes}
+                                        onChange={(e) => setLimitMinutes(Number(e.target.value))}
+                                        className="w-20 bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-2 py-2 outline-none"
+                                        aria-label="Daily limit in minutes"
+                                    />
+                                    <span className="flex items-center text-xs text-[var(--muted-foreground)]">min</span>
+                                    <AddButton onClick={addAppLimit}>Add</AddButton>
                                 </div>
                             </div>
-                            <Button variant="secondary" size="sm" onClick={handleExport}>
-                                Export
-                            </Button>
                         </div>
+                    )}
+                </Section>
 
-                        {/* Clear Data */}
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--secondary)]/50 border border-[var(--destructive)]/20 hover:border-[var(--destructive)]/50 transition-colors group">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-[var(--destructive)]/10 transition-transform duration-200 group-hover:scale-110">
-                                    <Trash2 size={18} className="text-[var(--destructive)]" />
+                {/* ============ Dashboard & appearance ============ */}
+                <Section
+                    title="Dashboard & appearance"
+                    desc="Reading mode, visual style, typography and theme."
+                    icon={isDarkMode ? <Moon size={20} className="text-[var(--foreground)]" /> : <Sun size={20} className="text-[var(--foreground)]" />}
+                >
+                    <Row
+                        label="Reading mode"
+                        caption="Data leads with numbers; Editorial leads with a sentence"
+                        control={<SegTabs options={[{ value: 'data', label: 'Data' }, { value: 'editorial', label: 'Editorial' }]} value={settings.readingMode} onChange={(v) => updateSettings({ readingMode: v })} />}
+                    />
+                    <Row
+                        label="Write the summary sentence"
+                        caption="Editorial mode narration under the lede"
+                        control={
+                            <Toggle
+                                checked={settings.writeSummarySentence}
+                                onChange={(v) => updateSettings({ writeSummarySentence: v })}
+                                label="Write the summary sentence"
+                            />
+                        }
+                    />
+                    <Row
+                        label="Visual style"
+                        caption="Flat: hairline rules. Glassmorphism: the legacy cards."
+                        control={
+                            <SegTabs
+                                options={[{ value: 'flat', label: 'Flat' }, { value: 'glass', label: 'Glassmorphism' }]}
+                                value={settings.visualTheme}
+                                onChange={(v) => updateSettings({ visualTheme: v })}
+                            />
+                        }
+                    />
+                    <Row
+                        label="Font pair"
+                        caption="Typography across the whole app"
+                        control={
+                            <SegTabs
+                                options={[{ value: 'swiss', label: 'Swiss' }, { value: 'geist', label: 'Geist' }, { value: 'grotesk', label: 'Grotesk' }]}
+                                value={settings.fontPair}
+                                onChange={(v) => updateSettings({ fontPair: v })}
+                            />
+                        }
+                    />
+                    <Row
+                        label="Default range"
+                        caption="Initial range shown on the dashboard"
+                        control={<SegTabs options={RANGE_OPTIONS} value={settings.dashboardDefaultRange} onChange={(v) => updateSettings({ dashboardDefaultRange: v })} />}
+                    />
+                    <Row
+                        label="Dark mode"
+                        caption="Switch between light and dark themes"
+                        control={<Toggle checked={isDarkMode} onChange={toggleTheme} label="Dark mode" />}
+                    />
+                </Section>
+
+                {/* ============ Privacy & data ============ */}
+                <Section
+                    title="Privacy & data"
+                    desc="Everything stays local. Export or delete it any time."
+                    icon={<SettingsIcon size={20} className="text-amber-500" />}
+                >
+                    <Row
+                        label="Data retention"
+                        caption="How long activity history is kept"
+                        control={
+                            <SegTabs
+                                options={[
+                                    { value: '30', label: '30d' },
+                                    { value: '90', label: '90d' },
+                                    { value: '180', label: '180d' },
+                                    { value: '0', label: 'Forever' },
+                                ]}
+                                value={String(settings.retentionDays)}
+                                onChange={(v) => updateSettings({ retentionDays: Number(v) })}
+                            />
+                        }
+                    />
+                    <Row
+                        label="Export history"
+                        caption="Download everything as JSON or CSV"
+                        control={
+                            isFlat ? (
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleExport}
+                                        className="px-3 py-1.5 border border-[var(--border)] hover:border-[var(--foreground)] font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                                    >
+                                        JSON / CSV
+                                    </button>
                                 </div>
-                                <div>
-                                    <p className="font-medium text-[var(--foreground)]">Clear All Data</p>
-                                    <p className="text-sm text-[var(--muted-foreground)]">
-                                        Delete all tracks and restore default settings
-                                    </p>
-                                </div>
-                            </div>
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={handleClearData}
-                                loading={isClearing}
-                            >
-                                Clear Data
-                            </Button>
-                        </div>
-                    </div>
-                </GlassCard>
+                            ) : (
+                                <Button variant="secondary" size="sm" onClick={handleExport}>
+                                    <Download size={14} className="mr-1" /> Export
+                                </Button>
+                            )
+                        }
+                    />
+                    <Row
+                        label="Clear all activity history"
+                        caption="Deletes every record and restores defaults"
+                        destructive
+                        control={
+                            isFlat ? (
+                                <button
+                                    onClick={handleClearData}
+                                    disabled={isClearing}
+                                    className="px-3 py-1.5 border border-[var(--accent-negative)] text-[var(--accent-negative)] font-mono text-[9px] uppercase tracking-[0.08em] hover:bg-[var(--accent-negative)] hover:text-white transition-colors disabled:opacity-60"
+                                >
+                                    {isClearing ? 'Deleting…' : 'Delete everything'}
+                                </button>
+                            ) : (
+                                <Button variant="destructive" size="sm" onClick={handleClearData} loading={isClearing}>
+                                    Clear Data
+                                </Button>
+                            )
+                        }
+                    />
+                </Section>
 
                 {/* About */}
                 <div className="text-center pt-8 pb-4">
@@ -884,7 +912,7 @@ export function Settings() {
                         All data is stored locally. No information is uploaded to any server.
                     </p>
                 </div>
-            </div >
-        </div >
+            </div>
+        </div>
     );
 }

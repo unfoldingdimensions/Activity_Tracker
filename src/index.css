@@ -197,6 +197,32 @@ body {
   letter-spacing: -0.02em;
 }
 
+/* Flat slider: 1px track, 3x11px square handle */
+input[type='range'].slider-flat {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 1px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+}
+input[type='range'].slider-flat::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 3px;
+  height: 11px;
+  background: var(--foreground);
+  border: none;
+  border-radius: 0;
+}
+input[type='range'].slider-flat::-moz-range-thumb {
+  width: 3px;
+  height: 11px;
+  background: var(--foreground);
+  border: none;
+  border-radius: 0;
+}
+
 /* --- Animation Keyframes --- */
 @keyframes status-dot-pulse {
   0%,
