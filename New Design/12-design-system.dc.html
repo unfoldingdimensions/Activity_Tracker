@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* Theme tokens — these are the app's existing values from src/index.css.
+   Swap the :root block for .dark's values to preview the other theme. */
+:root{
+  --bg:#faf8f5;   /* --background        */
+  --fg:#1c1917;   /* --foreground        */
+  --mut:#78716c;  /* --muted-foreground  */
+  --bd:#e7e0d5;   /* --border            */
+  --sec:#f5f0e8;  /* --surface           */
+  --card:#ffffff;
+}
+/* DARK
+:root{ --bg:#0c0a09; --fg:#fafaf9; --mut:#a8a29e; --bd:#292524; --sec:#1c1917; --card:#141110; }
+*/
+html,body{margin:0;background:var(--bg)}
+body>x-dc{display:block;width:1320px;min-height:100vh}
+a{color:var(--fg)}a:hover{color:#0f766e}
+@keyframes dcPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.82)}}
+</style>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="--ac:#0d9488;--ac2:#b45309;--ac4:#9f1239;width:100%;height:100%;overflow:hidden;font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--fg);display:flex;flex-direction:column">
+
+<div style="padding:30px 36px 22px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-end;justify-content:space-between;flex:none">
+<div>
+<div style="font-size:28px;font-weight:700;letter-spacing:-.035em;line-height:1">Refined Swiss — the system</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-top:9px">everything needed to roll 2a out to Timeline, Activity, Power, Tools, Settings</div>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--mut);text-align:right;line-height:1.8">RULES 1px · RADII 0 · SHADOWS NONE<br>PLUS JAKARTA SANS + JETBRAINS MONO</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;flex:none;border-bottom:1px solid var(--bd)">
+<div style="padding:24px 36px 26px;border-right:1px solid var(--bd)">
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)">Type scale</div>
+<div style="display:flex;flex-direction:column;gap:14px;margin-top:18px">
+<div style="display:flex;align-items:baseline;gap:16px;border-bottom:1px solid var(--bd);padding-bottom:12px"><span style="font-size:46px;font-weight:600;letter-spacing:-.045em;line-height:1">12,493</span><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut)">METRIC / 46 / 600 / -.045em / TABULAR</span></div>
+<div style="display:flex;align-items:baseline;gap:16px;border-bottom:1px solid var(--bd);padding-bottom:12px"><span style="font-size:34px;font-weight:700;letter-spacing:-.035em;line-height:1">The Pulse</span><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut)">PAGE TITLE / 34 / 700</span></div>
+<div style="display:flex;align-items:baseline;gap:16px;border-bottom:1px solid var(--bd);padding-bottom:12px"><span style="font-size:28px;font-weight:600;letter-spacing:-.04em;line-height:1">24</span><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut)">SUB-METRIC / 28 / 600</span></div>
+<div style="display:flex;align-items:baseline;gap:16px;border-bottom:1px solid var(--bd);padding-bottom:12px"><span style="font-size:15px;font-weight:600;letter-spacing:-.02em">Focus flow</span><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut)">SECTION / 15 / 600</span></div>
+<div style="display:flex;align-items:baseline;gap:16px;border-bottom:1px solid var(--bd);padding-bottom:12px"><span style="font-size:12.5px">Body copy and annotations sit here, 1.7 line height.</span><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut)">BODY / 12.5</span></div>
+<div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--mut)">Screen time</span><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut)">LABEL / MONO 9.5 / .11em / UPPER</span></div>
+</div>
+</div>
+<div style="padding:24px 36px 26px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)">Colour</div>
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:22px;margin-top:18px">
+<div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--mut)">LIGHT (EXISTING TOKENS)</div>
+<div style="display:flex;flex-direction:column;gap:8px;margin-top:11px;font-family:'JetBrains Mono',monospace;font-size:9px">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#faf8f5;border:1px solid #e7e0d5"></span>#faf8f5 background</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#1c1917"></span>#1c1917 foreground</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#78716c"></span>#78716c muted</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#e7e0d5"></span>#e7e0d5 rule</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#f5f0e8"></span>#f5f0e8 fill</div>
+</div>
+</div>
+<div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--mut)">DARK (EXISTING TOKENS)</div>
+<div style="display:flex;flex-direction:column;gap:8px;margin-top:11px;font-family:'JetBrains Mono',monospace;font-size:9px">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#0c0a09"></span>#0c0a09 background</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#fafaf9;border:1px solid #e7e0d5"></span>#fafaf9 foreground</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#a8a29e"></span>#a8a29e muted</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#292524"></span>#292524 rule</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#1c1917"></span>#1c1917 fill</div>
+</div>
+</div>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--mut);margin-top:22px">ACCENTS · IDENTICAL IN BOTH THEMES</div>
+<div style="display:flex;gap:22px;margin-top:11px;font-family:'JetBrains Mono',monospace;font-size:9px">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#0d9488"></span>#0d9488 focus / positive</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#b45309"></span>#b45309 other / streak</div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:22px;height:22px;background:#9f1239"></span>#9f1239 negative</div>
+</div>
+<div style="font-size:11.5px;line-height:1.65;color:var(--mut);margin-top:16px">Accent is never a background — only lines, fills inside a 2–3px bar, and single words of text. Idle and inactive data are always the rule colour, never a third accent.</div>
+</div>
+</div>
+
+<div style="padding:24px 36px 28px;border-bottom:1px solid var(--bd);flex:none">
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)">Components</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:18px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd)">
+<div style="padding:20px 24px 22px;border-right:1px solid var(--bd)">
+<div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.1em;color:var(--mut)">METRIC CELL</div>
+<div style="font-size:38px;font-weight:600;letter-spacing:-.045em;line-height:1;margin-top:10px">6<span style="font-size:20px;font-weight:500;color:var(--mut)">h</span> 42<span style="font-size:20px;font-weight:500;color:var(--mut)">m</span></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac);margin-top:12px">▲ 8% vs Mon</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--mut);margin-top:14px;line-height:1.6">22px 32px 24px<br>UNIT IN MUTED 20/500</div>
+</div>
+<div style="padding:20px 24px 22px;border-right:1px solid var(--bd)">
+<div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.1em;color:var(--mut)">BAR ROW</div>
+<div style="margin-top:14px">
+<div style="display:flex;justify-content:space-between;font-size:11.5px;font-family:'JetBrains Mono',monospace"><span style="font-weight:700">Chrome</span><span style="color:var(--mut)">2m · 67%</span></div>
+<div style="height:3px;background:var(--bd);margin-top:7px"><div style="width:67%;height:100%;background:var(--ac)"></div></div>
+</div>
+<div style="margin-top:12px">
+<div style="display:flex;justify-content:space-between;font-size:11.5px;font-family:'JetBrains Mono',monospace"><span style="font-weight:700">Code</span><span style="color:var(--mut)">1m · 33%</span></div>
+<div style="height:3px;background:var(--bd);margin-top:7px"><div style="width:33%;height:100%;background:var(--fg);opacity:.55"></div></div>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--mut);margin-top:14px;line-height:1.6">3px TRACK · RANK 1 ACCENT<br>REST FOREGROUND @55%</div>
+</div>
+<div style="padding:20px 24px 22px;border-right:1px solid var(--bd)">
+<div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.1em;color:var(--mut)">SESSION CELL</div>
+<div style="display:flex;align-items:baseline;gap:9px;margin-top:14px"><span style="font-size:24px;font-weight:600;letter-spacing:-.04em">52m</span><span style="font-size:12px;color:var(--mut)">Code</span></div>
+<div style="height:3px;background:var(--bd);margin-top:10px"><div style="width:87%;height:100%;background:var(--ac)"></div></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut);margin-top:8px">08:12 → 09:04 · 1 INTERRUPTION</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--mut);margin-top:14px;line-height:1.6">LIVE SESSION USES ACCENT<br>ON THE NUMBER, 50% BAR</div>
+</div>
+<div style="padding:20px 24px 22px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.1em;color:var(--mut)">CHIPS & STATES</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;align-items:center">
+<span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;padding-bottom:4px;border-bottom:1.5px solid var(--fg);font-weight:700">WEEK</span>
+<span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--mut)">MONTH</span>
+<span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;padding:3px 6px;border:1px solid var(--bd);color:var(--ac)">NEW</span>
+<span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ac2)">3 DAY STREAK</span>
+<span style="width:24px;height:24px;border:1px solid var(--fg);display:flex;align-items:center;justify-content:center;font-size:9px;font-family:'JetBrains Mono',monospace">EB</span>
+<span style="width:24px;height:24px;border:1px dashed var(--bd);color:var(--mut);display:flex;align-items:center;justify-content:center;font-size:9px;font-family:'JetBrains Mono',monospace">CK</span>
+</div>
+<div style="padding:6px 8px;background:var(--sec);margin-top:14px;font-size:11px">Hover fill — <span style="color:var(--mut)">--sec, no border change</span></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--mut);margin-top:12px;line-height:1.6">SELECTED = 1.5px UNDERLINE<br>LOCKED = DASHED RULE</div>
+</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.1fr 1fr;flex:none;border-bottom:1px solid var(--bd)">
+<div style="padding:24px 36px 26px;border-right:1px solid var(--bd)">
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)">Page grid</div>
+<div style="display:flex;gap:0;margin-top:18px;border:1px solid var(--bd);height:150px">
+<div style="width:66px;border-right:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--mut);text-align:center;line-height:1.5">RAIL<br>196</div>
+<div style="flex:1;display:flex;flex-direction:column">
+<div style="height:34px;border-bottom:1px solid var(--bd);display:flex;align-items:center;padding-left:12px;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--mut)">HEADER · 26/32/18</div>
+<div style="height:38px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:repeat(4,1fr)"><span style="border-right:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--mut)">4 × METRIC</span><span style="border-right:1px solid var(--bd)"></span><span style="border-right:1px solid var(--bd)"></span><span></span></div>
+<div style="height:20px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:repeat(5,1fr)"><span style="border-right:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:7.5px;color:var(--mut)">5 × DIGEST</span><span style="border-right:1px solid var(--bd)"></span><span style="border-right:1px solid var(--bd)"></span><span style="border-right:1px solid var(--bd)"></span><span></span></div>
+<div style="flex:1;display:flex"><span style="flex:1;border-right:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--mut)">CHART</span><span style="width:78px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--mut);text-align:center;line-height:1.5">SIDE<br>300</span></div>
+</div>
+</div>
+<div style="font-size:11.5px;line-height:1.7;color:var(--mut);margin-top:16px">One column count per band: 4 for metrics, 5 for the digest, 3 for KPIs and sessions, 2 for patterns. Bands are separated by a full-bleed 1px rule and never by a gap; inner divisions use the same rule so the page reads as one sheet, not a set of cards.</div>
+</div>
+<div style="padding:24px 36px 26px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)">Rules of the direction</div>
+<div style="display:flex;flex-direction:column;gap:0;margin-top:16px">
+<div style="display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd);font-size:11.5px"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac);width:26px;flex:none">DO</span><span>Numbers carry hierarchy — a bigger number, not a heavier card.</span></div>
+<div style="display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd);font-size:11.5px"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac);width:26px;flex:none">DO</span><span>Every label is mono, uppercase, tracked; every value is sans and tabular.</span></div>
+<div style="display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd);font-size:11.5px"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac);width:26px;flex:none">DO</span><span>Charts are 1–2px strokes on a 5-line grid, no fills, no gradients.</span></div>
+<div style="display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd);font-size:11.5px"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac4);width:26px;flex:none">NO</span><span>Rounded corners, drop shadows, glass blur, glow.</span></div>
+<div style="display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd);font-size:11.5px"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac4);width:26px;flex:none">NO</span><span>Donuts and pies — share is always a bar or a stacked rule.</span></div>
+<div style="display:flex;gap:12px;padding:11px 0;font-size:11.5px"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac4);width:26px;flex:none">NO</span><span>Emoji, coloured backgrounds, more than three accents on a page.</span></div>
+</div>
+</div>
+</div>
+
+<div style="padding:24px 36px 30px;flex:none">
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)">Rollout · what each screen becomes</div>
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:18px;border-top:1px solid var(--bd)">
+<div style="padding:16px 20px 0 0;border-right:1px solid var(--bd)"><div style="font-size:13px;font-weight:600;letter-spacing:-.02em">Timeline</div><div style="font-size:11.5px;line-height:1.65;color:var(--mut);margin-top:8px">Focus calendar band, then the log as a ruled table — time, app, title, duration — no cards per row.</div></div>
+<div style="padding:16px 20px 0;border-right:1px solid var(--bd)"><div style="font-size:13px;font-weight:600;letter-spacing:-.02em">Activity</div><div style="font-size:11.5px;line-height:1.65;color:var(--mut);margin-top:8px">Active/idle columns full width, intensity bubbles become a ruled scatter with mono axes.</div></div>
+<div style="padding:16px 20px 0;border-right:1px solid var(--bd)"><div style="font-size:13px;font-weight:600;letter-spacing:-.02em">Power</div><div style="font-size:11.5px;line-height:1.65;color:var(--mut);margin-top:8px">CPU list keeps the bar row; power impact map becomes a plotted grid, watts as the big metric.</div></div>
+<div style="padding:16px 20px 0;border-right:1px solid var(--bd)"><div style="font-size:13px;font-weight:600;letter-spacing:-.02em">Tools</div><div style="font-size:11.5px;line-height:1.65;color:var(--mut);margin-top:8px">New page: Pomodoro as one large tabular timer, goals and breathing as ruled bands beneath.</div></div>
+<div style="padding:16px 0 0 20px"><div style="font-size:13px;font-weight:600;letter-spacing:-.02em">Settings</div><div style="font-size:11.5px;line-height:1.65;color:var(--mut);margin-top:8px">Two-column ruled list: label left, control right, sections divided by the same 1px rule.</div></div>
+</div>
+</div>
+
+</div>
+</x-dc>
+</body>
+</html>

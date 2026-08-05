@@ -2,6 +2,9 @@ import { createContext } from 'react';
 import type { TimeRange } from '../components/dashboard/TimeRangeFilter';
 
 export type AppClassification = 'focus' | 'distraction' | 'ignore';
+export type ReadingMode = 'data' | 'editorial';
+export type VisualTheme = 'flat' | 'glass';
+export type FontPair = 'swiss' | 'geist' | 'grotesk';
 
 export interface UserSettings {
     dashboardDefaultRange: TimeRange;
@@ -22,6 +25,14 @@ export interface UserSettings {
     appLimits: Record<string, number>;
     /** Per-app Focus/Distraction/Ignore overrides (Phase 3) */
     appClassification: Record<string, AppClassification>;
+    /** Reading mode: numbers-first (data) or prose-first (editorial) */
+    readingMode: ReadingMode;
+    /** Editorial mode: show the written summary sentence under the lede */
+    writeSummarySentence: boolean;
+    /** Visual skin: flat (Refined Swiss) or glassmorphism (legacy) */
+    visualTheme: VisualTheme;
+    /** Typography pair: swiss / geist / grotesk */
+    fontPair: FontPair;
 }
 
 export interface SettingsContextType {

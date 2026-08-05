@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* Theme tokens — these are the app's existing values from src/index.css.
+   Swap the :root block for .dark's values to preview the other theme. */
+:root{
+  --bg:#faf8f5;   /* --background        */
+  --fg:#1c1917;   /* --foreground        */
+  --mut:#78716c;  /* --muted-foreground  */
+  --bd:#e7e0d5;   /* --border            */
+  --sec:#f5f0e8;  /* --surface           */
+  --card:#ffffff;
+}
+/* DARK
+:root{ --bg:#0c0a09; --fg:#fafaf9; --mut:#a8a29e; --bd:#292524; --sec:#1c1917; --card:#141110; }
+*/
+html,body{margin:0;background:var(--bg)}
+body>x-dc{display:block;width:1320px;min-height:100vh}
+a{color:var(--fg)}a:hover{color:#0f766e}
+@keyframes dcPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.82)}}
+</style>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="--ac:#0d9488;--ac2:#b45309;--ac3:#6d28d9;width:100%;height:100%;display:flex;overflow:hidden;font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--fg)">
+
+<aside style="width:196px;flex:none;display:flex;flex-direction:column;padding:26px 0 20px;border-right:1px solid var(--bd)">
+<div style="padding:0 22px 22px">
+<div style="font-size:13px;font-weight:700;letter-spacing:-.01em">Activity Tracker</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-top:5px">track · visualize</div>
+</div>
+<nav style="display:flex;flex-direction:column;gap:1px">
+<div style="padding:9px 22px;border-left:2px solid transparent;font-size:13px;color:var(--mut)">Dashboard</div>
+<div style="padding:9px 22px;border-left:2px solid transparent;font-size:13px;color:var(--mut)">Timeline</div>
+<div style="padding:9px 22px;border-left:2px solid transparent;font-size:13px;color:var(--mut)">Activity</div>
+<div style="padding:9px 22px;border-left:2px solid transparent;font-size:13px;color:var(--mut)">Power</div>
+<div style="padding:9px 22px;border-left:2px solid var(--fg);font-size:13px;font-weight:700;letter-spacing:-.01em">Tools</div>
+<div style="padding:9px 22px;border-left:2px solid transparent;font-size:13px;color:var(--mut)">Settings</div>
+</nav>
+<div style="margin-top:26px;padding:0 22px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)">On this page</div>
+<div style="display:flex;flex-direction:column;gap:9px;margin-top:12px;font-size:11.5px;color:var(--mut)">
+<span style="color:var(--fg);display:flex;align-items:center;gap:8px"><span style="width:10px;height:1.5px;background:var(--fg)"></span>Focus timer</span>
+<span style="padding-left:18px">Daily targets</span><span style="padding-left:18px">Wellbeing</span><span style="padding-left:18px">Breathing</span>
+</div>
+</div>
+<div style="margin-top:auto;padding:14px 22px 0;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px">
+<span style="width:6px;height:6px;border-radius:50%;background:var(--ac)"></span>
+<span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.06em;color:var(--mut)">TRACKING</span>
+<span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;margin-left:auto">Code</span>
+</div>
+</aside>
+
+<main style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+<div style="padding:26px 32px 18px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex:none">
+<div>
+<div style="font-size:34px;font-weight:700;letter-spacing:-.035em;line-height:1">Tools</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-top:9px">the four things you do here, not the things you read</div>
+</div>
+<div style="display:flex;align-items:center;gap:20px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--mut)">
+<span>3 POMODOROS TODAY</span><span style="color:var(--bd)">|</span><span>2 OF 3 TARGETS MET</span><span style="color:var(--bd)">|</span><span style="color:var(--ac2)">BREAK DUE IN 12m</span>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 340px;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);flex:none">
+
+<div style="border-right:1px solid var(--bd);padding:26px 32px 28px;display:flex;flex-direction:column">
+<div style="display:flex;align-items:baseline;justify-content:space-between">
+<div style="font-size:15px;font-weight:600;letter-spacing:-.02em">Focus timer</div>
+<div style="display:flex;gap:18px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase">
+<span style="padding-bottom:4px;border-bottom:1.5px solid var(--fg);font-weight:700">Work 25</span>
+<span style="color:var(--mut)">Break 5</span>
+<span style="color:var(--mut)">Long 15</span>
+</div>
+</div>
+
+<div style="display:flex;align-items:flex-end;gap:36px;margin-top:26px">
+<div style="font-size:118px;font-weight:600;letter-spacing:-.06em;line-height:.86;font-variant-numeric:tabular-nums">18:42</div>
+<div style="display:flex;flex-direction:column;gap:14px;padding-bottom:10px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--mut)">Work · session 4</div>
+<div style="display:flex;gap:10px">
+<span style="padding:9px 18px;border:1px solid var(--fg);font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;font-weight:700">PAUSE</span>
+<span style="padding:9px 18px;border:1px solid var(--bd);font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;color:var(--mut)">RESET</span>
+<span style="padding:9px 18px;border:1px solid var(--bd);font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;color:var(--mut)">SKIP</span>
+</div>
+</div>
+</div>
+
+<div style="margin-top:26px">
+<div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--mut)"><span>25:00</span><span>ELAPSED 6:18</span><span>00:00</span></div>
+<div style="height:3px;background:var(--bd);margin-top:8px"><div style="width:25%;height:100%;background:var(--ac3)"></div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--bd);margin-top:26px">
+<div style="padding:16px 0"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)">Done today</div><div style="font-size:26px;font-weight:600;letter-spacing:-.04em;margin-top:7px">3</div></div>
+<div style="padding:16px 0 16px 22px;border-left:1px solid var(--bd)"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)">Focused</div><div style="font-size:26px;font-weight:600;letter-spacing:-.04em;margin-top:7px">1h 15m</div></div>
+<div style="padding:16px 0 16px 22px;border-left:1px solid var(--bd)"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)">Breaks taken</div><div style="font-size:26px;font-weight:600;letter-spacing:-.04em;margin-top:7px">2</div></div>
+<div style="padding:16px 0 16px 22px;border-left:1px solid var(--bd)"><div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)">Best streak</div><div style="font-size:26px;font-weight:600;letter-spacing:-.04em;margin-top:7px">4</div></div>
+</div>
+
+<div style="display:flex;gap:5px;margin-top:22px;align-items:center">
+<span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-right:8px">Today</span>
+<span style="width:26px;height:8px;background:var(--ac3)"></span>
+<span style="width:26px;height:8px;background:var(--ac3)"></span>
+<span style="width:26px;height:8px;background:var(--ac3)"></span>
+<span style="width:26px;height:8px;background:var(--ac3);opacity:.35"></span>
+<span style="width:26px;height:8px;background:var(--bd)"></span>
+<span style="width:26px;height:8px;background:var(--bd)"></span>
+<span style="width:26px;height:8px;background:var(--bd)"></span>
+<span style="width:26px;height:8px;background:var(--bd)"></span>
+<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut);margin-left:8px">TARGET 8</span>
+</div>
+</div>
+
+<div style="padding:26px 28px 28px;display:flex;flex-direction:column">
+<div style="display:flex;align-items:baseline;justify-content:space-between">
+<div style="font-size:15px;font-weight:600;letter-spacing:-.02em">Daily targets</div>
+<span style="font-family:'JetBrains Mono',monospace;font-size:14px;line-height:1;color:var(--mut)">+</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:16px;margin-top:20px">
+<div>
+<div style="display:flex;justify-content:space-between;font-size:12px"><span style="font-weight:600;letter-spacing:-.01em">Code</span><span style="font-family:'JetBrains Mono',monospace;color:var(--mut)">221 / 240m</span></div>
+<div style="height:3px;background:var(--bd);margin-top:7px"><div style="width:92%;height:100%;background:var(--ac)"></div></div>
+</div>
+<div>
+<div style="display:flex;justify-content:space-between;font-size:12px"><span style="font-weight:600;letter-spacing:-.01em">Chrome <span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ac2);font-weight:400">LIMIT</span></span><span style="font-family:'JetBrains Mono',monospace;color:var(--mut)">154 / 180m</span></div>
+<div style="height:3px;background:var(--bd);margin-top:7px"><div style="width:85%;height:100%;background:var(--ac2)"></div></div>
+</div>
+<div>
+<div style="display:flex;justify-content:space-between;font-size:12px"><span style="font-weight:600;letter-spacing:-.01em">Deep work</span><span style="font-family:'JetBrains Mono',monospace;color:var(--mut)">84 / 120m</span></div>
+<div style="height:3px;background:var(--bd);margin-top:7px"><div style="width:70%;height:100%;background:var(--ac)"></div></div>
+</div>
+<div style="border:1px dashed var(--bd);padding:11px 12px;display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mut)">
+<span style="flex:1;border-bottom:1px solid var(--bd);padding-bottom:3px">APP NAME</span>
+<span style="width:38px;border-bottom:1px solid var(--bd);padding-bottom:3px;text-align:right">60</span>
+<span>MIN</span>
+<span style="padding:4px 8px;border:1px solid var(--fg);color:var(--fg);font-weight:700">ADD</span>
+</div>
+</div>
+<div style="margin-top:auto;padding-top:20px;border-top:1px solid var(--bd);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--mut);line-height:1.7">TARGETS ARE LOCAL · LIMITS ALSO NOTIFY<br>ONCE A DAY AND AMBER THE TRAY ICON</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;flex:none;border-bottom:1px solid var(--bd)">
+
+<div style="padding:26px 32px 28px;border-right:1px solid var(--bd)">
+<div style="display:flex;align-items:baseline;justify-content:space-between">
+<div style="font-size:15px;font-weight:600;letter-spacing:-.02em">Wellbeing</div>
+<span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--ac2)">BREAK DUE IN 12 MIN</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:18px;margin-top:20px">
+<div>
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:12.5px;font-weight:600;letter-spacing:-.01em">Eye strain <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut);font-weight:400">20-20-20 RULE</span></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700">64%</span></div>
+<div style="height:3px;background:var(--bd);margin-top:8px"><div style="width:64%;height:100%;background:var(--ac)"></div></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut);margin-top:6px">NEXT LOOK-AWAY IN 7 MIN</div>
+</div>
+<div>
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:12.5px;font-weight:600;letter-spacing:-.01em">Sedentary</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700">48 min</span></div>
+<div style="height:3px;background:var(--bd);margin-top:8px"><div style="width:80%;height:100%;background:var(--ac2)"></div></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut);margin-top:6px">STAND UP BEFORE 60 MIN</div>
+</div>
+<div>
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:12.5px;font-weight:600;letter-spacing:-.01em">Typing fatigue</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700">41% load</span></div>
+<div style="height:3px;background:var(--bd);margin-top:8px"><div style="width:41%;height:100%;background:var(--ac)"></div></div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mut);margin-top:6px">12,493 KEYSTROKES SINCE 08:00</div>
+</div>
+</div>
+</div>
+
+<div style="padding:26px 32px 28px">
+<div style="display:flex;align-items:baseline;justify-content:space-between">
+<div style="font-size:15px;font-weight:600;letter-spacing:-.02em">Breathing</div>
+<span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--mut)">4 · 7 · 8 · FOUR ROUNDS</span>
+</div>
+<div style="display:flex;align-items:flex-end;gap:28px;margin-top:22px">
+<div style="font-size:56px;font-weight:600;letter-spacing:-.05em;line-height:.9;font-variant-numeric:tabular-nums">1:16</div>
+<div style="flex:1;padding-bottom:8px">
+<div style="display:flex;gap:2px;align-items:flex-end;height:44px">
+<span style="flex:4;height:40%;background:var(--ac)"></span>
+<span style="flex:7;height:100%;background:var(--ac);opacity:.55"></span>
+<span style="flex:8;height:70%;background:var(--ac);opacity:.3"></span>
+<span style="flex:4;height:40%;background:var(--bd)"></span>
+<span style="flex:7;height:100%;background:var(--bd)"></span>
+<span style="flex:8;height:70%;background:var(--bd)"></span>
+</div>
+<div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--mut);margin-top:8px"><span>INHALE 4</span><span>HOLD 7</span><span>EXHALE 8</span></div>
+</div>
+</div>
+<div style="display:flex;gap:10px;margin-top:24px">
+<span style="padding:9px 18px;border:1px solid var(--fg);font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;font-weight:700">START</span>
+<span style="padding:9px 18px;border:1px solid var(--bd);font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;color:var(--mut)">FULL SCREEN</span>
+</div>
+<div style="font-size:11.5px;line-height:1.65;color:var(--mut);margin-top:18px">Runs as an overlay so it can't be scrolled past. Fires automatically when sedentary time crosses 60 minutes, unless you snooze it.</div>
+</div>
+</div>
+
+<div style="padding:22px 32px 26px;flex:none;display:flex;align-items:center;gap:26px">
+<span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)">Tool use this week</span>
+<div style="flex:1;display:flex;gap:3px">
+<span style="flex:1;height:10px;background:var(--ac3)"></span><span style="flex:1;height:10px;background:var(--ac3);opacity:.7"></span><span style="flex:1;height:10px;background:var(--ac3);opacity:.45"></span><span style="flex:1;height:10px;background:var(--ac3);opacity:.85"></span><span style="flex:1;height:10px;background:var(--ac3);opacity:.55"></span><span style="flex:1;height:10px;background:var(--bd)"></span><span style="flex:1;height:10px;background:var(--bd)"></span>
+</div>
+<span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--mut)">17 POMODOROS · 9 BREATHING SESSIONS</span>
+</div>
+
+</main>
+</div>
+</x-dc>
+</body>
+</html>

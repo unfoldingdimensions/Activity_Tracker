@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* Theme tokens — these are the app's existing values from src/index.css.
+   Swap the :root block for .dark's values to preview the other theme. */
+:root{
+  --bg:#faf8f5;   /* --background        */
+  --fg:#1c1917;   /* --foreground        */
+  --mut:#78716c;  /* --muted-foreground  */
+  --bd:#e7e0d5;   /* --border            */
+  --sec:#f5f0e8;  /* --surface           */
+  --card:#ffffff;
+}
+/* DARK
+:root{ --bg:#0c0a09; --fg:#fafaf9; --mut:#a8a29e; --bd:#292524; --sec:#1c1917; --card:#141110; }
+*/
+html,body{margin:0;background:var(--bg)}
+body>x-dc{display:block;width:1320px;min-height:100vh}
+a{color:var(--fg)}a:hover{color:#0f766e}
+@keyframes dcPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.82)}}
+</style>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="--ac:#0f766e;--ac2:#b45309;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--fg)">
+
+<div style="display:flex;align-items:center;justify-content:space-between;padding:22px 44px 18px;gap:20px;flex:none">
+<div style="display:flex;align-items:center;gap:28px">
+<span style="font-family:'Instrument Serif',Georgia,serif;font-size:19px;letter-spacing:-.01em">Activity Tracker</span>
+<div style="display:flex;gap:19px;font-size:12px;color:var(--mut)">
+<span>Pulse</span><span style="color:var(--fg);font-weight:600">Timeline</span><span>Activity</span><span>Power</span><span>Tools</span><span>Settings</span>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:18px;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.07em;color:var(--mut)">
+<span style="padding:3px 7px;border:1px solid var(--bd)">READING · EDITORIAL</span>
+<span>◂ TUE 5 AUG ▸</span>
+</div>
+</div>
+
+<div style="padding:10px 44px 0;flex:none;max-width:1010px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)">Timeline · ten events, six hours forty-two</div>
+<div style="font-family:'Instrument Serif',Georgia,serif;font-size:44px;line-height:1.1;letter-spacing:-.02em;margin-top:14px;text-wrap:pretty">The day started at <span style="color:var(--ac)">08:12</span> and has broken four times since — never for longer than twenty-two minutes.</div>
+<div style="font-size:13.5px;line-height:1.75;color:var(--mut);margin-top:14px;max-width:800px;text-wrap:pretty">Code holds <span style="color:var(--fg);font-weight:600">3h 12m</span> of it, Chrome <span style="color:var(--fg);font-weight:600">2h 14m</span>. One window title was redacted before it was written, and two apps were ignored by your classification rules.</div>
+</div>
+
+<div style="padding:26px 44px 0;flex:none">
+<div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--bd);padding-bottom:10px">
+<span style="font-family:'Instrument Serif',Georgia,serif;font-size:20px">A year of focus</span>
+<span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--mut)">764h 14m FOCUSED IN THE LAST YEAR</span>
+</div>
+<div style="display:flex;gap:8px;margin-top:18px;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:3px;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--mut)">
+<span style="height:9px;line-height:9px">MON</span><span style="height:9px"></span><span style="height:9px;line-height:9px">WED</span><span style="height:9px"></span><span style="height:9px;line-height:9px">FRI</span><span style="height:9px"></span><span style="height:9px;line-height:9px">SUN</span>
+</div>
+<div>
+<div style="display:flex;gap:3px">
+<sc-for list="{{ weeks }}" as="week" hint-placeholder-count="52">
+<div style="display:flex;flex-direction:column;gap:3px">
+<sc-for list="{{ week.days }}" as="day" hint-placeholder-count="7">
+<span style="width:9px;height:9px;background:{{ day.bg }}"></span>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;gap:3px;margin-top:8px">
+<sc-for list="{{ weeks }}" as="week" hint-placeholder-count="52">
+<span style="width:9px;font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.04em;color:var(--mut);white-space:nowrap">{{ week.label }}</span>
+</sc-for>
+</div>
+</div>
+<div style="margin-left:auto;display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--mut)">
+<span>NONE</span><span style="width:9px;height:9px;background:color-mix(in srgb, var(--mut) 40%, transparent)"></span>
+<span style="width:9px;height:9px;background:rgba(15,118,110,.25)"></span><span>&lt;1h</span>
+<span style="width:9px;height:9px;background:rgba(15,118,110,.45)"></span><span>&lt;4h</span>
+<span style="width:9px;height:9px;background:rgba(15,118,110,.7)"></span><span>&lt;8h</span>
+<span style="width:9px;height:9px;background:#0f766e"></span><span>8h+</span>
+</div>
+</div>
+<div style="font-size:12.5px;line-height:1.75;color:var(--mut);margin-top:16px;max-width:820px;text-wrap:pretty">Six months of it is empty because tracking only started in February. Since then the darkest cells cluster on Tuesdays and Thursdays, and weekends are almost entirely blank — which is either discipline or a gap in what you record.</div>
+</div>
+
+<div style="padding:28px 44px 0;flex:none">
+<div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--bd);padding-bottom:10px">
+<span style="font-family:'Instrument Serif',Georgia,serif;font-size:20px">The log</span>
+<span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--mut)">GROUPED BY HOUR · NEWEST FIRST</span>
+</div>
+
+<div style="display:flex;align-items:baseline;gap:14px;padding:18px 0 10px">
+<span style="font-family:'Instrument Serif',Georgia,serif;font-size:17px">03:00</span>
+<span style="font-size:12px;color:var(--mut)">three events, nine minutes — all of it the run you're in now</span>
+</div>
+<div style="display:grid;grid-template-columns:88px 132px 1fr 92px 76px;align-items:baseline;border-top:1px solid var(--bd)">
+<div style="padding:12px 0;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut)">03:31:02</div>
+<div style="padding:12px 0;font-size:12.5px;font-weight:600;letter-spacing:-.01em">Code</div>
+<div style="padding:12px 0;font-size:12.5px;color:var(--mut)">Dashboard.tsx — activity-tracker</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ac)">FOCUS</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700">5m</div>
+</div>
+<div style="display:grid;grid-template-columns:88px 132px 1fr 92px 76px;align-items:baseline;border-top:1px solid var(--bd)">
+<div style="padding:12px 0;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut)">03:26:02</div>
+<div style="padding:12px 0;font-size:12.5px;font-weight:600;letter-spacing:-.01em">Chrome</div>
+<div style="padding:12px 0;font-size:12.5px;color:var(--mut)">Google Search</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ac2)">OTHER</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700">2m</div>
+</div>
+<div style="display:grid;grid-template-columns:88px 132px 1fr 92px 76px;align-items:baseline;border-top:1px solid var(--bd)">
+<div style="padding:12px 0;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut)">03:07:44</div>
+<div style="padding:12px 0;font-size:12.5px;font-weight:600;letter-spacing:-.01em">Code</div>
+<div style="padding:12px 0;font-size:12.5px;color:var(--mut)">FocusFlowChart.tsx — activity-tracker</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ac)">FOCUS</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700">2m</div>
+</div>
+
+<div style="display:flex;align-items:baseline;gap:14px;padding:22px 0 10px;border-top:1px solid var(--bd);margin-top:2px">
+<span style="font-family:'Instrument Serif',Georgia,serif;font-size:17px">02:00</span>
+<span style="font-size:12px;color:var(--mut)">four events, forty-one minutes — the hour Slack took a third of</span>
+</div>
+<div style="display:grid;grid-template-columns:88px 132px 1fr 92px 76px;align-items:baseline;border-top:1px solid var(--bd)">
+<div style="padding:12px 0;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut)">02:58:12</div>
+<div style="padding:12px 0;font-size:12.5px;font-weight:600;letter-spacing:-.01em">Slack</div>
+<div style="padding:12px 0;font-size:12.5px;color:var(--mut)">#engineering — 3 unread</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ac2)">OTHER</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700">14m</div>
+</div>
+<div style="display:grid;grid-template-columns:88px 132px 1fr 92px 76px;align-items:baseline;border-top:1px solid var(--bd)">
+<div style="padding:12px 0;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut)">02:44:00</div>
+<div style="padding:12px 0;font-size:12.5px;font-weight:600;letter-spacing:-.01em">Terminal</div>
+<div style="padding:12px 0;font-size:12.5px;color:var(--mut)">npm run tauri dev</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ac)">FOCUS</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700">9m</div>
+</div>
+<div style="display:grid;grid-template-columns:88px 132px 1fr 92px 76px;align-items:baseline;border-top:1px solid var(--bd)">
+<div style="padding:12px 0;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut)">02:31:18</div>
+<div style="padding:12px 0;font-size:12.5px;font-weight:600;letter-spacing:-.01em">Chrome</div>
+<div style="padding:12px 0;font-size:12.5px;color:var(--mut);font-style:italic">— redacted —</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--mut)">IGNORED</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700">12m</div>
+</div>
+<div style="display:grid;grid-template-columns:88px 132px 1fr 92px 76px;align-items:baseline;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd)">
+<div style="padding:12px 0;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut)">02:12:05</div>
+<div style="padding:12px 0;font-size:12.5px;font-weight:600;letter-spacing:-.01em">Spotify</div>
+<div style="padding:12px 0;font-size:12.5px;color:var(--mut)">Deep Focus — playlist</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--mut)">IGNORED</div>
+<div style="padding:12px 0;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700">6m</div>
+</div>
+</div>
+
+<div style="padding:22px 44px 26px;flex:none;display:flex;align-items:center;gap:20px">
+<span style="font-size:12px;color:var(--mut)">Read one app on its own —</span>
+<div style="display:flex;gap:10px;font-family:'JetBrains Mono',monospace;font-size:9.5px">
+<span style="padding:5px 9px;border:1px solid var(--bd)">Code · 3h12</span>
+<span style="padding:5px 9px;border:1px solid var(--bd)">Chrome · 2h14</span>
+<span style="padding:5px 9px;border:1px solid var(--bd)">Slack · 41m</span>
+<span style="padding:5px 9px;border:1px solid var(--bd);color:var(--mut)">Terminal · 23m</span>
+<span style="padding:5px 9px;border:1px solid var(--bd);color:var(--mut)">Spotify · 12m</span>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // Mirrors src/components/insights/FocusCalendar.tsx: WEEKS = 52, grid ends on the current
+    // week's Sunday, rows Mon→Sun, intensity() buckets at 0 / <1h / <4h / <8h / >=8h.
+    const RAMP = [null, 'rgba(15,118,110,.25)', 'rgba(15,118,110,.45)', 'rgba(15,118,110,.7)', '#0f766e'];
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const intensity = (s) => s <= 0 ? 0 : s < 3600 ? 1 : s < 4 * 3600 ? 2 : s < 8 * 3600 ? 3 : 4;
+    const end = new Date(2026, 7, 9);
+    const cursor = new Date(end);
+    cursor.setDate(end.getDate() - (52 * 7 - 1));
+    const weeks = [];
+    let prevMonth = -1;
+    for (let w = 0; w < 52; w++) {
+      const days = [];
+      let label = '';
+      for (let d = 0; d < 7; d++) {
+        if (d === 0) {
+          const m = cursor.getMonth();
+          if (w === 0 || m !== prevMonth) { label = MONTHS[m]; prevMonth = m; }
+        }
+        const wave = (Math.sin(w * 1.7 + d * 0.9) + 1) / 2;
+        const focusSeconds = w < 26 ? 0 : Math.round((d > 4 ? wave * 1.6 : wave * 8.5) * 3600);
+        const bucket = intensity(focusSeconds);
+        days.push({ bg: bucket === 0 ? 'color-mix(in srgb, var(--mut) 40%, transparent)' : RAMP[bucket] });
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      weeks.push({ label, days });
+    }
+    return { weeks };
+  }
+}
+</script>
+</body>
+</html>

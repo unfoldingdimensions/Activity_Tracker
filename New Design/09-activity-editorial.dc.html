@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* Theme tokens — these are the app's existing values from src/index.css.
+   Swap the :root block for .dark's values to preview the other theme. */
+:root{
+  --bg:#faf8f5;   /* --background        */
+  --fg:#1c1917;   /* --foreground        */
+  --mut:#78716c;  /* --muted-foreground  */
+  --bd:#e7e0d5;   /* --border            */
+  --sec:#f5f0e8;  /* --surface           */
+  --card:#ffffff;
+}
+/* DARK
+:root{ --bg:#0c0a09; --fg:#fafaf9; --mut:#a8a29e; --bd:#292524; --sec:#1c1917; --card:#141110; }
+*/
+html,body{margin:0;background:var(--bg)}
+body>x-dc{display:block;width:1320px;min-height:100vh}
+a{color:var(--fg)}a:hover{color:#0f766e}
+@keyframes dcPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.82)}}
+</style>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="--ac:#0f766e;--ac2:#b45309;--ac3:#6d28d9;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);color:var(--fg)">
+
+<div style="display:flex;align-items:center;justify-content:space-between;padding:22px 44px 18px;gap:20px;flex:none">
+<div style="display:flex;align-items:center;gap:28px">
+<span style="font-family:'Instrument Serif',Georgia,serif;font-size:19px;letter-spacing:-.01em">Activity Tracker</span>
+<div style="display:flex;gap:19px;font-size:12px;color:var(--mut)">
+<span>Pulse</span><span>Timeline</span><span style="color:var(--fg);font-weight:600">Activity</span><span>Power</span><span>Tools</span><span>Settings</span>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:18px;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.07em;color:var(--mut)">
+<span style="padding:3px 7px;border:1px solid var(--bd)">READING · EDITORIAL</span>
+<span>1 HOUR ▾</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:50%;background:var(--ac);animation:dcPulse 2s ease-in-out infinite"></span>CODE</span>
+</div>
+</div>
+
+<div style="padding:10px 44px 0;flex:none;display:grid;grid-template-columns:1fr 300px;gap:40px;align-items:start">
+<div style="max-width:1010px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)">Activity Timeline · Tuesday 5 August</div>
+<div style="font-family:'Instrument Serif',Georgia,serif;font-size:48px;line-height:1.08;letter-spacing:-.02em;margin-top:14px;text-wrap:pretty">You were at the keyboard for <span style="color:var(--ac)">317 of 375 minutes</span> — and you took every one of your four breaks in the afternoon.</div>
+<div style="font-size:13.5px;line-height:1.75;color:var(--mut);margin-top:14px;max-width:800px;text-wrap:pretty">The morning ran unbroken from 08:00 to 11:40. After that, idle time arrives roughly every ninety minutes — the longest gap was <span style="color:var(--fg);font-weight:600">22 minutes at 12:40</span>. Nine o'clock was the busiest hour of the day at <span style="color:var(--fg);font-weight:600">49 active minutes</span>, and you have not matched it since.</div>
+</div>
+<div style="border-left:1px solid var(--bd);padding-left:32px">
+<div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)">Active share</div>
+<div style="display:flex;align-items:baseline;gap:10px;margin-top:10px"><span style="font-family:'Instrument Serif',Georgia,serif;font-size:46px;line-height:1;color:var(--ac)">85%</span><span style="font-size:12px;color:var(--mut)">of tracked time</span></div>
+<div style="display:flex;height:2px;margin-top:14px"><span style="width:85%;background:var(--ac)"></span><span style="width:15%;background:var(--ac3);opacity:.6"></span></div>
+<div style="font-size:11px;line-height:1.65;color:var(--mut);margin-top:12px">317 minutes active, 58 idle. Six points better than yesterday.</div>
+</div>
+</div>
+
+<div style="padding:26px 44px 0;flex:none">
+<div style="border-top:1px solid var(--bd);padding-top:22px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--bd);padding-bottom:10px">
+<span style="font-family:'Instrument Serif',Georgia,serif;font-size:20px">Hour by hour</span>
+<div style="display:flex;gap:16px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)">
+<span style="display:flex;align-items:center;gap:6px;color:var(--fg)"><span style="width:10px;height:10px;background:var(--ac)"></span>Active</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;background:var(--ac3);opacity:.55"></span>Idle</span>
+<span>08:00 — 23:00 · MINUTES</span>
+</div>
+</div>
+<div style="height:242px;position:relative;margin-top:8px">
+<svg viewBox="0 0 730 242" width="100%" height="100%" preserveAspectRatio="none">
+<g stroke="var(--bd)" stroke-width="1"><line x1="34" y1="18" x2="730" y2="18"></line><line x1="34" y1="70" x2="730" y2="70"></line><line x1="34" y1="122" x2="730" y2="122"></line><line x1="34" y1="174" x2="730" y2="174"></line><line x1="34" y1="214" x2="730" y2="214"></line></g>
+<g fill="var(--mut)" font-size="8.5" font-family="'JetBrains Mono',monospace" text-anchor="end"><text x="26" y="21">60</text><text x="26" y="73">45</text><text x="26" y="125">30</text><text x="26" y="177">15</text><text x="26" y="217">0</text></g>
+<g fill="#0f766e">
+<rect x="44" y="44" width="22" height="170"></rect><rect x="86" y="86" width="22" height="128"></rect><rect x="128" y="146" width="22" height="68"></rect><rect x="170" y="152" width="22" height="62"></rect><rect x="212" y="176" width="22" height="38"></rect><rect x="254" y="58" width="22" height="156"></rect><rect x="296" y="96" width="22" height="118"></rect><rect x="338" y="146" width="22" height="68"></rect><rect x="380" y="132" width="22" height="82"></rect><rect x="422" y="114" width="22" height="100"></rect><rect x="464" y="162" width="22" height="52"></rect><rect x="506" y="170" width="22" height="44"></rect><rect x="548" y="186" width="22" height="28"></rect><rect x="590" y="196" width="22" height="18"></rect><rect x="632" y="190" width="22" height="24"></rect><rect x="674" y="204" width="22" height="10"></rect>
+</g>
+<g fill="#6d28d9" opacity=".5">
+<rect x="68" y="204" width="14" height="10"></rect><rect x="110" y="201" width="14" height="13"></rect><rect x="152" y="207" width="14" height="7"></rect><rect x="194" y="190" width="14" height="24"></rect><rect x="236" y="194" width="14" height="20"></rect><rect x="278" y="199" width="14" height="15"></rect><rect x="320" y="187" width="14" height="27"></rect><rect x="362" y="201" width="14" height="13"></rect><rect x="404" y="193" width="14" height="21"></rect><rect x="446" y="203" width="14" height="11"></rect><rect x="488" y="184" width="14" height="30"></rect><rect x="530" y="199" width="14" height="15"></rect><rect x="572" y="206" width="14" height="8"></rect><rect x="614" y="195" width="14" height="19"></rect><rect x="656" y="207" width="14" height="7"></rect><rect x="698" y="203" width="14" height="11"></rect>
+</g>
+<g fill="var(--mut)" font-size="8.5" font-family="'JetBrains Mono',monospace"><text x="44" y="234">08:00</text><text x="170" y="234">11:00</text><text x="296" y="234">14:00</text><text x="422" y="234">17:00</text><text x="548" y="234">20:00</text><text x="666" y="234">23:00</text></g>
+</svg>
+<div style="position:absolute;left:6%;top:2%;max-width:158px"><div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.08em;color:var(--mut)">09:00 · 49m</div><div style="font-size:11px;line-height:1.45;margin-top:3px">The day's high water mark, and the only unbroken hour.</div></div>
+<div style="position:absolute;left:42%;top:16%;max-width:150px"><div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.08em;color:var(--mut)">14:00 · 45m</div><div style="font-size:11px;line-height:1.45;margin-top:3px">A second peak — but with 21 idle minutes inside it.</div></div>
+</div>
+</div>
+</div>
+
+<div style="padding:28px 44px 0;flex:none">
+<div style="border-top:1px solid var(--bd);padding-top:22px;display:grid;grid-template-columns:1fr 300px;gap:40px">
+<div>
+<div style="font-family:'Instrument Serif',Georgia,serif;font-size:20px">Your intensity falls off after lunch, not your presence</div>
+<div style="font-size:12.5px;line-height:1.75;color:var(--mut);margin-top:8px;max-width:720px;text-wrap:pretty">The afternoon hours are almost as long as the morning ones, but each carries a smaller bubble — the same time at the keyboard producing fewer inputs per minute. If you want one change from this screen, it is shortening the 12:40 break rather than adding hours at the end of the day.</div>
+<div style="height:222px;margin-top:16px">
+<svg viewBox="0 0 700 222" width="100%" height="100%" preserveAspectRatio="none">
+<g stroke="var(--bd)" stroke-width="1"><line x1="34" y1="12" x2="700" y2="12"></line><line x1="34" y1="62" x2="700" y2="62"></line><line x1="34" y1="112" x2="700" y2="112"></line><line x1="34" y1="162" x2="700" y2="162"></line><line x1="34" y1="196" x2="700" y2="196"></line></g>
+<g stroke="var(--bd)" stroke-width="1" stroke-dasharray="2 4"><line x1="200" y1="12" x2="200" y2="196"></line><line x1="366" y1="12" x2="366" y2="196"></line><line x1="532" y1="12" x2="532" y2="196"></line></g>
+<g fill="var(--mut)" font-size="8.5" font-family="'JetBrains Mono',monospace" text-anchor="end"><text x="26" y="15">100%</text><text x="26" y="65">75</text><text x="26" y="115">50</text><text x="26" y="165">25</text><text x="26" y="199">0</text></g>
+<g fill="#0f766e" fill-opacity=".45" stroke="#0f766e">
+<circle cx="118" cy="46" r="14"></circle><circle cx="160" cy="80" r="11"></circle><circle cx="202" cy="140" r="7"></circle><circle cx="244" cy="148" r="6"></circle><circle cx="286" cy="172" r="5"></circle><circle cx="328" cy="58" r="12"></circle><circle cx="370" cy="96" r="9"></circle><circle cx="412" cy="140" r="7"></circle><circle cx="454" cy="128" r="8"></circle><circle cx="496" cy="112" r="9"></circle><circle cx="538" cy="160" r="6"></circle><circle cx="580" cy="168" r="5"></circle>
+</g>
+<g fill="var(--mut)" font-size="8.5" font-family="'JetBrains Mono',monospace"><text x="34" y="216">08:00</text><text x="188" y="216">11:00</text><text x="354" y="216">14:00</text><text x="520" y="216">17:00</text><text x="640" y="216">20:00</text></g>
+<text x="136" y="30" fill="var(--fg)" font-size="8.5" font-family="'JetBrains Mono',monospace">09:00 · 49m · 96%</text>
+</svg>
+</div>
+<div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.08em;color:var(--mut);margin-top:4px">CIRCLE SIZE = MINUTES ACTIVE · HEIGHT = INPUTS PER ACTIVE MINUTE</div>
+</div>
+<div style="border-left:1px solid var(--bd);padding-left:32px;display:flex;flex-direction:column;gap:22px">
+<div>
+<div style="font-family:'Instrument Serif',Georgia,serif;font-size:17px">Busiest hours</div>
+<div style="display:flex;flex-direction:column;gap:11px;margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:10.5px">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:38px;color:var(--mut)">09:00</span><div style="flex:1;height:2px;background:var(--bd)"><div style="width:100%;height:100%;background:var(--ac)"></div></div><span style="width:34px;text-align:right;font-weight:700">49m</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:38px;color:var(--mut)">14:00</span><div style="flex:1;height:2px;background:var(--bd)"><div style="width:92%;height:100%;background:var(--ac)"></div></div><span style="width:34px;text-align:right;font-weight:700">45m</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:38px;color:var(--mut)">10:00</span><div style="flex:1;height:2px;background:var(--bd)"><div style="width:76%;height:100%;background:var(--ac)"></div></div><span style="width:34px;text-align:right;font-weight:700">37m</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:38px;color:var(--mut)">15:00</span><div style="flex:1;height:2px;background:var(--bd)"><div style="width:69%;height:100%;background:var(--ac)"></div></div><span style="width:34px;text-align:right;font-weight:700">34m</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:38px;color:var(--mut)">18:00</span><div style="flex:1;height:2px;background:var(--bd)"><div style="width:59%;height:100%;background:var(--ac)"></div></div><span style="width:34px;text-align:right;font-weight:700">29m</span></div>
+</div>
+</div>
+<div style="border-top:1px solid var(--bd);padding-top:18px">
+<div style="font-family:'Instrument Serif',Georgia,serif;font-size:17px">Input mix</div>
+<div style="display:flex;flex-direction:column;gap:12px;margin-top:14px;font-size:11.5px">
+<div><div style="display:flex;justify-content:space-between"><span style="color:var(--mut)">Keystrokes</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700">12,493</span></div><div style="height:2px;background:var(--bd);margin-top:6px"><div style="width:81%;height:100%;background:var(--ac)"></div></div></div>
+<div><div style="display:flex;justify-content:space-between"><span style="color:var(--mut)">Clicks</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700">2,847</span></div><div style="height:2px;background:var(--bd);margin-top:6px"><div style="width:19%;height:100%;background:var(--fg);opacity:.5"></div></div></div>
+</div>
+<div style="font-size:11px;line-height:1.65;color:var(--mut);margin-top:12px">4.4 keystrokes per click — a typing day, not a browsing one.</div>
+</div>
+</div>
+</div>
+</div>
+
+<div style="padding:26px 44px 28px;flex:none">
+<div style="border-top:1px solid var(--bd);padding-top:22px">
+<div style="display:flex;align-items:baseline;justify-content:space-between">
+<span style="font-family:'Instrument Serif',Georgia,serif;font-size:20px">Four breaks, all after noon</span>
+<span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--mut)">LONGEST 22m AT 12:40 · IDLE THRESHOLD 120s</span>
+</div>
+<div style="display:flex;height:12px;margin-top:16px;background:var(--sec)">
+<span style="width:34%;background:var(--ac)"></span><span style="width:4%;background:var(--ac3);opacity:.6"></span><span style="width:11%;background:var(--ac)"></span><span style="width:6%;background:var(--ac3);opacity:.6"></span><span style="width:19%;background:var(--ac)"></span><span style="width:3%;background:var(--ac3);opacity:.6"></span><span style="width:14%;background:var(--ac)"></span><span style="width:9%;background:var(--ac3);opacity:.6"></span>
+</div>
+<div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--mut);margin-top:7px"><span>08:00</span><span>12:40 · 22m</span><span>15:10 · 8m</span><span>17:30 · 6m</span><span>NOW</span></div>
+<div style="font-size:12.5px;line-height:1.75;color:var(--mut);margin-top:14px;max-width:820px;text-wrap:pretty">None of them was long enough to reset the sedentary timer, which is why Tools is telling you a break is due in twelve minutes.</div>
+</div>
+</div>
+</div>
+</x-dc>
+</body>
+</html>

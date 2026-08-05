@@ -3,6 +3,19 @@ import { createRoot } from 'react-dom/client'
 // Self-hosted variable fonts (declared in the design system but never shipped)
 import '@fontsource-variable/inter'
 import '@fontsource-variable/plus-jakarta-sans'
+// Flat-system fonts: mono (labels/data), serif (Editorial mode), and the
+// alternative font pairs selectable in Settings
+import '@fontsource-variable/jetbrains-mono'
+import '@fontsource/instrument-serif/400.css'
+import '@fontsource/instrument-serif/400-italic.css'
+import '@fontsource-variable/geist'
+import '@fontsource-variable/geist-mono'
+import '@fontsource-variable/space-grotesk'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/500.css'
+import '@fontsource/ibm-plex-mono/700.css'
+import '@fontsource-variable/newsreader'
+import '@fontsource-variable/source-serif-4'
 import './index.css'
 import App from './App.tsx'
 

@@ -14,6 +14,10 @@ const DEFAULT_SETTINGS: UserSettings = {
     redactedKeywords: [],
     appLimits: {},
     appClassification: {},
+    readingMode: 'data',
+    writeSummarySentence: true,
+    visualTheme: 'flat',
+    fontPair: 'swiss',
 };
 
 // Backend setting keys (snake_case, shared with the Rust tracker)
@@ -28,6 +32,10 @@ const BACKEND_KEYS: Record<keyof UserSettings, string> = {
     redactedKeywords: 'redacted_keywords',
     appLimits: 'app_limits',
     appClassification: 'app_classification',
+    readingMode: 'reading_mode',
+    writeSummarySentence: 'write_summary_sentence',
+    visualTheme: 'visual_theme',
+    fontPair: 'font_pair',
 };
 
 function settingsToBackend(settings: UserSettings): Record<string, unknown> {
