@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useVisualTheme } from '../hooks/useVisualTheme';
 import { useWellbeing } from '../hooks/useWellbeing';
@@ -7,6 +7,7 @@ import { SegTabs } from '../components/ui/SegTabs';
 import { Bar } from '../components/ui/Bar';
 import { cn } from '../utils/cn';
 import { formatDuration, formatAppName } from '../utils/formatters';
+import { buildToolsInsights } from '../utils/editorialInsights';
 import { BreathingWidget } from '../components/wellbeing/BreathingWidget';
 import { useSettings } from '../hooks/useSettings';
 import { EditorialIntro } from '../components/shared/EditorialIntro';
@@ -156,6 +157,15 @@ export function Tools() {
     const breakDue = needsBreak ? 'NOW' : `${Math.max(0, 60 - sedentaryMinutes)}m`;
     const statusLine = `${timer.workSessions} POMODOROS TODAY | ${goalsMet} OF ${goals.length} TARGETS MET | BREAK DUE IN ${breakDue}`;
 
+    const insights = useMemo(
+        () => buildToolsInsights(timer.workSessions, goalsMet, goals.length, {
+            needsBreak,
+            sedentaryMinutes,
+            timeSinceLastBreak: 0,
+        }),
+        [timer.workSessions, goalsMet, goals.length, needsBreak, sedentaryMinutes]
+    );
+
     const timerProgress =
         ((MODES[timer.mode] - timer.timeLeft) / MODES[timer.mode]) * 100;
 
@@ -203,6 +213,7 @@ export function Tools() {
             <EditorialIntro
                 sentence={`You closed ${timer.workSessions} ${timer.workSessions === 1 ? 'pomodoro' : 'pomodoros'} and ${breathingSessions} ${breathingSessions === 1 ? 'breathing session' : 'breathing sessions'} today — the timer is the only thing here that isn't a record.`}
                 note={`${goalsMet} OF ${goals.length} TARGETS MET · BREAK DUE IN ${breakDue}`}
+                insights={insights}
             />
             <BreathingWidget isOpen={showBreathing} onClose={closeBreathing} />
 

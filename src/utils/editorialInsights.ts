@@ -235,8 +235,42 @@ export function buildToolsInsights(
         timeSinceLastBreak: number;
     }
 ): EditorialInsight[] {
-    void workSessions; void goalsMet; void goalCount; void wellbeing;
-    return [];
+    const insights: EditorialInsight[] = [];
+
+    // 1. Daily targets: the gap is only named when it exists.
+    if (goalCount > 0) {
+        if (goalsMet >= goalCount) {
+            insights.push({
+                label: 'TARGETS',
+                text: `All ${goalCount} ${pluralize(goalCount, 'target', 'targets')} met today.`,
+            });
+        } else {
+            const gap = goalCount - goalsMet;
+            insights.push({
+                label: 'TARGETS',
+                text: `${goalsMet} of ${goalCount} ${pluralize(goalCount, 'target', 'targets')} met — ${gap} ${pluralize(gap, 'still to reach', 'still to reach')}.`,
+            });
+        }
+    }
+
+    // 2. Break advice only when the instrument says a break is due.
+    if (wellbeing.needsBreak && wellbeing.sedentaryMinutes > 0) {
+        insights.push({
+            label: 'BREAK',
+            text: `You have been seated ${formatDuration(wellbeing.sedentaryMinutes * 60)} — time for a walk.`,
+        });
+    }
+
+    // 3. Pomodoro count when any were closed.
+    if (workSessions > 0) {
+        insights.push({
+            label: 'POMODOROS',
+            text: `${workSessions} ${pluralize(workSessions, 'pomodoro', 'pomodoros')} closed today.`,
+        });
+    }
+
+    void wellbeing.timeSinceLastBreak;
+    return insights.slice(0, 3);
 }
 
 // Re-exported so builders and callers share one duration formatter.
