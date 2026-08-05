@@ -24,11 +24,31 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
         return history; // Last 24 hours
     }, [history, interval]);
 
-    // Modal semantics: Escape closes from anywhere; focus moves into the dialog.
+    // Modal semantics: Escape closes from anywhere; focus moves into the
+    // dialog and Tab cycles inside it (aria-modal without a real trap).
     useEffect(() => {
         dialogRef.current?.focus();
         const onKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+            if (e.key === 'Escape') {
+                onClose();
+                return;
+            }
+            if (e.key !== 'Tab') return;
+            const dialog = dialogRef.current;
+            if (!dialog) return;
+            const focusables = dialog.querySelectorAll<HTMLElement>(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+            if (focusables.length === 0) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
         };
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);
@@ -167,7 +187,7 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                                     <Bar
                                         dataKey="keystrokes"
                                         name="Keystrokes"
-                                        fill="#0f766e"
+                                        fill="var(--chart-3)"
                                         radius={[4, 4, 0, 0]}
                                         maxBarSize={50}
                                         animationDuration={1000}
@@ -177,7 +197,7 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                                     <Bar
                                         dataKey="mouse_clicks"
                                         name="Clicks"
-                                        fill="#7c3aed"
+                                        fill="var(--chart-4)"
                                         radius={[4, 4, 0, 0]}
                                         maxBarSize={50}
                                         animationDuration={1000}

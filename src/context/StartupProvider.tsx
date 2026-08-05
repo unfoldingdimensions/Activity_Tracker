@@ -40,9 +40,13 @@ export const StartupProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return (
         <StartupContext.Provider value={value}>
             <LoadingScreen isLoading={!isReady} status={status} progress={progress} />
-            <div className={!isReady ? 'hidden' : 'block animate-fade-in'}>
-                {children}
-            </div>
+            {/* Mount app content only after the splash: mounting inside a
+                display:none wrapper makes Recharts measure 0x0 and warn. */}
+            {isReady && (
+                <div className="animate-fade-in">
+                    {children}
+                </div>
+            )}
         </StartupContext.Provider>
     );
 };

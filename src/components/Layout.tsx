@@ -51,6 +51,14 @@ export function Layout() {
 
     return (
         <div className="flex h-screen overflow-hidden relative bg-[var(--background)]">
+            {/* Skip link: keyboard users can jump past the rail */}
+            <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-3 focus:py-1.5 focus:text-xs focus:font-medium focus:bg-[var(--foreground)] focus:text-[var(--background)]"
+            >
+                Skip to content
+            </a>
+
             {/* Legacy background effects only for the glass skin */}
             {!isFlat && (
                 <>
@@ -199,7 +207,7 @@ export function Layout() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto relative z-10 scroll-smooth h-screen">
+            <main id="main-content" className="flex-1 overflow-y-auto relative z-10 scroll-smooth h-screen">
                 <Outlet />
             </main>
         </div>

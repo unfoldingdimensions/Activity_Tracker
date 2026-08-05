@@ -98,7 +98,11 @@ function ToastContainer({
     onDismiss: (id: string) => void;
 }) {
     return (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+        <div
+            role="status"
+            aria-live="polite"
+            className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"
+        >
             <AnimatePresence mode="popLayout">
                 {toasts.map((toast) => (
                     <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
@@ -146,6 +150,7 @@ function ToastItem({
             <p className="text-sm text-(--foreground) flex-1">{toast.message}</p>
             <button
                 onClick={() => onDismiss(toast.id)}
+                aria-label="Dismiss notification"
                 className="p-1 rounded hover:bg-(--secondary) transition-colors"
             >
                 <X size={14} className="text-(--muted-foreground)" />

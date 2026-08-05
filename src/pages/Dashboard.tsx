@@ -107,7 +107,7 @@ export function Dashboard() {
                     {/* Two-up: input intensity | work patterns */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 py-6 px-8 border-b border-[var(--border)]">
                         <div className="widget px-6 py-5 min-w-0 overflow-hidden">
-                            <InputIntensity buckets={inputHistory ?? []} isLoading={inputLoading} />
+                            <InputIntensity buckets={inputHistory ?? []} isLoading={inputLoading} onExpand={() => setShowInputModal(true)} />
                         </div>
                         <div className="widget px-6 py-5 min-w-0 overflow-hidden">
                             <WorkPatterns />
@@ -182,7 +182,7 @@ export function Dashboard() {
                 {/* Two-up: input intensity | work patterns */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <GlassCard className="p-6" hover={false}>
-                        <InputIntensity buckets={inputHistory ?? []} isLoading={inputLoading} />
+                        <InputIntensity buckets={inputHistory ?? []} isLoading={inputLoading} onExpand={() => setShowInputModal(true)} />
                     </GlassCard>
                     <GlassCard className="p-6" hover={false}>
                         <WorkPatterns />

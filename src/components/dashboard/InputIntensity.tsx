@@ -7,13 +7,15 @@ interface InputIntensityProps {
     /** hourly buckets (chronological); the last 24 are drawn */
     buckets: InputHistoryBucket[];
     isLoading?: boolean;
+    /** opens the full input-history modal */
+    onExpand?: () => void;
 }
 
 /**
  * 24 square cells, opacity encodes input volume. Hovered cell gets a 1px
  * outline with a 2px offset; its value appears in the footer caption.
  */
-export function InputIntensity({ buckets, isLoading = false }: InputIntensityProps) {
+export function InputIntensity({ buckets, isLoading = false, onExpand }: InputIntensityProps) {
     const theme = useVisualTheme();
     const [hovered, setHovered] = useState<number | null>(null);
 
@@ -55,9 +57,19 @@ export function InputIntensity({ buckets, isLoading = false }: InputIntensityPro
 
     return (
         <div>
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-baseline justify-between gap-3">
                 <h3 className="section-title text-[var(--foreground)]">Input intensity</h3>
-                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">LAST 24 HOURS</span>
+                <div className="flex items-center gap-3">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">LAST 24 HOURS</span>
+                    {onExpand && (
+                        <button
+                            onClick={onExpand}
+                            className="font-mono text-[9.5px] uppercase tracking-[0.08em] px-2 py-[3px] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                        >
+                            History
+                        </button>
+                    )}
+                </div>
             </div>
             <div className={cn('grid grid-cols-12 gap-[3px] mt-4 min-w-0', theme === 'flat' ? '' : 'gap-1')}>
                 {isLoading ? (
