@@ -260,7 +260,7 @@ The flat skin is square: border-radius 0 everywhere — panels, chips, toggles, 
 - **StatusDot:** the 6px Patina Teal dot (the only round thing); pulses (`opacity 1→0.35, scale 1→0.82`, 2s ease-in-out, infinite) while tracking is live, Pencil Lead when idle.
 - **Bar:** square track in Parchment; fill color defaults to Patina Teal; heights hair (2px) / thin (3px) / thick (6–12px for progress and segments).
 - **Panel:** the flat container — a plain block with a 1px top rule and padding; explicitly not a card.
-- **EditorialIntro:** italic serif lede (22px, line-height 1.45, max-width 760px) under the header in editorial mode, with a mono supporting line.
+- **EditorialIntro:** italic serif lede (22px, line-height 1.45, max-width 760px) under the header in editorial mode, with a mono supporting line. Optional **insight rows** (max 3) below it: hairline-separated `li` rows, each a `w-28` mono uppercase label (10px, +0.1em tracking, Pencil Lead) beside a 13px Ink sentence. Insights are built by pure functions in `src/utils/editorialInsights.ts` — one builder per surface (`buildDashboardInsights`, `buildActivityInsights`, `buildPowerInsights`, `buildTimelineInsights`, `buildToolsInsights`) — with the rules: same truth two ways (every figure matches Data mode), explain don't report (one interpretation + one number per row), the instrument is honest (unknown comparisons omitted, never invented; empty data yields no rows), max 3 per page.
 - **EmptyState:** centered icon in a Linen circle, Display title, Pencil Lead message — the only rounded container in flat mode.
 
 ## Do's and Don'ts
