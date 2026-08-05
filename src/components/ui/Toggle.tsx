@@ -25,12 +25,12 @@ export function Toggle({ checked, onChange, label, className }: ToggleProps) {
                 onClick={() => onChange(!checked)}
                 className={cn(
                     'flex w-[34px] h-4 p-px border transition-[justify-content] duration-150',
-                    checked ? 'justify-end border-[var(--foreground)]' : 'justify-start border-[var(--border)]',
+                    checked ? 'justify-end border-[var(--toggle-on)]' : 'justify-start border-[var(--border)]',
                     className
                 )}
             >
                 <span
-                    className={cn('w-[14px] h-3', checked ? 'bg-[var(--foreground)]' : 'bg-[var(--border)]')}
+                    className={cn('w-[14px] h-3', checked ? 'bg-[var(--toggle-on)]' : 'bg-[var(--border)]')}
                 />
             </button>
         );
@@ -44,7 +44,7 @@ export function Toggle({ checked, onChange, label, className }: ToggleProps) {
             onClick={() => onChange(!checked)}
             className={cn(
                 'relative w-11 h-6 rounded-full transition-colors duration-150',
-                checked ? 'bg-[var(--primary)]' : 'bg-[var(--muted)]',
+                checked ? 'bg-[var(--toggle-on)]' : 'bg-[var(--muted)]',
                 className
             )}
         >

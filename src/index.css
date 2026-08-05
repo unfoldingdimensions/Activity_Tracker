@@ -34,6 +34,10 @@
   --accent-negative: #9f1239;
   --accent-support: #6d28d9;
 
+  /* Toggle ON fill: ink in light mode; a warm mid-stone in dark mode so
+     the white thumb stays visible (chalk --primary would hide it) */
+  --toggle-on: #1c1917;
+
   /* Chart Colors */
   --chart-1: #1c1917;
   --chart-2: #a16207;
@@ -103,6 +107,9 @@
   --accent-warning: #b45309;
   --accent-negative: #9f1239;
   --accent-support: #6d28d9;
+
+  /* Toggle ON fill in dark mode: dark warm stone, not chalk */
+  --toggle-on: #57534e;
 
   /* Chart Colors - Brighter for Dark Mode */
   --chart-1: #fafaf9;

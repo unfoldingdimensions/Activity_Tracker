@@ -64,7 +64,7 @@
       "refersTo": "toggle-on",
       "description": "34x16 bordered switch with a square 14x12 block; snaps end/start via justify-content.",
       "html": "<button class=\"ds-toggle\" role=\"switch\" aria-checked=\"true\"><span class=\"ds-toggle-block\"></span></button>",
-      "css": ".ds-toggle { display: flex; align-items: center; justify-content: flex-end; width: 34px; height: 16px; padding: 1px; background: transparent; border: 1px solid var(--foreground, #1c1917); border-radius: 0; cursor: pointer; transition: justify-content 150ms; } .ds-toggle-block { width: 14px; height: 12px; background: var(--foreground, #1c1917); border-radius: 0; } .ds-toggle[aria-checked=\"false\"] { justify-content: flex-start; border-color: var(--border, #e7e0d5); } .ds-toggle[aria-checked=\"false\"] .ds-toggle-block { background: var(--border, #e7e0d5); } .ds-toggle:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background, #faf8f5), 0 0 0 4px var(--ring, #a8a29e); }"
+      "css": ".ds-toggle { display: flex; align-items: center; justify-content: flex-end; width: 34px; height: 16px; padding: 1px; background: transparent; border: 1px solid var(--toggle-on, #1c1917); border-radius: 0; cursor: pointer; transition: justify-content 150ms; } .ds-toggle-block { width: 14px; height: 12px; background: var(--toggle-on, #1c1917); border-radius: 0; } .ds-toggle[aria-checked=\"false\"] { justify-content: flex-start; border-color: var(--border, #e7e0d5); } .ds-toggle[aria-checked=\"false\"] .ds-toggle-block { background: var(--border, #e7e0d5); } .ds-toggle:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background, #faf8f5), 0 0 0 4px var(--ring, #a8a29e); }"
     },
     {
       "name": "Mono Chip",

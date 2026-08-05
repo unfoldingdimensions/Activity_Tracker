@@ -117,6 +117,7 @@ components:
   toggle-on:
     backgroundColor: "{colors.ink}"
     size: "34px x 16px"
+    textColor: "{colors.chalk}"
   chip:
     backgroundColor: "transparent"
     textColor: "{colors.ink}"
@@ -229,9 +230,9 @@ The flat skin is square: border-radius 0 everywhere — panels, chips, toggles, 
 - **Destructive:** Oxblood fill (the only destructive color in the app), reserved for "Clear all history."
 
 ### Toggle
-- **Style (flat):** 34×16px, 1px border (Ink when on, Parchment when off), 1px padding, containing a 14×12px square block (Ink when on, Parchment when off) justified end/start.
-- **Motion:** 120–150ms `justify-content` swap. No animation beyond that.
-- **Glass variant:** rounded 44×24 with circular white thumb.
+- **Style (flat):** 34×16px, 1px border (`--toggle-on` when on, Parchment when off), 1px padding, containing a 14×12px square block (`--toggle-on` when on, Parchment when off) justified end/start.
+- **Style (glass):** rounded 44×24 track, `--toggle-on` when on, Muted when off; circular white thumb. The `--toggle-on` token is Ink (#1c1917) in light mode and a warm mid-stone (#57534e) in dark mode — never the chalk foreground, so the white thumb stays visible on the ON track in both themes.
+- **Motion:** 120–150ms `justify-content` / `left` swap. No animation beyond that.
 
 ### Chips
 - **Style (flat):** bordered mono tag — 1px Parchment border, 11px uppercase mono with +0.06em tracking, Ink text, square corners, square `×` remove button that turns Oxblood on hover.
@@ -250,6 +251,7 @@ The flat skin is square: border-radius 0 everywhere — panels, chips, toggles, 
 
 ### Navigation
 - **Style (flat):** text-only rail, 13px Ink/700 for active, Pencil Lead for inactive; active gets a 2px left Ink rule; hover fills Linen. The "NEW" chip on Tools is a 1px-bordered mono tag in Patina Teal.
+- **Segmented controls (glass):** pill track on a Secondary fill with a 1px Parchment border — the border keeps the container visible on the Paper page in light mode, where Secondary fill alone would vanish. Selected pill = Primary fill, Primary-foreground text.
 - **Glass variant:** rounded pills with icon, active = Ink fill.
 
 ### Signature Components

@@ -37,7 +37,7 @@ export function SegTabs<T extends string>({ options, value, onChange, className 
     }
 
     return (
-        <div className={cn('flex items-center gap-1 p-1 rounded-lg bg-[var(--secondary)]', className)}>
+        <div className={cn('flex items-center gap-1 p-1 rounded-lg bg-[var(--secondary)] border border-[var(--border)]', className)}>
             {options.map((opt) => (
                 <button
                     key={opt.value}
