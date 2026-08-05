@@ -89,8 +89,8 @@ export function Dashboard() {
                     <DailyDigest digest={digest} isLoading={isLoading} />
 
                     {/* Main split: focus flow + KPI row | app usage side */}
-                    <div className="grid grid-cols-[1fr_300px] py-6 px-8 border-b border-[var(--border)]">
-                        <div className="pr-7">
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 py-6 px-8 border-b border-[var(--border)]">
+                        <div className="min-w-0 pr-0 lg:pr-7">
                             <FocusFlowChart data={timelineData} isLoading={isLoading} minHeight={250} title="Focus flow" />
                             <FlowStateMetrics />
                         </div>
@@ -98,18 +98,18 @@ export function Dashboard() {
                     </div>
 
                     {/* Two-up: input intensity | work patterns */}
-                    <div className="grid grid-cols-2 gap-4 py-6 px-8 border-b border-[var(--border)]">
-                        <div className="widget px-6 py-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 py-6 px-8 border-b border-[var(--border)]">
+                        <div className="widget px-6 py-5 min-w-0 overflow-hidden">
                             <InputIntensity buckets={inputHistory ?? []} isLoading={inputLoading} />
                         </div>
-                        <div className="widget px-6 py-5">
+                        <div className="widget px-6 py-5 min-w-0 overflow-hidden">
                             <WorkPatterns />
                         </div>
                     </div>
 
                     {/* Deep work sessions */}
                     <div className="py-6 px-8 border-b border-[var(--border)]">
-                        <div className="widget px-6 py-5">
+                        <div className="widget px-6 py-5 min-w-0">
                             <DeepWorkSessions sessions={focusSessions} isLoading={isLoading} />
                         </div>
                     </div>

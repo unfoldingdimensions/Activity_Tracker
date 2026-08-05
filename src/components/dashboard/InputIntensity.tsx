@@ -59,7 +59,7 @@ export function InputIntensity({ buckets, isLoading = false }: InputIntensityPro
                 <h3 className="section-title text-[var(--foreground)]">Input intensity</h3>
                 <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">LAST 24 HOURS</span>
             </div>
-            <div className={cn('grid grid-cols-12 gap-[3px] mt-4', theme === 'flat' ? '' : 'gap-1')}>
+            <div className={cn('grid grid-cols-12 gap-[3px] mt-4 min-w-0', theme === 'flat' ? '' : 'gap-1')}>
                 {isLoading ? (
                     Array.from({ length: 24 }, (_, i) => (
                         <div key={i} className={cn(theme === 'flat' ? 'h-[44px]' : 'h-8', 'bg-[var(--border)]')} />
