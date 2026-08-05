@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { GlassCard } from './GlassCard';
 import { X } from 'lucide-react';
 import { useInputHistory } from '../hooks/useTrackerData';
@@ -14,6 +14,7 @@ interface InputHistoryModalProps {
 export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
     const [interval, setInterval] = useState(60); // Default 1 hour
     const [metric, setMetric] = useState<'keystrokes' | 'clicks'>('keystrokes');
+    const dialogRef = useRef<HTMLDivElement>(null);
     const { data: history, isLoading } = useInputHistory(interval, true);
     const filteredHistory = useMemo(() => {
         if (!history) return [];
@@ -23,10 +24,27 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
         return history; // Last 24 hours
     }, [history, interval]);
 
+    // Modal semantics: Escape closes from anywhere; focus moves into the dialog.
+    useEffect(() => {
+        dialogRef.current?.focus();
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [onClose]);
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in p-4">
+        <div
+            ref={dialogRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Input Activity History"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in p-4 outline-none"
+        >
             {/* Backdrop click to close */}
-            <div className="absolute inset-0" onClick={onClose} />
+            <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
             <GlassCard className="w-full max-w-4xl h-[600px] p-6 relative flex flex-col" hover={false}>
                 {/* Header */}
@@ -41,6 +59,7 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                     </div>
                     <button
                         onClick={onClose}
+                        aria-label="Close input activity history"
                         className="p-2 rounded-full hover:bg-[var(--secondary)] transition-colors text-[var(--muted-foreground)] hover:text-[var(--foreground)] z-10"
                     >
                         <X size={20} />
@@ -136,7 +155,7 @@ export function InputHistoryModal({ onClose }: InputHistoryModalProps) {
                                         border: '1px solid var(--border)',
                                         borderRadius: '8px',
                                         color: 'var(--foreground)',
-                                        boxShadow: 'var(--shadow-swiss)',
+                                        boxShadow: 'var(--shadow-md)',
                                     }}
                                     cursor={{ fill: 'var(--secondary)', opacity: 0.5 }}
                                 />

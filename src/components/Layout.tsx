@@ -71,9 +71,9 @@ export function Layout() {
                     <>
                         {/* Brand */}
                         <div className="px-[22px] pb-[22px] pt-[26px]">
-                            <div className="text-[13px] font-bold tracking-[-0.01em] text-[var(--foreground)]">
+                            <h1 className="text-[13px] font-bold tracking-[-0.01em] text-[var(--foreground)]">
                                 Activity Tracker
-                            </div>
+                            </h1>
                             <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] mt-[5px]">
                                 track · visualize
                             </div>
