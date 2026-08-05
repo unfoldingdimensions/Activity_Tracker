@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useUserStats } from '../hooks/useTrackerData';
 import type { TimeRange } from '../components/dashboard/TimeRangeFilter';
+import { useVisualTheme } from '../hooks/useVisualTheme';
 
 // Components
 import { GlassCard } from '../components/GlassCard';
@@ -14,6 +15,8 @@ import { AppIcon } from '../components/shared/AppIcon';
 import { formatDuration } from '../utils/formatters';
 
 export function TrayPopup() {
+    const theme = useVisualTheme();
+    const isFlat = theme === 'flat';
     // Always show today in tray popup for consistent behavior
     const selectedRange: TimeRange = 'today';
 
@@ -58,6 +61,134 @@ export function TrayPopup() {
         visible: { opacity: 1, scale: 1, transition: { duration: 0.2 } },
     };
 
+    /* ================= FLAT: hairline-ruled popup ================= */
+    if (isFlat) {
+        return (
+            <div className="w-full h-full flex flex-col bg-[var(--background)] border border-[var(--border)] font-body">
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[var(--border)]">
+                    <div className="flex items-center gap-2.5">
+                        <Activity size={14} className="text-[var(--accent-focus)]" />
+                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--foreground)]">
+                            Activity Tracker
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => openMainWindow('/settings')}
+                            className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                            title="Settings"
+                        >
+                            <SettingsIcon size={14} />
+                        </button>
+                        <button
+                            onClick={() => handleClosePopup()}
+                            className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
+                            title="Close"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Metric band: 2 cells divided by a rule */}
+                <div className="grid grid-cols-2 border-b border-[var(--border)]">
+                    <div className="px-5 py-4">
+                        <div className="label-mono">Active time</div>
+                        <div className="flex items-center gap-2 mt-1.5">
+                            <Keyboard size={13} className="text-[var(--muted-foreground)]" />
+                            <span className="font-display text-[22px] font-semibold tracking-[-0.04em] tabular-nums text-[var(--foreground)]">
+                                {isLoading ? '…' : stats?.screenTime || '0m'}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="px-5 py-4 border-l border-[var(--border)]">
+                        <div className="label-mono">Focus score</div>
+                        <div className="flex items-center gap-2 mt-1.5">
+                            <Zap size={13} className="text-[var(--accent-warning)]" />
+                            <span className="font-display text-[22px] font-semibold tracking-[-0.04em] tabular-nums text-[var(--foreground)]">
+                                {isLoading ? '…' : stats?.focusScore || 0}%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Digest line */}
+                <div className="flex items-center justify-center gap-4 px-5 py-3 border-b border-[var(--border)] font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
+                    <span className="flex items-center gap-1">
+                        <Flame size={11} className="text-[var(--accent-warning)]" />
+                        {isLoading ? '…' : `${digest?.sessionCount ?? 0} deep`}
+                    </span>
+                    <span className="w-px h-3 bg-[var(--border)]" />
+                    <span className="flex items-center gap-1">
+                        <Clock3 size={11} />
+                        peak {digest?.peakHour ?? '—'}
+                    </span>
+                    {digest && digest.deltaVsPrevious !== null && (
+                        <>
+                            <span className="w-px h-3 bg-[var(--border)]" />
+                            <span className="flex items-center gap-1">
+                                <TrendingUp size={11} className={digest.deltaVsPrevious >= 0 ? 'text-[var(--accent-focus)]' : 'text-[var(--accent-negative)]'} />
+                                {digest.deltaVsPrevious >= 0 ? '+' : '−'}
+                                {formatDuration(Math.abs(digest.deltaVsPrevious))}
+                            </span>
+                        </>
+                    )}
+                </div>
+
+                {/* Top app */}
+                <div className="flex-1 min-h-0 px-5 py-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="label-mono">Top application</span>
+                        {topApp && (
+                            <span className="font-mono text-[10px] font-bold text-[var(--foreground)]">
+                                {formatDuration(topApp.value * 60)}
+                            </span>
+                        )}
+                    </div>
+
+                    {topApp ? (
+                        <div className="flex items-center gap-3">
+                            <AppIcon processName={topApp.name} size={28} />
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-[13px] font-semibold text-[var(--foreground)] truncate">
+                                    {topApp.name}
+                                </span>
+                                <span className="text-[10px] text-[var(--muted-foreground)]">
+                                    Most active recently
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-[var(--muted-foreground)] border border-dashed border-[var(--border)] py-6">
+                            <MousePointer size={20} className="mb-2 opacity-30" />
+                            <span className="text-[11px] font-bold">No activity recorded</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="px-5 pb-4 pt-3 border-t border-[var(--border)]">
+                    <button
+                        onClick={() => openMainWindow('/')}
+                        className="w-full py-3 bg-[var(--foreground)] text-[var(--background)] font-mono text-[10px] uppercase tracking-[0.14em] font-bold hover:opacity-90 transition-opacity"
+                    >
+                        <span className="flex items-center justify-center gap-2">
+                            <Maximize2 size={13} />
+                            Open full app
+                        </span>
+                    </button>
+                    {userStats && (
+                        <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+                            LVL {userStats.current_level} · {userStats.current_streak} DAY STREAK
+                        </p>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    /* ================= GLASS ================= */
     return (
         <motion.div
             initial="hidden"
