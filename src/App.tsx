@@ -18,6 +18,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m
 const Timeline = lazy(() => import('./pages/Timeline').then(m => ({ default: m.Timeline })));
 const ActivityPage = lazy(() => import('./pages/Activity').then(m => ({ default: m.ActivityPage })));
 const Power = lazy(() => import('./pages/Power').then(m => ({ default: m.Power })));
+const Tools = lazy(() => import('./pages/Tools').then(m => ({ default: m.Tools })));
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const TrayPopup = lazy(() => import('./pages/TrayPopup').then(m => ({ default: m.TrayPopup })));
 
@@ -72,6 +73,7 @@ function App() {
                           <Route path="/timeline" element={<Timeline />} />
                           <Route path="/activity" element={<ActivityPage />} />
                           <Route path="/power" element={<Power />} />
+                          <Route path="/tools" element={<Tools />} />
                           <Route path="/settings" element={<Settings />} />
                         </Route>
                         {/* Standalone Tray Route */}

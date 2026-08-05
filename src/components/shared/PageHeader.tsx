@@ -1,15 +1,18 @@
 /**
- * PageHeader - Reusable sticky page header component
- * Provides consistent header styling across all pages
+ * PageHeader - page title + mono meta line + right-side actions.
+ * Flat: solid sticky header, 34px title. Glass: blurred sticky header.
  */
 
-import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
+import { useVisualTheme } from '../../hooks/useVisualTheme';
+import { cn } from '../../utils/cn';
 
 export interface PageHeaderProps {
     /** Page title */
     title: string;
-    /** Optional subtitle/description */
+    /** Mono meta line: "Tue 5 Aug · 03:31 · PAST HOUR | UPDATED 4s AGO" */
+    meta?: ReactNode;
+    /** Legacy subtitle; rendered as the mono meta line in flat mode */
     subtitle?: string;
     /** Optional action elements (buttons, counters) to display on the right */
     actions?: ReactNode;
@@ -19,36 +22,52 @@ export interface PageHeaderProps {
     maxWidth?: string;
 }
 
+export function PageHeader({ title, meta, subtitle, actions, leftAction, maxWidth }: PageHeaderProps) {
+    const theme = useVisualTheme();
+    const metaLine = meta ?? subtitle;
 
-export function PageHeader({
-    title,
-    subtitle,
-    actions,
-    leftAction,
-    maxWidth,
-}: PageHeaderProps) {
+    if (theme === 'flat') {
+        return (
+            <div className="sticky top-0 z-20 bg-[var(--background)] px-8 pt-[26px] pb-[18px] border-b border-[var(--border)]">
+                <div
+                    className={cn(
+                        'flex justify-between items-end gap-6',
+                        maxWidth ? `${maxWidth} mx-auto w-full` : ''
+                    )}
+                >
+                    <div className="flex items-end gap-3">
+                        {leftAction}
+                        <div>
+                            <h2 className="font-display text-[34px] font-bold tracking-[-0.035em] leading-none text-[var(--foreground)]">
+                                {title}
+                            </h2>
+                            {metaLine && (
+                                <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)] mt-[9px]">
+                                    {metaLine}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {actions && <div className="flex items-center gap-5">{actions}</div>}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="sticky top-0 z-20 backdrop-blur-md bg-[var(--background)]/80 p-8 pb-6 border-b border-[var(--border)]/50 transition-all">
-            <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                className={`flex justify-between items-center ${maxWidth ? `${maxWidth} mx-auto w-full` : ''}`}
-            >
-
+            <div className={cn('flex justify-between items-center', maxWidth ? `${maxWidth} mx-auto w-full` : '')}>
                 <div className="flex items-center gap-3">
                     {leftAction}
                     <div>
-                        <h2 className="font-display text-3xl font-bold text-[var(--foreground)]">
-                            {title}
-                        </h2>
-                        {subtitle && (
-                            <p className="text-[var(--muted-foreground)] mt-1">{subtitle}</p>
+                        <h2 className="font-display text-3xl font-bold text-[var(--foreground)]">{title}</h2>
+                        {(metaLine || subtitle) && (
+                            <p className="text-[var(--muted-foreground)] mt-1">{metaLine ?? subtitle}</p>
                         )}
                     </div>
                 </div>
                 {actions && <div className="flex items-center gap-3">{actions}</div>}
-            </motion.div>
+            </div>
         </div>
     );
 }
