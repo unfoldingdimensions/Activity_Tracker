@@ -1,10 +1,9 @@
 /**
- * Power Page - Energy consumption estimates based on app usage
- * Refactored to use shared components
+ * Power Page - live CPU sample, power impact map, per-app power table.
+ * Same band structure on both skins (glass containers).
  */
 
 import { useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import {
     ScatterChart,
@@ -16,25 +15,19 @@ import {
     ResponsiveContainer,
     CartesianGrid,
 } from 'recharts';
-import { Zap, Cpu, Monitor, Activity } from 'lucide-react';
 
 // Hooks
-import { useAppUsage, useDailyStats } from '../hooks/useTrackerData';
+import { useAppUsage } from '../hooks/useTrackerData';
 import { isTauri } from '../utils/isTauri';
 import { getCpuSnapshot } from '../api/tauri';
 import { MOCK_CPU_SNAPSHOT } from '../hooks/queries/mockData';
+import { useVisualTheme } from '../hooks/useVisualTheme';
+import { cn } from '../utils/cn';
 
 // Components
-import { GlassCard } from '../components/GlassCard';
 import { PageHeader } from '../components/shared/PageHeader';
-import { StatCard } from '../components/dashboard/StatCard';
-import { ChartTooltip } from '../components/charts/ChartTooltip';
-import { EmptyState } from '../components/shared/EmptyState';
-import { LoadingState } from '../components/shared/LoadingState';
-
-// Utils & Constants
-import { formatDuration } from '../utils/formatters';
-import { containerVariants, itemVariants, CHART_COLORS } from '../constants';
+import { RefreshButton } from '../components/shared/RefreshButton';
+import { CHART_COLORS } from '../constants';
 
 // ============ Power Estimation Helpers ============
 
@@ -61,8 +54,9 @@ function estimateCPU(appName: string): number {
 // ============ Component ============
 
 export function Power() {
+    const theme = useVisualTheme();
+    const isFlat = theme === 'flat';
     const { data: appUsage, isLoading } = useAppUsage();
-    const { data: stats } = useDailyStats();
 
     // Live top-CPU processes sampled by the backend (5s cadence)
     const { data: cpuSnapshot } = useQuery({
@@ -76,7 +70,7 @@ export function Power() {
     });
 
     // Transform and calculate data
-    const { powerData, topConsumers, avgPower, avgCPU } = useMemo(() => {
+    const { powerData, topConsumers, avgPower, totalCpu } = useMemo(() => {
         const data = appUsage?.map((app) => ({
             app: app.name,
             time: parseFloat((app.seconds / 3600).toFixed(2)),
@@ -86,196 +80,172 @@ export function Power() {
         })).filter((d) => d.time > 0.01) || [];
 
         const sorted = [...data].sort((a, b) => b.weightedImpact - a.weightedImpact);
-        const top = sorted.slice(0, 5).map((item, i) => ({
+        const top = sorted.slice(0, 8).map((item, i) => ({
             app: item.app,
-            power: `${item.power}W avg`,
-            usage: `${item.time}h`,
+            power: item.power,
+            usage: item.time,
             impact: item.weightedImpact > 50 ? 'High' : item.weightedImpact > 10 ? 'Medium' : 'Low',
             color: CHART_COLORS[i % CHART_COLORS.length],
+            weightedImpact: item.weightedImpact,
         }));
 
         const power = data.length > 0 ? Math.round(data.reduce((acc, curr) => acc + curr.power, 0) / data.length) : 0;
-        const cpu = data.length > 0 ? Math.round(data.reduce((acc, curr) => acc + curr.cpu, 0) / data.length) : 0;
+        const cpu = (cpuSnapshot ?? []).reduce((acc, [, v]) => acc + v, 0);
 
-        return { powerData: data, topConsumers: top, avgPower: power, avgCPU: cpu };
-    }, [appUsage]);
+        return { powerData: data, topConsumers: top, avgPower: power, totalCpu: Math.min(100, Math.round(cpu)) };
+    }, [appUsage, cpuSnapshot]);
+
+    const band = isFlat
+        ? 'widget px-6 py-5'
+        : 'rounded-xl border border-[var(--border)] bg-[var(--secondary)]/40 backdrop-blur-md p-6';
+
+    const memUsed = (cpuSnapshot ?? []).length;
 
     return (
         <div className="flex flex-col min-h-full">
-            {/* Header */}
             <PageHeader
-                title="Energy Vampire"
-                subtitle="Estimated power consumption based on activity"
+                title="Power"
+                meta={`CPU ${totalCpu}% · ${memUsed} PROCESSES SAMPLED · AVG DRAW ${avgPower}W`}
+                actions={<RefreshButton />}
             />
 
-            {/* Content */}
-            <div className="p-8 pt-6 space-y-8 flex-1">
-                {/* Stats */}
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="show"
-                    className="grid grid-cols-1 md:grid-cols-3 gap-4"
-                >
-                    <motion.div variants={itemVariants}>
-                        <StatCard
-                            label="Avg. Power"
-                            value={`${avgPower}W`}
-                            numericValue={avgPower}
-                            icon={Zap}
-                            isLoading={isLoading}
-                            suffix="W"
-                        />
-                    </motion.div>
-                    <motion.div variants={itemVariants}>
-                        <StatCard
-                            label="Avg. CPU Est."
-                            value={`${avgCPU}%`}
-                            numericValue={avgCPU}
-                            icon={Cpu}
-                            isLoading={isLoading}
-                            suffix="%"
-                        />
-                    </motion.div>
-                    <motion.div variants={itemVariants}>
-                        <StatCard
-                            label="Screen Time"
-                            value={stats ? formatDuration(stats.total_active_seconds) : '0m'}
-                            numericValue={0}
-                            icon={Monitor}
-                            isLoading={isLoading}
-                            useStringValue
-                        />
-                    </motion.div>
-                </motion.div>
-
-                {/* Live CPU Usage */}
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="show"
-                >
-                    <GlassCard className="p-6" hover={false}>
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 rounded-lg bg-cyan-500/10">
-                                <Activity size={20} className="text-cyan-500" />
-                            </div>
-                            <div>
-                                <h3 className="font-display text-lg font-semibold text-[var(--foreground)]">
-                                    Live CPU Usage
-                                </h3>
-                                <p className="text-sm text-[var(--muted-foreground)]">
-                                    Top processes right now (sampled every 5s)
-                                </p>
-                            </div>
+            <div className={cn(isFlat ? 'w-full px-8 pt-2 pb-10 space-y-4' : 'p-8 pt-6 space-y-6 flex-1')}>
+                {/* ===== Live CPU + power map ===== */}
+                <div className={cn('grid grid-cols-1 gap-4 lg:grid-cols-2', isFlat && 'py-2')}>
+                    {/* Live CPU */}
+                    <div className={band}>
+                        <div className="flex items-baseline justify-between">
+                            <h3 className="section-title text-[var(--foreground)]">Live CPU</h3>
+                            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                                top processes · 5s cadence
+                            </span>
                         </div>
-
-                        {cpuSnapshot && cpuSnapshot.length > 0 ? (
-                            <div className="space-y-2">
-                                {cpuSnapshot.slice(0, 8).map(([name, cpu]) => (
+                        <div className="mt-4 space-y-2.5">
+                            {cpuSnapshot && cpuSnapshot.length > 0 ? (
+                                cpuSnapshot.slice(0, 8).map(([name, cpu]) => (
                                     <div key={name} className="flex items-center gap-3">
-                                        <span className="text-sm text-[var(--foreground)] w-44 truncate">
+                                        <span className="text-[13px] font-semibold text-[var(--foreground)] w-44 truncate">
                                             {name}
                                         </span>
-                                        <div className="flex-1 h-2 rounded-full bg-[var(--secondary)]/60 overflow-hidden">
+                                        <div className="flex-1 h-[3px] bg-[var(--border)] min-w-0">
                                             <div
-                                                className="h-full rounded-full bg-cyan-500/70 transition-all duration-700"
-                                                style={{ width: `${Math.min(100, cpu * 2)}%` }}
+                                                className="h-full transition-all duration-700"
+                                                style={{ width: `${Math.min(100, cpu * 2)}%`, backgroundColor: 'var(--accent-focus)' }}
                                             />
                                         </div>
-                                        <span className="font-mono text-xs text-[var(--muted-foreground)] w-12 text-right">
+                                        <span className="font-mono text-[11px] text-[var(--muted-foreground)] w-12 text-right">
                                             {cpu.toFixed(1)}%
                                         </span>
                                     </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-[var(--muted-foreground)]">
-                                Sampling CPU usage…
-                            </p>
-                        )}
-                    </GlassCard>
-                </motion.div>
+                                ))
+                            ) : (
+                                <p className="text-[12px] text-[var(--muted-foreground)]">Sampling CPU usage…</p>
+                            )}
+                        </div>
+                    </div>
 
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="show"
-                    className="space-y-6"
-                >
-                    {/* Bubble Chart */}
-                    <motion.div variants={itemVariants}>
-                        <GlassCard className="p-6" hover={false}>
-                            <h3 className="font-display text-lg font-semibold mb-2 text-[var(--foreground)]">
-                                Power Impact Map
-                            </h3>
-                            <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                                X: Usage Time (hours) | Y: Power Draw (Watts) | Size: CPU Impact
-                            </p>
-                            <div className="h-72">
-                                {isLoading ? (
-                                    <LoadingState message="Estimating power draw..." />
-                                ) : powerData.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 10 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.2} />
-                                            <XAxis dataKey="time" name="Time" stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(v) => `${v}h`} type="number" domain={[0, 'auto']} />
-                                            <YAxis dataKey="power" name="Power" stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(v) => `${v}W`} domain={[0, 100]} />
-                                            <ZAxis dataKey="cpu" range={[100, 1000]} name="CPU" />
-                                            <Tooltip content={<ChartTooltip />} />
-                                            <Scatter name="Apps" data={powerData} fill="#7c3aed" fillOpacity={0.6} stroke="#7c3aed" strokeWidth={1} shape="circle" />
-                                        </ScatterChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <EmptyState message="No data available" />
-                                )}
-                            </div>
-                        </GlassCard>
-                    </motion.div>
+                    {/* Power impact map */}
+                    <div className={band}>
+                        <div className="flex items-baseline justify-between">
+                            <h3 className="section-title text-[var(--foreground)]">Power impact map</h3>
+                            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                                x hours · y watts · size cpu
+                            </span>
+                        </div>
+                        <div className="mt-4 h-[220px]">
+                            {isLoading ? (
+                                <div className="text-[12px] text-[var(--muted-foreground)]">Estimating power draw…</div>
+                            ) : powerData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ScatterChart margin={{ top: 10, right: 10, bottom: 4, left: -14 }}>
+                                        <CartesianGrid vertical={false} stroke="var(--border)" strokeWidth={1} />
+                                        <XAxis
+                                            dataKey="time"
+                                            name="Time"
+                                            tick={{ fontSize: 9, fontFamily: 'var(--font-mono)', fill: 'var(--muted-foreground)' }}
+                                            tickLine={false}
+                                            axisLine={{ stroke: 'var(--border)' }}
+                                            tickFormatter={(v: number) => `${v}h`}
+                                            type="number"
+                                            domain={[0, 'auto']}
+                                        />
+                                        <YAxis
+                                            dataKey="power"
+                                            name="Power"
+                                            tick={{ fontSize: 9, fontFamily: 'var(--font-mono)', fill: 'var(--muted-foreground)' }}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickFormatter={(v: number) => `${v}W`}
+                                            domain={[0, 100]}
+                                        />
+                                        <ZAxis dataKey="cpu" range={[80, 600]} name="CPU" />
+                                        <Tooltip
+                                            cursor={{ stroke: 'var(--foreground)', strokeWidth: 1, opacity: 0.45 }}
+                                            content={({ active, payload }) => {
+                                                if (!active || !payload?.length) return null;
+                                                const p = payload[0].payload as { app: string; time: number; power: number; cpu: number };
+                                                return (
+                                                    <div className="bg-[var(--background)] border border-[var(--foreground)] px-2.5 py-1.5 font-mono text-[10px] leading-[1.7]">
+                                                        <div className="font-bold">{p.app}</div>
+                                                        <div>{p.time}h · {p.power}W · cpu {p.cpu}%</div>
+                                                    </div>
+                                                );
+                                            }}
+                                        />
+                                        <Scatter name="Apps" data={powerData} fill="var(--accent-support)" fillOpacity={0.55} stroke="var(--accent-support)" strokeWidth={1} shape="circle" isAnimationActive={false} />
+                                    </ScatterChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="text-[12px] text-[var(--muted-foreground)]/60">No data available.</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
 
-                    {/* Top Consumers */}
-                    <motion.div variants={itemVariants}>
-                        <GlassCard className="p-6" hover={false}>
-                            <h3 className="font-display text-lg font-semibold mb-4 text-[var(--foreground)]">
-                                Top Energy Consumers
-                            </h3>
-                            <div className="space-y-4">
-                                {topConsumers.length > 0 ? (
-                                    topConsumers.map((item, index) => (
-                                        <motion.div
-                                            key={item.app}
-                                            initial={{ x: -10, opacity: 0 }}
-                                            animate={{ x: 0, opacity: 1 }}
-                                            transition={{ delay: index * 0.05 }}
-                                            className="flex items-center justify-between p-4 rounded-lg bg-[var(--secondary)]"
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div
-                                                    className="w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold text-white shadow-sm"
-                                                    style={{ backgroundColor: item.color }}
-                                                >
-                                                    {index + 1}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-[var(--foreground)]">{item.app}</p>
-                                                    <p className="text-sm text-[var(--muted-foreground)]">Est. {item.power} • {item.usage} usage</p>
-                                                </div>
-                                            </div>
-                                            <span
-                                                className="px-3 py-1 rounded-full text-sm font-medium"
-                                                style={{ backgroundColor: `${item.color}20`, color: item.color }}
-                                            >
-                                                {item.impact}
-                                            </span>
-                                        </motion.div>
-                                    ))
-                                ) : (
-                                    <EmptyState message="No data yet" />
-                                )}
-                            </div>
-                        </GlassCard>
-                    </motion.div>
-                </motion.div>
+                {/* ===== Per-app power table ===== */}
+                <div className={isFlat ? '' : ''}>
+                    <div className={band}>
+                        <div className="flex items-baseline justify-between">
+                            <h3 className="section-title text-[var(--foreground)]">Top energy consumers</h3>
+                            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                                est. watts × hours
+                            </span>
+                        </div>
+                        <div className="mt-4 space-y-3">
+                            {isLoading && topConsumers.length === 0 && (
+                                <div className="text-[12px] text-[var(--muted-foreground)]">Loading…</div>
+                            )}
+                            {!isLoading && topConsumers.length === 0 && (
+                                <div className="text-[12px] text-[var(--muted-foreground)]/60">No data yet.</div>
+                            )}
+                            {topConsumers.map((item, index) => (
+                                <div key={item.app} className="flex items-center gap-4">
+                                    <span className="font-mono text-[10px] text-[var(--muted-foreground)] w-4 flex-shrink-0">
+                                        {index + 1}
+                                    </span>
+                                    <span className="text-[13px] font-semibold text-[var(--foreground)] w-36 truncate flex-shrink-0">
+                                        {item.app.replace(/\.exe$/i, '')}
+                                    </span>
+                                    <div className="flex-1 h-[3px] bg-[var(--border)] min-w-0">
+                                        <div
+                                            className="h-full"
+                                            style={{ width: `${(item.weightedImpact / (topConsumers[0]?.weightedImpact || 1)) * 100}%`, backgroundColor: item.color }}
+                                        />
+                                    </div>
+                                    <span className="font-mono text-[11px] text-[var(--muted-foreground)] w-16 text-right flex-shrink-0">
+                                        {item.power}W · {item.usage}h
+                                    </span>
+                                    <span
+                                        className="font-mono text-[9px] uppercase tracking-[0.1em] px-2 py-0.5 border w-fit flex-shrink-0"
+                                        style={{ borderColor: item.impact === 'High' ? 'var(--accent-negative)' : item.impact === 'Medium' ? 'var(--accent-warning)' : 'var(--accent-focus)', color: item.impact === 'High' ? 'var(--accent-negative)' : item.impact === 'Medium' ? 'var(--accent-warning)' : 'var(--accent-focus)' }}
+                                    >
+                                        {item.impact}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
