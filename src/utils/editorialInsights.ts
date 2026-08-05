@@ -39,19 +39,26 @@ export function longestSession(sessions: FocusSession[]): FocusSession | null {
 }
 
 /**
- * The focus-classified seconds and the top app's share of it, for the
- * "X led at Y% of focus" insight. Returns null when there is nothing.
+ * The top focus-classified app and its share of TOTAL active time (all
+ * apps), for "X led at Y% of active time" insights. Returns null when
+ * there is no focus usage at all.
  */
 export function focusLeader(
     appUsage: AppUsageEntry[],
     classify: (name: string) => AppClassification
 ): { name: string; seconds: number; sharePct: number } | null {
+    let totalSeconds = 0;
     let focusSeconds = 0;
     let topName: string | null = null;
     let topSeconds = -1;
 
     appUsage.forEach((app) => {
-        if (classify(app.name) !== 'focus') return;
+        const cls = classify(app.name);
+        // 'ignore' removes the app from the focus equation entirely
+        // (same rule as the dashboard's reconciled focus score).
+        if (cls === 'ignore') return;
+        totalSeconds += app.seconds;
+        if (cls !== 'focus') return;
         focusSeconds += app.seconds;
         if (app.seconds > topSeconds) {
             topSeconds = app.seconds;
@@ -60,7 +67,7 @@ export function focusLeader(
     });
 
     if (!topName || focusSeconds <= 0) return null;
-    return { name: topName, seconds: topSeconds, sharePct: pct(topSeconds, focusSeconds) };
+    return { name: topName, seconds: topSeconds, sharePct: pct(topSeconds, totalSeconds) };
 }
 
 // ---------------------------------------------------------------------------
@@ -75,8 +82,46 @@ export function buildDashboardInsights(
     appUsage: AppUsageEntry[],
     classify: (name: string) => AppClassification
 ): EditorialInsight[] {
-    void digest; void sessions; void timeline; void appUsage; void classify;
-    return [];
+    const insights: EditorialInsight[] = [];
+
+    // 1. Peak hour — the strongest bucket in the focus-flow timeline.
+    if (digest.peakHour) {
+        const peak = timeline.find((b) => b.time === digest.peakHour);
+        const share = peak ? Math.min(100, Math.max(0, Math.round(peak.focus))) : null;
+        if (share !== null && share > 0) {
+            insights.push({
+                label: 'PEAK HOUR',
+                text: `Focus peaked at ${digest.peakHour} — ${share}% of that hour was deep work.`,
+            });
+        }
+    }
+
+    // 2. Longest uninterrupted run.
+    const longest = longestSession(sessions);
+    if (longest && longest.durationSeconds >= 25 * 60) {
+        const dur = formatDuration(longest.durationSeconds);
+        const inter = longest.interruptions > 0
+            ? ` — ${longest.interruptions} ${pluralize(longest.interruptions, 'interruption', 'interruptions')}`
+            : '';
+        insights.push({
+            label: 'LONGEST RUN',
+            text: `${dur} uninterrupted in ${longest.appName}${inter}.`,
+        });
+    }
+
+    // 3. Delta vs the previous period — omitted when unknown (honest instrument).
+    if (digest.deltaVsPrevious !== null) {
+        const abs = formatDuration(Math.abs(digest.deltaVsPrevious));
+        insights.push({
+            label: 'VS YESTERDAY',
+            text: digest.deltaVsPrevious >= 0
+                ? `${abs} more focus than yesterday.`
+                : `${abs} less focus than yesterday.`,
+        });
+    }
+
+    void appUsage; void classify;
+    return insights.slice(0, 3);
 }
 
 export function buildActivityInsights(
