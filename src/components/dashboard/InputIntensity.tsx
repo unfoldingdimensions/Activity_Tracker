@@ -57,7 +57,7 @@ export function InputIntensity({ buckets, isLoading = false }: InputIntensityPro
         <div>
             <div className="flex items-baseline justify-between">
                 <h3 className="section-title text-[var(--foreground)]">Input intensity</h3>
-                <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">LAST 24 HOURS</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">LAST 24 HOURS</span>
             </div>
             <div className={cn('grid grid-cols-12 gap-[3px] mt-4', theme === 'flat' ? '' : 'gap-1')}>
                 {isLoading ? (
@@ -68,7 +68,7 @@ export function InputIntensity({ buckets, isLoading = false }: InputIntensityPro
                     cells.map(cell)
                 )}
             </div>
-            <div className="flex justify-between font-mono text-[8.5px] text-[var(--muted-foreground)] mt-2">
+            <div className="flex justify-between font-mono text-[9.5px] text-[var(--muted-foreground)] mt-2">
                 <span>00:00</span>
                 <span>{hovered !== null ? `${hoveredTime} · ${hoveredTotal.toLocaleString()} inputs` : `${cells.length} hours`}</span>
                 <span>Now</span>

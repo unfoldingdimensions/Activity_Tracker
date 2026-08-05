@@ -19,7 +19,7 @@ export function Chip({ children, onRemove, className }: ChipProps) {
         return (
             <span
                 className={cn(
-                    'inline-flex items-center gap-2 px-2 py-1 border border-[var(--border)] font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--foreground)]',
+                    'inline-flex items-center gap-2 px-2 py-1 border border-[var(--border)] font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--foreground)]',
                     className
                 )}
             >

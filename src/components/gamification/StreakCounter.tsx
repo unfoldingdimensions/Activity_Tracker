@@ -11,7 +11,7 @@ export function StreakCounter() {
 
     if (theme === 'flat') {
         return (
-            <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--accent-warning)]">
+            <span className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--accent-warning)]">
                 {stats.current_streak} DAY STREAK
             </span>
         );
@@ -33,7 +33,7 @@ export function StreakCounter() {
                 <Flame size={16} fill="currentColor" className="opacity-80" />
             </motion.div>
             <span className="text-xs font-bold font-mono">{stats.current_streak}</span>
-            <span className="text-[10px] uppercase font-bold tracking-wider opacity-70">Day Streak</span>
+            <span className="text-[11px] uppercase font-bold tracking-wider opacity-70">Day Streak</span>
         </div>
     );
 }

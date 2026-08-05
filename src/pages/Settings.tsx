@@ -1,4 +1,3 @@
-import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
 import { Settings as SettingsIcon, Moon, Sun, Play, Pause, Download } from 'lucide-react';
 import { useState, useEffect, useRef, type ReactNode } from 'react';
@@ -26,34 +25,27 @@ import { enable as enableAutostart, disable as disableAutostart, isEnabled as is
 
 function Section({ title, desc, icon, children }: { title: string; desc: string; icon?: ReactNode; children: ReactNode }) {
     const theme = useVisualTheme();
+    const isFlat = theme === 'flat';
 
-    if (theme === 'flat') {
-        return (
-            <div className="grid grid-cols-[232px_1fr]">
-                <div className="py-4 pr-6 border-r border-[var(--border)]">
-                    <h3 className="section-title text-[var(--foreground)]">{title}</h3>
-                    <p className="text-[11.5px] leading-relaxed text-[var(--muted-foreground)] mt-1.5">{desc}</p>
+    // Same two-column ruled structure on both skins; glass wraps it in a card.
+    const shell = isFlat ? 'grid grid-cols-[232px_1fr]' : 'grid grid-cols-[232px_1fr] w-full';
+    return (
+        <div className={isFlat ? '' : cn('widget rounded-xl border border-[var(--border)] bg-[var(--secondary)]/40 backdrop-blur-md px-6 py-5')}>
+            <div className={shell}>
+                <div className="py-2 pr-6 border-r border-[var(--border)]">
+                    <div className="flex items-center gap-2">
+                        {icon && <span className="text-[var(--muted-foreground)]">{icon}</span>}
+                        <h3 className="section-title text-[var(--foreground)]">{title}</h3>
+                    </div>
+                    <p className="text-[12.5px] leading-relaxed text-[var(--muted-foreground)] mt-1.5">{desc}</p>
                 </div>
                 <div className="py-1 pl-6">{children}</div>
             </div>
-        );
-    }
-
-    return (
-        <GlassCard className="p-6" hover={false} spotlight>
-            <div className="flex items-center gap-3 mb-6">
-                {icon && <div className="p-2 rounded-lg bg-[var(--secondary)]">{icon}</div>}
-                <div>
-                    <h3 className="text-lg font-semibold text-[var(--foreground)]">{title}</h3>
-                    <p className="text-sm text-[var(--muted-foreground)]">{desc}</p>
-                </div>
-            </div>
-            {children}
-        </GlassCard>
+        </div>
     );
 }
 
-/* Control row: flat = label + control on a hairline rule, glass = card row */
+/* Control row: label + control on a hairline rule (both skins) */
 function Row({
     label,
     caption,
@@ -66,33 +58,27 @@ function Row({
     destructive?: boolean;
 }) {
     const theme = useVisualTheme();
-
-    if (theme === 'flat') {
-        return (
-            <div className="flex items-center justify-between gap-6 py-3 border-b border-[var(--border)] last:border-b-0">
-                <div>
-                    <div className="text-[12.5px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">{label}</div>
-                    {caption && <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5">{caption}</div>}
-                </div>
-                <div className="flex-shrink-0">{control}</div>
-            </div>
-        );
-    }
+    const isFlat = theme === 'flat';
 
     return (
         <div
             className={cn(
-                'flex items-center justify-between p-4 rounded-xl border transition-colors',
-                destructive
-                    ? 'bg-[var(--secondary)]/50 border-[var(--destructive)]/20 hover:border-[var(--destructive)]/50'
-                    : 'bg-[var(--secondary)]/50 border-[var(--border)] group hover:border-[var(--primary)]/30'
+                'flex items-center justify-between gap-6 py-3 border-b border-[var(--border)] last:border-b-0',
+                !isFlat && 'border-[var(--border)]/70'
             )}
         >
             <div>
-                <p className="font-medium text-[var(--foreground)]">{label}</p>
-                {caption && <p className="text-sm text-[var(--muted-foreground)]">{caption}</p>}
+                <div
+                    className={cn(
+                        'font-semibold tracking-[-0.01em] text-[var(--foreground)] text-[13.5px]',
+                        destructive && 'text-[var(--accent-negative)]'
+                    )}
+                >
+                    {label}
+                </div>
+                {caption && <div className="text-[12px] text-[var(--muted-foreground)] mt-0.5">{caption}</div>}
             </div>
-            {control}
+            <div className="flex-shrink-0">{control}</div>
         </div>
     );
 }
@@ -126,7 +112,7 @@ function TextField({
                 aria-label={ariaLabel}
                 className={cn(
                     'flex-1 bg-transparent border-b border-dashed border-[var(--border)] focus:border-[var(--foreground)] outline-none text-[var(--foreground)] py-1.5 transition-colors placeholder:text-[var(--muted-foreground)]/60',
-                    mono ? 'font-mono text-[11px]' : 'text-[12.5px]'
+                    mono ? 'font-mono text-[12px]' : 'text-[13.5px]'
                 )}
             />
         );
@@ -152,7 +138,7 @@ function AddButton({ onClick, children = 'Add' }: { onClick: () => void; childre
         return (
             <button
                 onClick={onClick}
-                className="px-3 py-1.5 border border-dashed border-[var(--border)] hover:border-[var(--foreground)] font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                className="px-3 py-1.5 border border-dashed border-[var(--border)] hover:border-[var(--foreground)] font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
             >
                 {children}
             </button>
@@ -405,8 +391,8 @@ export function Settings() {
             <div
                 className={cn(
                     isFlat
-                        ? 'max-w-[760px] mx-auto w-full px-8 pt-2 pb-10 divide-y divide-[var(--border)]'
-                        : 'p-8 pt-6 space-y-6 flex-1 max-w-4xl mx-auto w-full'
+                        ? 'w-full px-8 pt-2 pb-10 divide-y divide-[var(--border)]'
+                        : 'p-8 pt-6 space-y-6 flex-1 w-full'
                 )}
             >
                 {/* ============ Tracking status ============ */}
@@ -434,7 +420,7 @@ export function Settings() {
                             )
                         }
                     />
-                    {isFlat && <div className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] pt-1.5">5S CADENCE</div>}
+                    {isFlat && <div className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] pt-1.5">5S CADENCE</div>}
                 </Section>
 
                 {/* ============ General ============ */}
@@ -474,7 +460,7 @@ export function Settings() {
                                     className={cn('cursor-pointer', isFlat ? 'slider-flat flex-1' : 'flex-1 accent-[var(--primary)]')}
                                     aria-label="Idle threshold in seconds"
                                 />
-                                <span className="font-mono text-[11px] text-[var(--foreground)] w-10 text-right">
+                                <span className="font-mono text-[12px] text-[var(--foreground)] w-10 text-right">
                                     {settings.idleThreshold}s
                                 </span>
                             </div>
@@ -498,7 +484,7 @@ export function Settings() {
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {settings.blacklistedApps.length === 0 ? (
-                                        <span className="text-[11px] text-[var(--muted-foreground)]/60">No apps blacklisted.</span>
+                                        <span className="text-[12px] text-[var(--muted-foreground)]/60">No apps blacklisted.</span>
                                     ) : (
                                         settings.blacklistedApps.map((name) => (
                                             <Chip key={name} onRemove={() => removeFromBlacklist(name)}>
@@ -539,7 +525,7 @@ export function Settings() {
                                 aria-label="Redaction keywords"
                                 className={cn(
                                     isFlat
-                                        ? 'w-full bg-transparent border-b border-dashed border-[var(--border)] focus:border-[var(--foreground)] outline-none font-mono text-[11px] py-1.5 text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/60'
+                                        ? 'w-full bg-transparent border-b border-dashed border-[var(--border)] focus:border-[var(--foreground)] outline-none font-mono text-[12px] py-1.5 text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/60'
                                         : 'w-full bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] text-sm rounded-lg px-3 py-2 outline-none placeholder:text-[var(--muted-foreground)]/50'
                                 )}
                             />
@@ -555,7 +541,7 @@ export function Settings() {
                 >
                     {isFlat ? (
                         <>
-                            <div className="grid grid-cols-[1fr_92px_116px_92px_30px] font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] py-2 border-b border-[var(--border)]">
+                            <div className="grid grid-cols-[1fr_92px_116px_92px_30px] font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] py-2 border-b border-[var(--border)]">
                                 <span>App</span>
                                 <span>Focus</span>
                                 <span>Distraction</span>
@@ -563,18 +549,18 @@ export function Settings() {
                                 <span />
                             </div>
                             {classificationEntries.length === 0 && (
-                                <div className="py-3 text-[11px] text-[var(--muted-foreground)]/60">
+                                <div className="py-3 text-[12px] text-[var(--muted-foreground)]/60">
                                     No overrides yet — the built-in defaults apply.
                                 </div>
                             )}
                             {classificationEntries.map(([name, cls]) => (
                                 <div key={name} className="grid grid-cols-[1fr_92px_116px_92px_30px] items-center py-2.5 border-b border-[var(--border)] last:border-b-0">
-                                    <span className="text-[12.5px] font-semibold text-[var(--foreground)] truncate pr-2">{name}</span>
+                                    <span className="text-[13.5px] font-semibold text-[var(--foreground)] truncate pr-2">{name}</span>
                                     {CLASS_COLUMNS.map((col) => (
                                         <button
                                             key={col.key}
                                             onClick={() => setClassification(name, col.key)}
-                                            className="text-left font-mono text-[9px] uppercase tracking-[0.08em] py-0.5"
+                                            className="text-left font-mono text-[10px] uppercase tracking-[0.08em] py-0.5"
                                             style={cls === col.key ? { color: col.color } : undefined}
                                             aria-label={`Set ${name} as ${col.label}`}
                                         >
@@ -609,7 +595,7 @@ export function Settings() {
                                     value={classSelect}
                                     onChange={(e) => setClassSelect(e.target.value as 'focus' | 'distraction')}
                                     aria-label="Classification choice"
-                                    className="bg-transparent border-b border-dashed border-[var(--border)] font-mono text-[11px] text-[var(--foreground)] py-1.5 outline-none cursor-pointer"
+                                    className="bg-transparent border-b border-dashed border-[var(--border)] font-mono text-[12px] text-[var(--foreground)] py-1.5 outline-none cursor-pointer"
                                 >
                                     <option value="focus">Focus</option>
                                     <option value="distraction">Distraction</option>
@@ -681,16 +667,16 @@ export function Settings() {
                     {isFlat ? (
                         <>
                             {limitEntries.length === 0 && (
-                                <div className="py-3 text-[11px] text-[var(--muted-foreground)]/60">No limits set.</div>
+                                <div className="py-3 text-[12px] text-[var(--muted-foreground)]/60">No limits set.</div>
                             )}
                             {limitEntries.map(([name, seconds]) => {
                                 const used = usageFor(name);
                                 const limitMin = Math.round(seconds / 60);
                                 return (
                                     <div key={name} className="grid grid-cols-[160px_1fr_150px_30px] items-center gap-4 py-2.5 border-b border-[var(--border)] last:border-b-0">
-                                        <span className="text-[12.5px] font-semibold text-[var(--foreground)] truncate">{name}</span>
+                                        <span className="text-[13.5px] font-semibold text-[var(--foreground)] truncate">{name}</span>
                                         <Bar value={(used / Math.max(1, limitMin)) * 100} color="var(--accent-warning)" height="thin" />
-                                        <span className="font-mono text-[10px] text-[var(--muted-foreground)]">
+                                        <span className="font-mono text-[11px] text-[var(--muted-foreground)]">
                                             {used} / {limitMin} min
                                         </span>
                                         <button
@@ -719,9 +705,9 @@ export function Settings() {
                                     value={limitMinutes}
                                     onChange={(e) => setLimitMinutes(Number(e.target.value))}
                                     aria-label="Daily limit in minutes"
-                                    className="w-16 bg-transparent border-b border-dashed border-[var(--border)] font-mono text-[11px] text-[var(--foreground)] py-1.5 outline-none"
+                                    className="w-16 bg-transparent border-b border-dashed border-[var(--border)] font-mono text-[12px] text-[var(--foreground)] py-1.5 outline-none"
                                 />
-                                <span className="flex items-center font-mono text-[10px] text-[var(--muted-foreground)]">min</span>
+                                <span className="flex items-center font-mono text-[11px] text-[var(--muted-foreground)]">min</span>
                                 <AddButton onClick={addAppLimit}>Add</AddButton>
                             </div>
                         </>
@@ -869,7 +855,7 @@ export function Settings() {
                                 <div className="flex gap-2">
                                     <button
                                         onClick={handleExport}
-                                        className="px-3 py-1.5 border border-[var(--border)] hover:border-[var(--foreground)] font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                                        className="px-3 py-1.5 border border-[var(--border)] hover:border-[var(--foreground)] font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
                                     >
                                         JSON / CSV
                                     </button>
@@ -890,7 +876,7 @@ export function Settings() {
                                 <button
                                     onClick={handleClearData}
                                     disabled={isClearing}
-                                    className="px-3 py-1.5 border border-[var(--accent-negative)] text-[var(--accent-negative)] font-mono text-[9px] uppercase tracking-[0.08em] hover:bg-[var(--accent-negative)] hover:text-white transition-colors disabled:opacity-60"
+                                    className="px-3 py-1.5 border border-[var(--accent-negative)] text-[var(--accent-negative)] font-mono text-[10px] uppercase tracking-[0.08em] hover:bg-[var(--accent-negative)] hover:text-white transition-colors disabled:opacity-60"
                                 >
                                     {isClearing ? 'Deleting…' : 'Delete everything'}
                                 </button>
@@ -908,7 +894,7 @@ export function Settings() {
                     <p className="text-xs text-[var(--muted-foreground)]">
                         Activity Tracker v{APP_VERSION} • Built with Tauri + React
                     </p>
-                    <p className="text-[10px] text-[var(--muted-foreground)]/60 mt-1">
+                    <p className="text-[11px] text-[var(--muted-foreground)]/60 mt-1">
                         All data is stored locally. No information is uploaded to any server.
                     </p>
                 </div>

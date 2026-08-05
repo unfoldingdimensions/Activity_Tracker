@@ -49,13 +49,13 @@ export const FlowStateMetrics: React.FC = () => {
             },
         ];
         return (
-            <div className="grid grid-cols-3 border-t border-[var(--border)] mt-4 pt-4">
+            <div className="grid grid-cols-3 widget widget-interactive px-6 py-4 mt-5">
                 {cells.map((cell, i) => (
                     <div key={cell.label} className={cn(i > 0 && 'pl-6 border-l border-[var(--border)]')}>
-                        <div className="font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">{cell.label}</div>
+                        <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">{cell.label}</div>
                         <div className="flex items-baseline gap-2 mt-2">
                             <span className="sub-metric text-[var(--foreground)]">{cell.value}</span>
-                            <span className="text-[11px]" style={{ color: cell.statusColor }}>
+                            <span className="text-[12px]" style={{ color: cell.statusColor }}>
                                 {cell.status}
                             </span>
                         </div>

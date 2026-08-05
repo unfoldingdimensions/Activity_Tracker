@@ -74,7 +74,7 @@ export function Layout() {
                             <div className="text-[13px] font-bold tracking-[-0.01em] text-[var(--foreground)]">
                                 Activity Tracker
                             </div>
-                            <div className="font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] mt-[5px]">
+                            <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] mt-[5px]">
                                 track · visualize
                             </div>
                         </div>
@@ -112,15 +112,15 @@ export function Layout() {
                                     color={isIdle ? 'var(--muted-foreground)' : 'var(--accent-focus)'}
                                     pulsing={!isIdle}
                                 />
-                                <span className="font-mono text-[9.5px] tracking-[0.06em] text-[var(--muted-foreground)]">
+                                <span className="font-mono text-[10.5px] tracking-[0.06em] text-[var(--muted-foreground)]">
                                     {isIdle ? 'IDLE' : 'TRACKING'}
                                 </span>
-                                <span className="font-mono text-[9.5px] font-bold ml-auto text-[var(--foreground)]">
+                                <span className="font-mono text-[10.5px] font-bold ml-auto text-[var(--foreground)]">
                                     {currentApp}
                                 </span>
                             </div>
                             {currentTitle && (
-                                <div className="font-mono text-[8.5px] text-[var(--muted-foreground)] mt-2 truncate">
+                                <div className="font-mono text-[9.5px] text-[var(--muted-foreground)] mt-2 truncate">
                                     {currentTitle}
                                 </div>
                             )}

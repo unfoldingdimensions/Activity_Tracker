@@ -31,15 +31,15 @@ export function DeepWorkSessions({ sessions, isLoading }: DeepWorkSessionsProps)
             <div>
                 <div className="flex items-baseline justify-between">
                     <h3 className="section-title text-[var(--foreground)]">Deep work sessions</h3>
-                    <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
                         ≥ 25 MIN · {sessions.length} CLOSED · {formatDuration(sessions.reduce((s, x) => s + x.durationSeconds, 0))} TOTAL
                     </span>
                 </div>
 
                 {isLoading && sessions.length === 0 ? (
-                    <div className="mt-5 text-[11px] text-[var(--muted-foreground)]">Loading…</div>
+                    <div className="mt-5 text-[12px] text-[var(--muted-foreground)]">Loading…</div>
                 ) : sessions.length === 0 ? (
-                    <p className="mt-5 text-[11px] text-[var(--muted-foreground)]/60">
+                    <p className="mt-5 text-[12px] text-[var(--muted-foreground)]/60">
                         No deep work sessions in this range yet — blocks of 25+ focused minutes will show here.
                     </p>
                 ) : (
@@ -50,7 +50,7 @@ export function DeepWorkSessions({ sessions, isLoading }: DeepWorkSessionsProps)
                                     <span className="font-display text-2xl font-semibold tracking-[-0.04em] text-[var(--foreground)]">
                                         {formatDuration(session.durationSeconds)}
                                     </span>
-                                    <span className="text-[12px] text-[var(--muted-foreground)]">{session.appName}</span>
+                                    <span className="text-[13px] text-[var(--muted-foreground)]">{session.appName}</span>
                                 </div>
                                 <div className="mt-2 h-[3px] bg-[var(--border)]">
                                     <div
@@ -58,7 +58,7 @@ export function DeepWorkSessions({ sessions, isLoading }: DeepWorkSessionsProps)
                                         style={{ width: `${Math.min(100, (session.durationSeconds / (60 * 60)) * 100)}%` }}
                                     />
                                 </div>
-                                <div className="font-mono text-[9px] text-[var(--muted-foreground)] mt-2">
+                                <div className="font-mono text-[10px] text-[var(--muted-foreground)] mt-2">
                                     {formatTime(session.startTime)} → {formatTime(session.endTime)} ·{' '}
                                     {session.interruptions === 0
                                         ? 'CLEAN'

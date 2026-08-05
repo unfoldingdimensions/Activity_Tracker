@@ -17,7 +17,7 @@ export function SegTabs<T extends string>({ options, value, onChange, className 
 
     if (theme === 'flat') {
         return (
-            <div className={cn('flex items-center gap-4 font-mono text-[10px] uppercase tracking-[0.06em]', className)}>
+            <div className={cn('flex items-center gap-4 font-mono text-[12px] uppercase tracking-[0.06em]', className)}>
                 {options.map((opt) => (
                     <button
                         key={opt.value}

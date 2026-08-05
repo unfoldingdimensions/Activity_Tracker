@@ -208,7 +208,6 @@ describe('Dashboard Filters', () => {
         // Expect chart
         await waitFor(() => {
             expect(screen.getByTestId('focus-flow-chart')).toBeInTheDocument();
-            expect(screen.getByTestId('app-usage-chart')).toBeInTheDocument();
         });
     });
 });

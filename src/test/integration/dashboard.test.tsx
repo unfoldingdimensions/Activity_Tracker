@@ -124,11 +124,10 @@ describe('Dashboard Integration', () => {
         // Let's check FocusFlowChart source later. For now assume it renders something.
 
         // Check for Focus Score value which comes from useDailyStats (mocked in setup.ts)
-        // The card's focus score is overridden by the reconciled app-usage score:
+        // The metric band's focus score is overridden by the reconciled app-usage score:
         // appUsage is [{ Code.exe: 3600 }], Code is productive => focusScore = 100%
-        // content is split between AnimatedNumber ("100") and suffix ("%")
         await waitFor(() => {
-            expect(screen.getByText('100')).toBeInTheDocument();
+            expect(screen.getByText('100%')).toBeInTheDocument();
         });
     });
 });

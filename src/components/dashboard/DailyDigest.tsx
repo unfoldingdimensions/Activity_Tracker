@@ -48,11 +48,11 @@ export function DailyDigest({ digest, isLoading }: DailyDigestProps) {
 
     if (theme === 'flat') {
         return (
-            <div className="grid grid-cols-5 border-b border-[var(--border)]">
+            <div className="grid grid-cols-5 widget widget-interactive">
                 {items.map(({ label, value, accent }, i) => (
-                    <div key={label} className={cn('py-[13px]', i > 0 ? 'px-7 border-l border-[var(--border)]' : 'px-8')}>
-                        <div className="font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">{label}</div>
-                        <div className={cn('font-mono text-[13px] font-bold mt-1', accent ?? 'text-[var(--foreground)]')}>{value}</div>
+                    <div key={label} className={cn('py-[15px]', i > 0 ? 'px-7 border-l border-[var(--border)]' : 'px-8')}>
+                        <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">{label}</div>
+                        <div className={cn('font-mono text-[13px] font-bold mt-1.5', accent ?? 'text-[var(--foreground)]')}>{value}</div>
                     </div>
                 ))}
             </div>
@@ -68,7 +68,7 @@ export function DailyDigest({ digest, isLoading }: DailyDigestProps) {
                             <Icon size={16} className="text-[var(--muted-foreground)]" />
                         </div>
                         <div className="min-w-0">
-                            <p className="text-[10px] uppercase tracking-wide text-[var(--muted-foreground)]">
+                            <p className="text-[12px] uppercase tracking-wide text-[var(--muted-foreground)]">
                                 {label}
                             </p>
                             <p className={`font-display font-semibold text-sm truncate ${accent ?? 'text-[var(--foreground)]'}`}>

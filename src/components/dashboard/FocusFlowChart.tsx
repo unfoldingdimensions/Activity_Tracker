@@ -84,7 +84,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                                     key={m.id}
                                     onClick={() => toggleMetric(m.id)}
                                     className={cn(
-                                        'flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.08em] transition-opacity',
+                                        'flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] transition-opacity',
                                         isActive ? 'text-[var(--foreground)]' : 'line-through opacity-60 text-[var(--muted-foreground)]'
                                     )}
                                 >
@@ -98,7 +98,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
 
                 <div className="flex-1 mt-4" style={{ minHeight }}>
                     {isLoading ? (
-                        <div className="text-[11px] text-[var(--muted-foreground)]">Loading…</div>
+                        <div className="text-[12px] text-[var(--muted-foreground)]">Loading…</div>
                     ) : hasData ? (
                         <ResponsiveContainer width="100%" height="100%" minHeight={minHeight ?? 250}>
                             <LineChart data={data} margin={{ top: 10, right: 8, bottom: 0, left: -18 }}>
@@ -125,7 +125,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                                         if (!active || !payload?.length) return null;
                                         const p = payload[0].payload as FocusFlowDataPoint;
                                         return (
-                                            <div className="bg-[var(--background)] border border-[var(--foreground)] px-2.5 py-2 font-mono text-[9px] leading-[1.7] tracking-[0.03em] whitespace-nowrap">
+                                            <div className="bg-[var(--background)] border border-[var(--foreground)] px-2.5 py-2 font-mono text-[10px] leading-[1.7] tracking-[0.03em] whitespace-nowrap">
                                                 <div className="tracking-[0.1em] text-[var(--muted-foreground)]">{label}</div>
                                                 <div className="flex justify-between gap-4">
                                                     <span>FOCUS</span>
@@ -155,7 +155,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                             </LineChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="text-[11px] text-[var(--muted-foreground)]">No activity recorded yet.</div>
+                        <div className="text-[12px] text-[var(--muted-foreground)]">No activity recorded yet.</div>
                     )}
                 </div>
             </div>

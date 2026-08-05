@@ -41,24 +41,20 @@ export function AppUsageSide({ appUsage, isLoading = false }: AppUsageSideProps)
     const guardUsed = guardApp ? Math.round(guardApp.value / 60) : 0;
     const guardPct = guardLimitMinutes > 0 ? (guardUsed / guardLimitMinutes) * 100 : 0;
 
-    if (theme === 'glass') {
-        return null; // glass skin keeps AppUsageChart
-    }
-
     return (
-        <div className="py-6 pl-7 pr-8 flex flex-col gap-5">
+        <div className={cn('flex flex-col gap-5 widget widget-interactive', theme === 'flat' ? 'px-6 py-5' : 'h-full rounded-xl border border-[var(--border)] bg-[var(--secondary)]/40 backdrop-blur-md px-5 py-5')}>
             <div>
                 <div className="flex items-baseline justify-between">
                     <h3 className="section-title text-[var(--foreground)]">App usage</h3>
-                    <span className="font-mono text-[8.5px] uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
+                    <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
                         {filtered ? 'FILTERED' : 'TODAY'}
                     </span>
                 </div>
 
                 <div className="mt-4 space-y-3">
-                    {isLoading && <div className="text-[11px] text-[var(--muted-foreground)]">Loading…</div>}
+                    {isLoading && <div className="text-[12px] text-[var(--muted-foreground)]">Loading…</div>}
                     {!isLoading && visible.length === 0 && (
-                        <div className="text-[11px] text-[var(--muted-foreground)]/60">No usage recorded yet.</div>
+                        <div className="text-[12px] text-[var(--muted-foreground)]/60">No usage recorded yet.</div>
                     )}
                     {visible.slice(0, 6).map((app) => {
                         const pct = (app.value / total) * 100;
@@ -71,7 +67,7 @@ export function AppUsageSide({ appUsage, isLoading = false }: AppUsageSideProps)
                                 }
                                 className={cn('block w-full text-left py-1.5 -mx-2 px-2 transition-colors', filtered ? 'opacity-60' : 'hover:bg-[var(--surface)]')}
                             >
-                                <div className="flex justify-between font-mono text-[11px]">
+                                <div className="flex justify-between font-mono text-[12px]">
                                     <span className={cn('font-bold text-[var(--foreground)]', !isTop && 'text-[var(--foreground)]/55')}>
                                         {app.name.replace(/\.exe$/i, '')}
                                     </span>
@@ -86,7 +82,7 @@ export function AppUsageSide({ appUsage, isLoading = false }: AppUsageSideProps)
                                     />
                                 </div>
                                 {filtered && app.name.toLowerCase().includes(filtered.toLowerCase()) && (
-                                    <div className="font-mono text-[8.5px] text-[var(--muted-foreground)] mt-1.5">
+                                    <div className="font-mono text-[9.5px] text-[var(--muted-foreground)] mt-1.5">
                                         CLICK AGAIN TO CLEAR
                                     </div>
                                 )}
@@ -94,7 +90,7 @@ export function AppUsageSide({ appUsage, isLoading = false }: AppUsageSideProps)
                         );
                     })}
                     {!filtered && top && (
-                        <div className="font-mono text-[8.5px] text-[var(--muted-foreground)] pt-1 border-t border-[var(--border)]">
+                        <div className="font-mono text-[9.5px] text-[var(--muted-foreground)] pt-1 border-t border-[var(--border)]">
                             CLICK TO FILTER THE PAGE BY THIS APP
                         </div>
                     )}
@@ -104,7 +100,7 @@ export function AppUsageSide({ appUsage, isLoading = false }: AppUsageSideProps)
             {/* Today's apps */}
             <div className="border-t border-[var(--border)] pt-4">
                 <h3 className="section-title text-[var(--foreground)]">Today's apps</h3>
-                <div className="mt-3 space-y-2.5 font-mono text-[11px]">
+                <div className="mt-3 space-y-2.5 font-mono text-[12px]">
                     {rows.slice(0, 5).map((app) => (
                         <div key={app.name} className="flex justify-between">
                             <span className="font-bold text-[var(--foreground)]">{app.name.replace(/\.exe$/i, '')}</span>
@@ -117,7 +113,7 @@ export function AppUsageSide({ appUsage, isLoading = false }: AppUsageSideProps)
             {/* Distraction guard */}
             {limitEntry && (
                 <div className="border-t border-[var(--border)] pt-4">
-                    <div className="font-mono text-[8.5px] uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
+                    <div className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
                         DISTRACTION GUARD · {guardApp ? guardApp.name.replace(/\.exe$/i, '') : limitEntry[0]} {formatDuration((guardApp?.value ?? 0))} / {formatDuration(limitEntry[1])} LIMIT
                     </div>
                     <div className="mt-2">

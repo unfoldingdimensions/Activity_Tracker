@@ -29,22 +29,22 @@ export function ProgressFooter() {
         return (
             <div className="flex items-center gap-8 py-[22px] px-8">
                 <div className="flex items-baseline gap-2">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">Level</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">Level</span>
                     <span className="font-display text-[22px] font-bold tracking-[-0.035em] text-[var(--foreground)]">{level}</span>
-                    <span className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--muted-foreground)]">{rank}</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--muted-foreground)]">{rank}</span>
                 </div>
 
                 <div className="flex-1 max-w-[300px]">
                     <div className="h-[3px] bg-[var(--border)]">
                         <div className="h-full bg-[var(--foreground)]" style={{ width: `${progress}%` }} />
                     </div>
-                    <div className="font-mono text-[8.5px] text-[var(--muted-foreground)] mt-2">
+                    <div className="font-mono text-[9.5px] text-[var(--muted-foreground)] mt-2">
                         {xp.toLocaleString()} / {levelEnd.toLocaleString()} XP · {toNext.toLocaleString()} TO LEVEL {level + 1}
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] mr-1">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)] mr-1">
                         {(unlocked ?? []).length} of {ACHIEVEMENTS_DATA.length}
                     </span>
                     {ACHIEVEMENTS_DATA.map((a) => {
@@ -54,7 +54,7 @@ export function ProgressFooter() {
                                 key={a.code}
                                 title={a.title}
                                 className={cn(
-                                    'w-6 h-6 flex items-center justify-center font-mono text-[9px]',
+                                    'w-6 h-6 flex items-center justify-center font-mono text-[10px]',
                                     isUnlocked
                                         ? 'border border-[var(--foreground)] text-[var(--foreground)]'
                                         : 'border border-dashed border-[var(--border)] text-[var(--muted-foreground)]'
@@ -66,7 +66,7 @@ export function ProgressFooter() {
                     })}
                 </div>
 
-                <div className="ml-auto flex gap-4 font-mono text-[9px] uppercase tracking-[0.05em] text-[var(--muted-foreground)]">
+                <div className="ml-auto flex gap-4 font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--muted-foreground)]">
                     <span>R refresh</span>
                     <span>1–6 range</span>
                     <span>T tools</span>
@@ -85,7 +85,7 @@ export function ProgressFooter() {
                 <div className="h-2 rounded-full bg-[var(--muted)] overflow-hidden">
                     <div className="h-full bg-[var(--primary)] rounded-full" style={{ width: `${progress}%` }} />
                 </div>
-                <p className="text-[10px] text-[var(--muted-foreground)] mt-1">
+                <p className="text-[12px] text-[var(--muted-foreground)] mt-1">
                     {xp.toLocaleString()} / {levelEnd.toLocaleString()} XP · {toNext.toLocaleString()} to level {level + 1}
                 </p>
             </div>

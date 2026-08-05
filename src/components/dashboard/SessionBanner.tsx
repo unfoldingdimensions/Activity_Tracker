@@ -51,18 +51,18 @@ export function SessionBanner({ timeline, bucketMinutes = 10 }: SessionBannerPro
         return (
             <div className="mx-8 mt-4 flex items-center gap-4 px-4 py-3 border border-[var(--accent-focus)]">
                 <StatusDot color="var(--accent-focus)" pulsing />
-                <span className="text-[12.5px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">
+                <span className="text-[13.5px] font-semibold tracking-[-0.01em] text-[var(--foreground)]">
                     Session in progress · {appName} · {runMinutes}m
                 </span>
                 <div className="flex-1 max-w-[260px] h-[2px] bg-[var(--border)]">
                     <div className="h-full bg-[var(--accent-focus)] transition-all duration-1000" style={{ width: `${progress}%` }} />
                 </div>
-                <span className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
+                <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--muted-foreground)]">
                     {qualifies ? 'Deep work session' : `Qualifies as deep work in ${toDeepWork} min`}
                 </span>
                 <button
                     onClick={() => setDismissed(true)}
-                    className="ml-auto font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                    className="ml-auto font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
                 >
                     Dismiss ×
                 </button>

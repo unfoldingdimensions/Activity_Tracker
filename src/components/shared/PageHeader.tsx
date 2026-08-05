@@ -42,7 +42,7 @@ export function PageHeader({ title, meta, subtitle, actions, leftAction, maxWidt
                                 {title}
                             </h2>
                             {metaLine && (
-                                <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)] mt-[9px]">
+                                <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--muted-foreground)] mt-[9px]">
                                     {metaLine}
                                 </div>
                             )}
@@ -61,8 +61,11 @@ export function PageHeader({ title, meta, subtitle, actions, leftAction, maxWidt
                     {leftAction}
                     <div>
                         <h2 className="font-display text-3xl font-bold text-[var(--foreground)]">{title}</h2>
-                        {(metaLine || subtitle) && (
-                            <p className="text-[var(--muted-foreground)] mt-1">{metaLine ?? subtitle}</p>
+                        {metaLine && (
+                            <p className="text-[var(--muted-foreground)] mt-1">{metaLine}</p>
+                        )}
+                        {subtitle && meta && (
+                            <p className="text-[var(--muted-foreground)]/80 text-sm mt-0.5">{subtitle}</p>
                         )}
                     </div>
                 </div>

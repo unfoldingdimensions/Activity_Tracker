@@ -53,7 +53,7 @@ export function MetricBand({
                 value: <MetricValue value={formatDuration(screenTimeSeconds)} />,
                 caption: (
                     <div className="flex items-center gap-2 mt-3">
-                        <span className="font-mono text-[9.5px] text-[var(--accent-focus)]">in range</span>
+                        <span className="font-mono text-[10.5px] text-[var(--accent-focus)]">in range</span>
                         <svg viewBox="0 0 120 18" width="80" height="14" preserveAspectRatio="none" className="block">
                             <path d={sparkPath.replace(/^M/, 'M0 15 ')} fill="none" stroke="var(--accent-focus)" strokeWidth="1.4" />
                         </svg>
@@ -64,7 +64,7 @@ export function MetricBand({
                 label: 'Keystrokes',
                 value: <MetricValue value={keystrokes.toLocaleString()} />,
                 caption: (
-                    <div className="flex items-center gap-2 mt-3 font-mono text-[9.5px] text-[var(--muted-foreground)]">
+                    <div className="flex items-center gap-2 mt-3 font-mono text-[10.5px] text-[var(--muted-foreground)]">
                         <span>{keystrokesPerMin}/min avg</span>
                     </div>
                 ),
@@ -73,7 +73,7 @@ export function MetricBand({
                 label: 'Mouse clicks',
                 value: <MetricValue value={mouseClicks.toLocaleString()} />,
                 caption: (
-                    <div className="flex items-center gap-2 mt-3 font-mono text-[9.5px] text-[var(--muted-foreground)]">
+                    <div className="flex items-center gap-2 mt-3 font-mono text-[10.5px] text-[var(--muted-foreground)]">
                         <span>{formatDistance(mouseDistance)} travelled</span>
                     </div>
                 ),
