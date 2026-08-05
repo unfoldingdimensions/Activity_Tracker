@@ -9,6 +9,7 @@ import { cn } from '../utils/cn';
 import { formatDuration, formatAppName } from '../utils/formatters';
 import { BreathingWidget } from '../components/wellbeing/BreathingWidget';
 import { useSettings } from '../hooks/useSettings';
+import { EditorialIntro } from '../components/shared/EditorialIntro';
 
 /* ------------------------------------------------------------------ */
 /* Focus timer state (extended: Work/Break/Long + streak ledger)        */
@@ -199,6 +200,10 @@ export function Tools() {
     return (
         <div className="flex flex-col min-h-full">
             <PageHeader title="Tools" meta={statusLine} />
+            <EditorialIntro
+                sentence={`You closed ${timer.workSessions} ${timer.workSessions === 1 ? 'pomodoro' : 'pomodoros'} and ${breathingSessions} ${breathingSessions === 1 ? 'breathing session' : 'breathing sessions'} today — the timer is the only thing here that isn't a record.`}
+                note={`${goalsMet} OF ${goals.length} TARGETS MET · BREAK DUE IN ${breakDue}`}
+            />
             <BreathingWidget isOpen={showBreathing} onClose={closeBreathing} />
 
             <div className={cn(isFlat ? 'w-full px-8 pt-2 pb-10' : 'p-8 pt-6 space-y-6 flex-1 w-full')}>

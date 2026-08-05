@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 
 // Components
 import { PageHeader } from '../components/shared/PageHeader';
@@ -20,6 +20,7 @@ import { DeepWorkSessions } from '../components/dashboard/DeepWorkSessions';
 import { useSettings } from '../hooks/useSettings';
 import { useVisualTheme } from '../hooks/useVisualTheme';
 import { useInputHistory } from '../hooks/useTrackerData';
+import { formatDuration } from '../utils/formatters';
 
 // Feature components
 import { InputHistoryModal } from '../components/InputHistoryModal';
@@ -29,6 +30,7 @@ import { WorkPatterns } from '../components/insights/WorkPatterns';
 
 // Constants
 import { containerVariants } from '../constants/animations';
+import { EditorialIntro } from '../components/shared/EditorialIntro';
 
 const RANGE_LABELS: Record<TimeRange, string> = {
     past_hour: 'PAST HOUR',
@@ -65,6 +67,9 @@ export function Dashboard() {
     const now = new Date();
     const metaLine = `${now.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()} · ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${RANGE_LABELS[timeRange]}`;
 
+    const editorialSentence = `You focused for ${formatDuration(digest.focusSeconds)} across ${digest.sessionCount} deep ${digest.sessionCount === 1 ? 'session' : 'sessions'} ${digest.topAppName ? `— ${digest.topAppName} led the way` : ''}.`;
+    const editorialNote = `${digest.peakHour ? `PEAK HOUR ${digest.peakHour}` : ''}${digest.deltaVsPrevious !== null ? ` · ${digest.deltaVsPrevious >= 0 ? '+' : '−'}${formatDuration(Math.abs(digest.deltaVsPrevious))} vs yesterday` : ''}`;
+
     /* ================= FLAT SKIN — The Pulse ================= */
     if (isFlat) {
         return (
@@ -72,6 +77,8 @@ export function Dashboard() {
                 {showInputModal && <InputHistoryModal onClose={() => setShowInputModal(false)} />}
 
                 <PageHeader title="The Pulse" meta={metaLine} actions={headerActions} />
+
+                <EditorialIntro sentence={editorialSentence} note={editorialNote} />
 
                 <div className="pb-8">
                     <SessionBanner timeline={timelineData} bucketMinutes={bucketMinutes} />
@@ -133,6 +140,8 @@ export function Dashboard() {
                 meta={metaLine}
                 actions={headerActions}
             />
+
+            <EditorialIntro sentence={editorialSentence} note={editorialNote} />
 
             {/* Content — same bands as the flat skin, glass containers */}
             <div className="p-8 pt-6 space-y-6 flex-1">

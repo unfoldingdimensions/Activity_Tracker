@@ -27,6 +27,7 @@ import { cn } from '../utils/cn';
 // Components
 import { PageHeader } from '../components/shared/PageHeader';
 import { RefreshButton } from '../components/shared/RefreshButton';
+import { EditorialIntro } from '../components/shared/EditorialIntro';
 import { CHART_COLORS } from '../constants';
 
 // ============ Power Estimation Helpers ============
@@ -100,6 +101,7 @@ export function Power() {
         : 'rounded-xl border border-[var(--border)] bg-[var(--secondary)]/40 backdrop-blur-md p-6';
 
     const memUsed = (cpuSnapshot ?? []).length;
+    const topConsumer = topConsumers[0];
 
     return (
         <div className="flex flex-col min-h-full">
@@ -107,6 +109,11 @@ export function Power() {
                 title="Power"
                 meta={`CPU ${totalCpu}% · ${memUsed} PROCESSES SAMPLED · AVG DRAW ${avgPower}W`}
                 actions={<RefreshButton />}
+            />
+
+            <EditorialIntro
+                sentence={`Across today's apps the estimated draw averages ${avgPower}W${topConsumer ? ` — ${topConsumer.app.replace(/\.exe$/i, '')} asks for the most` : ''}.`}
+                note={`ESTIMATES · ${topConsumer ? `${topConsumer.power}W TOP DRAW` : 'NO USAGE YET'}`}
             />
 
             <div className={cn(isFlat ? 'w-full px-8 pt-2 pb-10 space-y-4' : 'p-8 pt-6 space-y-6 flex-1')}>

@@ -5,6 +5,7 @@
 
 import type { ReactNode } from 'react';
 import { useVisualTheme } from '../../hooks/useVisualTheme';
+import { useReadingMode } from '../../hooks/useReadingMode';
 import { cn } from '../../utils/cn';
 
 export interface PageHeaderProps {
@@ -24,6 +25,7 @@ export interface PageHeaderProps {
 
 export function PageHeader({ title, meta, subtitle, actions, leftAction, maxWidth }: PageHeaderProps) {
     const theme = useVisualTheme();
+    const { editorial } = useReadingMode();
     const metaLine = meta ?? subtitle;
 
     if (theme === 'flat') {
@@ -38,11 +40,25 @@ export function PageHeader({ title, meta, subtitle, actions, leftAction, maxWidt
                     <div className="flex items-end gap-3">
                         {leftAction}
                         <div>
-                            <h2 className="font-display text-[34px] font-bold tracking-[-0.035em] leading-none text-[var(--foreground)]">
+                            <h2
+                                className={cn(
+                                    'font-bold tracking-[-0.035em] leading-none text-[var(--foreground)]',
+                                    editorial
+                                        ? 'font-serif italic tracking-[-0.01em] text-[42px]'
+                                        : 'font-display text-[34px]'
+                                )}
+                            >
                                 {title}
                             </h2>
                             {metaLine && (
-                                <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--muted-foreground)] mt-[9px]">
+                                <div
+                                    className={cn(
+                                        'mt-[9px]',
+                                        editorial
+                                            ? 'font-serif italic text-[15px] text-[var(--muted-foreground)]'
+                                            : 'font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]'
+                                    )}
+                                >
                                     {metaLine}
                                 </div>
                             )}
@@ -60,7 +76,12 @@ export function PageHeader({ title, meta, subtitle, actions, leftAction, maxWidt
                 <div className="flex items-center gap-3">
                     {leftAction}
                     <div>
-                        <h2 className="font-display text-3xl font-bold text-[var(--foreground)]">{title}</h2>
+                        <h2
+                            className={cn(
+                                'font-bold text-[var(--foreground)]',
+                                editorial ? 'font-serif italic text-4xl' : 'font-display text-3xl'
+                            )}
+                        >{title}</h2>
                         {metaLine && (
                             <p className="text-[var(--muted-foreground)] mt-1">{metaLine}</p>
                         )}

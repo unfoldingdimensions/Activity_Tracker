@@ -24,6 +24,7 @@ import { cn } from '../utils/cn';
 import { PageHeader } from '../components/shared/PageHeader';
 import { RefreshButton } from '../components/shared/RefreshButton';
 import { FocusCalendar } from '../components/insights/FocusCalendar';
+import { EditorialIntro } from '../components/shared/EditorialIntro';
 import { formatDuration } from '../utils/formatters';
 
 /** Tiny inline sparkline: values -> polyline in an 88x22 viewBox */
@@ -98,10 +99,17 @@ export function ActivityPage() {
     const appsTotal = sortedApps.reduce((s, a) => s + a.seconds, 0) || 1;
 
     const weekMax = Math.max(...weekDays.map((d) => d.minutes), 1);
+    const weekTotal = weekDays.reduce((s, d) => s + d.minutes, 0);
+    const peakDay = weekDays.length ? weekDays.reduce((a, b) => (b.minutes > a.minutes ? b : a)).day : '—';
 
     return (
         <div className="flex flex-col min-h-full">
             <PageHeader title="Activity" meta="TODAY · UPDATED ON RANGE CHANGE" actions={<RefreshButton />} />
+
+            <EditorialIntro
+                sentence={`The last six days carried ${weekTotal} minutes of focus — ${peakDay} was the strongest, and the hours in between tell the story.`}
+                note={`${sortedApps.length} APPS TODAY · ${formatDuration(appsTotal)} TOTAL`}
+            />
 
             <div className={cn(isFlat ? 'w-full px-8 pt-2 pb-10 space-y-4' : 'p-8 pt-6 space-y-6 flex-1')}>
                 {/* ===== Last 6 days columns ===== */}

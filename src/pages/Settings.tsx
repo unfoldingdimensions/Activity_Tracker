@@ -1,4 +1,5 @@
 import { Button } from '../components/Button';
+import { EditorialIntro } from '../components/shared/EditorialIntro';
 import { Settings as SettingsIcon, Moon, Sun, Play, Pause, Download } from 'lucide-react';
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useTheme } from '../context/useTheme';
@@ -387,6 +388,11 @@ export function Settings() {
     return (
         <div className="flex flex-col min-h-full">
             <PageHeader title="Settings" meta="TRACKING · APPEARANCE · PRIVACY" />
+
+            <EditorialIntro
+                sentence="Everything in this app stays on this machine — the record, the rules, and the limits are yours alone."
+                note="LOCAL SETTINGS · NOTHING LEAVES THE DEVICE"
+            />
 
             <div
                 className={cn(
