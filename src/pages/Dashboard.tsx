@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 
 // Components
@@ -21,6 +21,7 @@ import { useSettings } from '../hooks/useSettings';
 import { useVisualTheme } from '../hooks/useVisualTheme';
 import { useInputHistory } from '../hooks/useTrackerData';
 import { formatDuration } from '../utils/formatters';
+import { buildDashboardInsights } from '../utils/editorialInsights';
 
 // Feature components
 import { InputHistoryModal } from '../components/InputHistoryModal';
@@ -70,6 +71,11 @@ export function Dashboard() {
     const editorialSentence = `You focused for ${formatDuration(digest.focusSeconds)} across ${digest.sessionCount} deep ${digest.sessionCount === 1 ? 'session' : 'sessions'} ${digest.topAppName ? `— ${digest.topAppName} led the way` : ''}.`;
     const editorialNote = `${digest.peakHour ? `PEAK HOUR ${digest.peakHour}` : ''}${digest.deltaVsPrevious !== null ? ` · ${digest.deltaVsPrevious >= 0 ? '+' : '−'}${formatDuration(Math.abs(digest.deltaVsPrevious))} vs yesterday` : ''}`;
 
+    const insights = useMemo(
+        () => buildDashboardInsights(digest, focusSessions, timelineData),
+        [digest, focusSessions, timelineData]
+    );
+
     /* ================= FLAT SKIN — The Pulse ================= */
     if (isFlat) {
         return (
@@ -78,7 +84,7 @@ export function Dashboard() {
 
                 <PageHeader title="The Pulse" meta={metaLine} actions={headerActions} />
 
-                <EditorialIntro sentence={editorialSentence} note={editorialNote} />
+                <EditorialIntro sentence={editorialSentence} note={editorialNote} insights={insights} />
 
                 <div className="pb-8">
                     <SessionBanner timeline={timelineData} bucketMinutes={bucketMinutes} />
@@ -141,7 +147,7 @@ export function Dashboard() {
                 actions={headerActions}
             />
 
-            <EditorialIntro sentence={editorialSentence} note={editorialNote} />
+            <EditorialIntro sentence={editorialSentence} note={editorialNote} insights={insights} />
 
             {/* Content — same bands as the flat skin, glass containers */}
             <div className="p-8 pt-6 space-y-6 flex-1">

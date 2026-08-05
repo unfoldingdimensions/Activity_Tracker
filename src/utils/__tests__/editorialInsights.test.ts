@@ -81,10 +81,7 @@ describe('buildDashboardInsights', () => {
         const insights = buildDashboardInsights(
             digest(),
             [],
-            [{ time: '10 AM', focus: 87 }, { time: '11 AM', focus: 40 }],
-            [usage('Code.exe', 3600)],
-            classify
-        );
+            [{ time: '10 AM', focus: 87 }, { time: '11 AM', focus: 40 }]);
         expect(insights[0]).toEqual({
             label: 'PEAK HOUR',
             text: 'Focus peaked at 10 AM — 87% of that hour was deep work.',
@@ -98,10 +95,7 @@ describe('buildDashboardInsights', () => {
                 session({ durationSeconds: 3600, appName: 'Code.exe', interruptions: 2 }),
                 session({ durationSeconds: 1500, appName: 'Figma.exe', interruptions: 0 }),
             ],
-            [{ time: '10 AM', focus: 87 }],
-            [usage('Code.exe', 3600)],
-            classify
-        );
+            [{ time: '10 AM', focus: 87 }]);
         expect(insights).toContainEqual({
             label: 'LONGEST RUN',
             text: '1h uninterrupted in Code.exe — 2 interruptions.',
@@ -112,10 +106,7 @@ describe('buildDashboardInsights', () => {
         const insights = buildDashboardInsights(
             digest(),
             [session({ durationSeconds: 3600, interruptions: 0 })],
-            [{ time: '10 AM', focus: 87 }],
-            [usage('Code.exe', 3600)],
-            classify
-        );
+            [{ time: '10 AM', focus: 87 }]);
         expect(insights).toContainEqual({
             label: 'LONGEST RUN',
             text: '1h uninterrupted in Code.exe.',
@@ -126,10 +117,7 @@ describe('buildDashboardInsights', () => {
         const insights = buildDashboardInsights(
             digest({ deltaVsPrevious: 900 }),
             [],
-            [{ time: '10 AM', focus: 87 }],
-            [usage('Code.exe', 3600)],
-            classify
-        );
+            [{ time: '10 AM', focus: 87 }]);
         expect(insights).toContainEqual({
             label: 'VS YESTERDAY',
             text: '15m more focus than yesterday.',
@@ -140,10 +128,7 @@ describe('buildDashboardInsights', () => {
         const insights = buildDashboardInsights(
             digest({ deltaVsPrevious: -1800 }),
             [],
-            [{ time: '10 AM', focus: 87 }],
-            [usage('Code.exe', 3600)],
-            classify
-        );
+            [{ time: '10 AM', focus: 87 }]);
         expect(insights).toContainEqual({
             label: 'VS YESTERDAY',
             text: '30m less focus than yesterday.',
@@ -154,10 +139,7 @@ describe('buildDashboardInsights', () => {
         const insights = buildDashboardInsights(
             digest({ deltaVsPrevious: null }),
             [],
-            [{ time: '10 AM', focus: 87 }],
-            [usage('Code.exe', 3600)],
-            classify
-        );
+            [{ time: '10 AM', focus: 87 }]);
         expect(insights.find((i) => i.label === 'VS YESTERDAY')).toBeUndefined();
     });
 
@@ -165,10 +147,7 @@ describe('buildDashboardInsights', () => {
         const insights = buildDashboardInsights(
             digest({ peakHour: null }),
             [],
-            [{ time: '10 AM', focus: 87 }],
-            [usage('Code.exe', 3600)],
-            classify
-        );
+            [{ time: '10 AM', focus: 87 }]);
         expect(insights.find((i) => i.label === 'PEAK HOUR')).toBeUndefined();
     });
 
@@ -176,17 +155,14 @@ describe('buildDashboardInsights', () => {
         const insights = buildDashboardInsights(
             digest(),
             [session({ durationSeconds: 3600, interruptions: 1 })],
-            [{ time: '10 AM', focus: 87 }],
-            [usage('Code.exe', 3600)],
-            classify
-        );
+            [{ time: '10 AM', focus: 87 }]);
         expect(insights.length).toBeLessThanOrEqual(3);
         expect(insights.map((i) => i.label)).toEqual(['PEAK HOUR', 'LONGEST RUN', 'VS YESTERDAY']);
     });
 
     it('returns [] when nothing meaningful exists', () => {
-        expect(buildDashboardInsights(digest({ peakHour: null, deltaVsPrevious: null }), [], [], [], classify)).toEqual([]);
-        expect(buildDashboardInsights(digest({ peakHour: null, deltaVsPrevious: null }), [session({ durationSeconds: 1499 })], [], [], classify)).toEqual([]);
+        expect(buildDashboardInsights(digest({ peakHour: null, deltaVsPrevious: null }), [], [])).toEqual([]);
+        expect(buildDashboardInsights(digest({ peakHour: null, deltaVsPrevious: null }), [session({ durationSeconds: 1499 })], [])).toEqual([]);
     });
 });
 

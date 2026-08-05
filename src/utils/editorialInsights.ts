@@ -78,9 +78,7 @@ export function focusLeader(
 export function buildDashboardInsights(
     digest: DailyDigest,
     sessions: FocusSession[],
-    timeline: { time: string; focus: number }[],
-    appUsage: AppUsageEntry[],
-    classify: (name: string) => AppClassification
+    timeline: { time: string; focus: number }[]
 ): EditorialInsight[] {
     const insights: EditorialInsight[] = [];
 
@@ -120,7 +118,6 @@ export function buildDashboardInsights(
         });
     }
 
-    void appUsage; void classify;
     return insights.slice(0, 3);
 }
 
