@@ -159,8 +159,30 @@ export function buildPowerInsights(
     totalCpu: number,
     processCount: number
 ): EditorialInsight[] {
-    void avgPower; void topConsumers; void totalCpu; void processCount;
-    return [];
+    const insights: EditorialInsight[] = [];
+
+    // 1. Top consumer and its share of the listed draw.
+    const top = topConsumers[0];
+    if (top && top.power > 0) {
+        const listed = topConsumers.reduce((s, c) => s + c.power, 0);
+        if (listed > 0) {
+            insights.push({
+                label: 'TOP DRAW',
+                text: `${top.app.replace(/\.exe$/i, '')} asks for the most — ${top.power}W, about ${pct(top.power, listed)}% of the draw.`,
+            });
+        }
+    }
+
+    // 2. Machine load: processes sampled at CPU total.
+    if (processCount > 0 && totalCpu > 0) {
+        insights.push({
+            label: 'LOAD',
+            text: `${processCount} processes sampled at ${totalCpu}% CPU.`,
+        });
+    }
+
+    void avgPower;
+    return insights.slice(0, 3);
 }
 
 export function buildTimelineInsights(

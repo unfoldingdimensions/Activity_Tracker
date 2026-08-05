@@ -28,6 +28,7 @@ import { cn } from '../utils/cn';
 import { PageHeader } from '../components/shared/PageHeader';
 import { RefreshButton } from '../components/shared/RefreshButton';
 import { EditorialIntro } from '../components/shared/EditorialIntro';
+import { buildPowerInsights } from '../utils/editorialInsights';
 import { CHART_COLORS } from '../constants';
 
 // ============ Power Estimation Helpers ============
@@ -103,6 +104,11 @@ export function Power() {
     const memUsed = (cpuSnapshot ?? []).length;
     const topConsumer = topConsumers[0];
 
+    const insights = useMemo(
+        () => buildPowerInsights(avgPower, topConsumers, totalCpu, memUsed),
+        [avgPower, topConsumers, totalCpu, memUsed]
+    );
+
     return (
         <div className="flex flex-col min-h-full">
             <PageHeader
@@ -114,6 +120,7 @@ export function Power() {
             <EditorialIntro
                 sentence={`Across today's apps the estimated draw averages ${avgPower}W${topConsumer ? ` — ${topConsumer.app.replace(/\.exe$/i, '')} asks for the most` : ''}.`}
                 note={`ESTIMATES · ${topConsumer ? `${topConsumer.power}W TOP DRAW` : 'NO USAGE YET'}`}
+                insights={insights}
             />
 
             <div className={cn(isFlat ? 'w-full px-8 pt-2 pb-10 space-y-4' : 'p-8 pt-6 space-y-6 flex-1')}>

@@ -65,9 +65,9 @@ describe('shared helpers', () => {
             [usage('Code.exe', 1800), usage('Chrome.exe', 600), usage('Terminal.exe', 200)],
             classify
         );
-        // Share is vs TOTAL active seconds (matches the Activity page's
-        // appsTotal caption): 1800 / 2600 ≈ 69%.
-        expect(leader).toEqual({ name: 'Code.exe', seconds: 1800, sharePct: 69 });
+        // Share is vs non-ignore active seconds (the dashboard's focus
+        // equation removes ignore apps entirely): 1800 / 2400 = 75%.
+        expect(leader).toEqual({ name: 'Code.exe', seconds: 1800, sharePct: 75 });
     });
 
     it('focusLeader returns null with no focus-classified apps', () => {
