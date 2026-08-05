@@ -30,3 +30,7 @@ GITHUB_PUSH.md
 .gitignore
 # Generated graph tooling output
 graphify-out/
+
+# Impeccable live mode: machine-specific state
+.impeccable/live/roots.json
+.impeccable/live/sessions/
