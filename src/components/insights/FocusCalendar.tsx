@@ -19,18 +19,18 @@ function intensity(focusSeconds: number): number {
 
 const CELL_COLORS = [
     'bg-[var(--muted)]/40',
-    'bg-emerald-500/25',
-    'bg-emerald-500/45',
-    'bg-emerald-500/70',
-    'bg-emerald-500',
+    'bg-[var(--accent-focus)]/25',
+    'bg-[var(--accent-focus)]/45',
+    'bg-[var(--accent-focus)]/70',
+    'bg-[var(--accent-focus)]',
 ];
 
 const FLAT_CELL_COLORS = [
     'bg-[var(--border)]',
-    'bg-emerald-500/30',
-    'bg-emerald-500/50',
-    'bg-emerald-500/75',
-    'bg-emerald-500',
+    'bg-[var(--accent-focus)]/30',
+    'bg-[var(--accent-focus)]/50',
+    'bg-[var(--accent-focus)]/75',
+    'bg-[var(--accent-focus)]',
 ];
 
 /**
@@ -143,8 +143,8 @@ export function FocusCalendar() {
     return (
         <GlassCard className="p-6" hover={false}>
             <div className="flex items-center gap-3 mb-5">
-                <div className="p-2 rounded-lg bg-emerald-500/10">
-                    <CalendarDays size={20} className="text-emerald-500" />
+                <div className="p-2 rounded-lg bg-[var(--accent-focus)]/10">
+                    <CalendarDays size={20} className="text-[var(--accent-focus)]" />
                 </div>
                 <div className="flex-1">
                     <h3 className="font-display text-lg font-semibold text-[var(--foreground)]">

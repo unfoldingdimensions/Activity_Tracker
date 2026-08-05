@@ -131,7 +131,7 @@ export function DeepWorkSessions({ sessions, isLoading }: DeepWorkSessionsProps)
                                 <span
                                     className={`inline-flex items-center gap-1 text-xs ${
                                         session.interruptions > 0
-                                            ? 'text-amber-500'
+                                            ? 'text-[var(--accent-warning)]'
                                             : 'text-[var(--muted-foreground)]'
                                     }`}
                                 >

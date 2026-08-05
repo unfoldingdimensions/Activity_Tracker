@@ -243,7 +243,7 @@ export function TrayPopup() {
                     <div className="bg-[var(--secondary)]/40 rounded-2xl p-4 flex flex-col border border-[var(--border)]/20">
                         <span className="text-[10px] uppercase text-[var(--muted-foreground)] font-black tracking-widest mb-1.5 opacity-60">Focus Score</span>
                         <div className="flex items-center gap-2">
-                            <Zap size={16} className="text-amber-500 fill-amber-500/20" />
+                            <Zap size={16} className="text-[var(--accent-warning)] fill-[var(--accent-warning)]/20" />
                             <span className="text-xl font-display font-black tracking-tight whitespace-nowrap">
                                 {isLoading ? '...' : stats?.focusScore || 0}%
                             </span>
@@ -266,7 +266,7 @@ export function TrayPopup() {
                         <>
                             <span className="w-1 h-1 rounded-full bg-[var(--border)]" />
                             <span className="flex items-center gap-1">
-                                <TrendingUp size={11} className={digest.deltaVsPrevious >= 0 ? 'text-emerald-500' : 'text-rose-500'} />
+                                <TrendingUp size={11} className={digest.deltaVsPrevious >= 0 ? 'text-[var(--accent-focus)]' : 'text-[var(--accent-negative)]'} />
                                 {digest.deltaVsPrevious >= 0 ? '+' : '−'}
                                 {formatDuration(Math.abs(digest.deltaVsPrevious))}
                             </span>

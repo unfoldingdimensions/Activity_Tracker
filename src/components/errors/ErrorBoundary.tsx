@@ -67,8 +67,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             return (
                 <div className="flex items-center justify-center min-h-[200px] p-8">
                     <GlassCard className="max-w-md p-6 text-center">
-                        <div className="p-4 rounded-full bg-red-500/10 inline-flex mb-4">
-                            <AlertTriangle size={32} className="text-red-500" />
+                        <div className="p-4 rounded-full bg-[var(--accent-negative)]/10 inline-flex mb-4">
+                            <AlertTriangle size={32} className="text-[var(--accent-negative)]" />
                         </div>
                         <h3 className="font-display text-lg font-semibold text-[var(--foreground)] mb-2">
                             Something went wrong

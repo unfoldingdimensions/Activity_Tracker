@@ -42,7 +42,7 @@ export function DailyDigest({ digest, isLoading }: DailyDigestProps) {
             icon: delta !== null && delta >= 0 ? TrendingUp : TrendingDown,
             label: 'vs yesterday',
             value: deltaLabel,
-            accent: delta !== null && delta > 0 ? 'text-emerald-500' : delta !== null && delta < 0 ? 'text-rose-500' : undefined,
+            accent: delta !== null && delta > 0 ? 'text-[var(--accent-focus)]' : delta !== null && delta < 0 ? 'text-[var(--accent-negative)]' : undefined,
         },
     ];
 

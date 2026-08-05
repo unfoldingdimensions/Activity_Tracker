@@ -45,7 +45,7 @@ export const BreathingWidget: React.FC<BreathingWidgetProps> = ({ isOpen, onClos
                         </button>
 
                         <motion.div
-                            className="w-64 h-64 rounded-full bg-emerald-500/20 blur-xl absolute"
+                            className="w-64 h-64 rounded-full bg-[var(--accent-focus)]/20 blur-xl absolute"
                             animate={{
                                 scale: phase === 'Inhale' ? 1.5 : phase === 'Exhale' ? 0.8 : 1.2,
                                 opacity: phase === 'Hold' ? 0.8 : 0.5,
@@ -54,7 +54,7 @@ export const BreathingWidget: React.FC<BreathingWidgetProps> = ({ isOpen, onClos
                         />
 
                         <motion.div
-                            className="w-48 h-48 rounded-full border-4 border-emerald-400 flex items-center justify-center relative z-10 bg-black/20 backdrop-blur-md"
+                            className="w-48 h-48 rounded-full border-4 border-[var(--accent-focus)] flex items-center justify-center relative z-10 bg-black/20 backdrop-blur-md"
                             animate={{
                                 scale: phase === 'Inhale' ? 1.2 : phase === 'Exhale' ? 0.9 : 1.1,
                             }}

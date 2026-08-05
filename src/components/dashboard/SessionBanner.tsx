@@ -71,13 +71,13 @@ export function SessionBanner({ timeline, bucketMinutes = 10 }: SessionBannerPro
     }
 
     return (
-        <div className="mx-8 mt-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+        <div className="mx-8 mt-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--accent-focus)]/10 border border-[var(--accent-focus)]/30">
             <StatusDot color="var(--accent-focus)" pulsing />
             <span className="text-sm font-semibold text-[var(--foreground)]">
                 Session in progress · {appName} · {runMinutes}m
             </span>
             <div className="flex-1 max-w-[260px] h-2 rounded-full bg-[var(--muted)]">
-                <div className="h-full rounded-full bg-emerald-500 transition-all duration-1000" style={{ width: `${progress}%` }} />
+                <div className="h-full rounded-full bg-[var(--accent-focus)] transition-all duration-1000" style={{ width: `${progress}%` }} />
             </div>
             <span className="text-xs text-[var(--muted-foreground)]">
                 {qualifies ? 'Deep work session' : `Qualifies as deep work in ${toDeepWork} min`}

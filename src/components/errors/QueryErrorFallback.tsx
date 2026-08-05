@@ -48,8 +48,8 @@ export function QueryErrorFallback({
 
     if (compact) {
         return (
-            <div className="flex items-center gap-3 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-                <Icon size={18} className="text-red-500 flex-shrink-0" />
+            <div className="flex items-center gap-3 p-3 bg-[var(--accent-negative)]/10 rounded-lg border border-[var(--accent-negative)]/20">
+                <Icon size={18} className="text-[var(--accent-negative)] flex-shrink-0" />
                 <span className="text-sm text-[var(--foreground)] flex-1">
                     {isNetwork ? 'Connection error' : 'Loading failed'}
                 </span>
@@ -69,8 +69,8 @@ export function QueryErrorFallback({
     return (
         <div className="flex items-center justify-center p-8">
             <GlassCard className="max-w-sm p-6 text-center">
-                <div className="p-3 rounded-full bg-red-500/10 inline-flex mb-4">
-                    <Icon size={28} className="text-red-500" />
+                <div className="p-3 rounded-full bg-[var(--accent-negative)]/10 inline-flex mb-4">
+                    <Icon size={28} className="text-[var(--accent-negative)]" />
                 </div>
                 <h3 className="font-display text-lg font-semibold text-[var(--foreground)] mb-2">
                     {title}

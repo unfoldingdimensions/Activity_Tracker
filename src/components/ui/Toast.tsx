@@ -118,10 +118,10 @@ const TOAST_ICONS = {
 } as const;
 
 const TOAST_COLORS = {
-    success: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500',
-    error: 'bg-red-500/10 border-red-500/30 text-red-500',
-    warning: 'bg-amber-500/10 border-amber-500/30 text-amber-500',
-    info: 'bg-blue-500/10 border-blue-500/30 text-blue-500',
+    success: 'bg-[var(--accent-focus)]/10 border-[var(--accent-focus)]/30 text-[var(--accent-focus)]',
+    error: 'bg-[var(--accent-negative)]/10 border-[var(--accent-negative)]/30 text-[var(--accent-negative)]',
+    warning: 'bg-[var(--accent-warning)]/10 border-[var(--accent-warning)]/30 text-[var(--accent-warning)]',
+    info: 'bg-[var(--muted)]/60 border-[var(--border)] text-[var(--muted-foreground)]',
 } as const;
 
 function ToastItem({

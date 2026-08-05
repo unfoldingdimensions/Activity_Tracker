@@ -89,7 +89,7 @@ export const FlowStateMetrics: React.FC = () => {
                 {/* Animated Background Pulse if Flowing */}
                 {isFlowing && (
                     <motion.div
-                        className="absolute -right-10 -bottom-10 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl"
+                        className="absolute -right-10 -bottom-10 w-32 h-32 bg-[var(--accent-focus)]/20 rounded-full blur-2xl"
                         animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
                         transition={{ duration: 4, repeat: Infinity }}
                     />
@@ -104,7 +104,7 @@ export const FlowStateMetrics: React.FC = () => {
                         <p className="text-xs text-[var(--muted-foreground)]">App changes / last hour</p>
                     </div>
                     <div className="p-2 rounded-lg bg-[var(--secondary)] transition-transform duration-[var(--duration-fast)] group-hover:scale-110">
-                        <Layers size={18} className="text-indigo-400" />
+                        <Layers size={18} className="text-[var(--accent-support)]" />
                     </div>
                 </div>
 
@@ -115,11 +115,11 @@ export const FlowStateMetrics: React.FC = () => {
 
                 <div className="mt-2 text-xs text-[var(--muted-foreground)]">
                     {contextSwitchingRate < 10 ? (
-                        <span className="text-emerald-400">Low fragmentation</span>
+                        <span className="text-[var(--accent-focus)]">Low fragmentation</span>
                     ) : contextSwitchingRate > 30 ? (
-                        <span className="text-rose-400">High fragmentation</span>
+                        <span className="text-[var(--accent-negative)]">High fragmentation</span>
                     ) : (
-                        <span className="text-amber-400">Moderate switching</span>
+                        <span className="text-[var(--accent-warning)]">Moderate switching</span>
                     )}
                 </div>
             </GlassCard>
@@ -132,7 +132,7 @@ export const FlowStateMetrics: React.FC = () => {
                         <p className="text-xs text-[var(--muted-foreground)]">Uninterrupted work today</p>
                     </div>
                     <div className="p-2 rounded-lg bg-[var(--secondary)] transition-transform duration-[var(--duration-fast)] group-hover:scale-110">
-                        <Clock size={18} className="text-amber-400" />
+                        <Clock size={18} className="text-[var(--accent-warning)]" />
                     </div>
                 </div>
 

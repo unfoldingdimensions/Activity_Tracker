@@ -47,7 +47,7 @@ export function InputIntensity({ buckets, isLoading = false }: InputIntensityPro
                 key={i}
                 onMouseEnter={() => setHovered(i)}
                 onMouseLeave={() => setHovered(null)}
-                className={cn('h-8 rounded-sm transition-all cursor-default', total === 0 ? 'bg-[var(--muted)]' : 'bg-emerald-500')}
+                className={cn('h-8 rounded-sm transition-all cursor-default', total === 0 ? 'bg-[var(--muted)]' : 'bg-[var(--accent-focus)]')}
                 style={total > 0 ? { opacity } : undefined}
             />
         );

@@ -405,7 +405,7 @@ export function Settings() {
                 <Section
                     title="Tracking status"
                     desc="Whether the app is collecting activity right now."
-                    icon={isTracking ? <Play size={20} className="text-emerald-500" /> : <Pause size={20} className="text-[var(--muted-foreground)]" />}
+                    icon={isTracking ? <Play size={20} className="text-[var(--accent-focus)]" /> : <Pause size={20} className="text-[var(--muted-foreground)]" />}
                 >
                     <Row
                         label="Capturing window, keystroke count and clicks"
@@ -430,7 +430,7 @@ export function Settings() {
                 </Section>
 
                 {/* ============ General ============ */}
-                <Section title="General" desc="How the app launches and behaves." icon={<SettingsIcon size={20} className="text-blue-500" />}>
+                <Section title="General" desc="How the app launches and behaves." icon={<SettingsIcon size={20} className="text-[var(--muted-foreground)]" />}>
                     <Row
                         label="Launch on startup"
                         caption="Start tracking automatically when you sign in"
@@ -543,7 +543,7 @@ export function Settings() {
                 <Section
                     title="App classification"
                     desc="Override how apps count toward your Focus Score. SET marks the active column."
-                    icon={<SettingsIcon size={20} className="text-rose-500" />}
+                    icon={<SettingsIcon size={20} className="text-[var(--muted-foreground)]" />}
                 >
                     {isFlat ? (
                         <>
@@ -668,7 +668,7 @@ export function Settings() {
                 <Section
                     title="Distraction guard"
                     desc="Daily time limits per app — notified once when crossed."
-                    icon={<SettingsIcon size={20} className="text-red-500" />}
+                    icon={<SettingsIcon size={20} className="text-[var(--muted-foreground)]" />}
                 >
                     {isFlat ? (
                         <>
@@ -835,7 +835,7 @@ export function Settings() {
                 <Section
                     title="Privacy & data"
                     desc="Everything stays local. Export or delete it any time."
-                    icon={<SettingsIcon size={20} className="text-amber-500" />}
+                    icon={<SettingsIcon size={20} className="text-[var(--muted-foreground)]" />}
                 >
                     <Row
                         label="Data retention"
