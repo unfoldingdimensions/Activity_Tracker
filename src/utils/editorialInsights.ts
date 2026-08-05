@@ -126,8 +126,31 @@ export function buildActivityInsights(
     sortedApps: AppUsageEntry[],
     appsTotalSeconds: number
 ): EditorialInsight[] {
-    void weekDays; void sortedApps; void appsTotalSeconds;
-    return [];
+    const insights: EditorialInsight[] = [];
+
+    // 1. Strongest day of the trailing week.
+    if (weekDays.length > 0) {
+        const peak = weekDays.reduce((a, b) => (b.minutes > a.minutes ? b : a));
+        if (peak.minutes > 0) {
+            insights.push({
+                label: 'STRONGEST DAY',
+                text: `${peak.day} carried the week — ${peak.minutes} min of focus.`,
+            });
+        }
+    }
+
+    // 2. The app with the most active seconds and its share of the total.
+    //    sortedApps is already descending; the page's own caption uses the
+    //    same total, so the share matches Data mode exactly.
+    const leader = sortedApps[0];
+    if (leader && leader.seconds > 0 && appsTotalSeconds > 0) {
+        insights.push({
+            label: 'LEADING APP',
+            text: `${leader.name} led at ${pct(leader.seconds, appsTotalSeconds)}% of active time.`,
+        });
+    }
+
+    return insights.slice(0, 3);
 }
 
 export function buildPowerInsights(

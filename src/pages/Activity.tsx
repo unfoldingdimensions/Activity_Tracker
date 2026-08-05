@@ -26,6 +26,7 @@ import { RefreshButton } from '../components/shared/RefreshButton';
 import { FocusCalendar } from '../components/insights/FocusCalendar';
 import { EditorialIntro } from '../components/shared/EditorialIntro';
 import { formatDuration } from '../utils/formatters';
+import { buildActivityInsights } from '../utils/editorialInsights';
 
 /** Tiny inline sparkline: values -> polyline in an 88x22 viewBox */
 function Sparkline({ values, color }: { values: number[]; color: string }) {
@@ -102,6 +103,11 @@ export function ActivityPage() {
     const weekTotal = weekDays.reduce((s, d) => s + d.minutes, 0);
     const peakDay = weekDays.length ? weekDays.reduce((a, b) => (b.minutes > a.minutes ? b : a)).day : '—';
 
+    const insights = useMemo(
+        () => buildActivityInsights(weekDays, sortedApps, appsTotal),
+        [weekDays, sortedApps, appsTotal]
+    );
+
     return (
         <div className="flex flex-col min-h-full">
             <PageHeader title="Activity" meta="TODAY · UPDATED ON RANGE CHANGE" actions={<RefreshButton />} />
@@ -109,6 +115,7 @@ export function ActivityPage() {
             <EditorialIntro
                 sentence={`The last six days carried ${weekTotal} minutes of focus — ${peakDay} was the strongest, and the hours in between tell the story.`}
                 note={`${sortedApps.length} APPS TODAY · ${formatDuration(appsTotal)} TOTAL`}
+                insights={insights}
             />
 
             <div className={cn(isFlat ? 'w-full px-8 pt-2 pb-10 space-y-4' : 'p-8 pt-6 space-y-6 flex-1')}>
