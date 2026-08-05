@@ -19,7 +19,7 @@
   --secondary: #f5f0e8;
   --secondary-foreground: #1c1917;
   --muted: #f0ebe3;
-  --muted-foreground: #78716c;
+  --muted-foreground: #716b66;
   --accent: #f5f0e8;
   --accent-foreground: #1c1917;
   --destructive: #dc2626;
@@ -29,7 +29,7 @@
   --surface: #f5f0e8;
 
   /* Flat-system accents (identical in both themes) */
-  --accent-focus: #0d9488;
+  --accent-focus: #0f766e;
   --accent-warning: #b45309;
   --accent-negative: #9f1239;
   --accent-support: #6d28d9;
@@ -101,7 +101,7 @@
   --surface: #1c1917;
 
   /* Flat-system accents (identical in both themes) */
-  --accent-focus: #0d9488;
+  --accent-focus: #0f766e;
   --accent-warning: #b45309;
   --accent-negative: #9f1239;
   --accent-support: #6d28d9;
@@ -678,5 +678,12 @@ input[type='range'].slider-flat::-moz-range-thumb {
 
   .landing-orb {
     animation: none;
+  }
+
+  /* The live-tracking indicator keeps its pulse: it is the app's only
+     always-on state signal and is small, non-flashing, and non-blocking. */
+  .status-dot-pulse {
+    animation-duration: 2s !important;
+    animation-iteration-count: infinite !important;
   }
 }

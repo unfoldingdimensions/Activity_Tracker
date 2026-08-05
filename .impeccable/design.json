@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-05T00:00:00Z",
+  "title": "Design System: Activity Tracker",
+  "extensions": {
+    "colorMeta": {
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "#faf8f5", "tonalRamp": ["#0c0b09", "#262523", "#43423f", "#63615e", "#84827f", "#a6a5a2", "#cbc9c6", "#f0eeeb"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#1c1917", "tonalRamp": ["#0d0b09", "#272422", "#45413f", "#64605e", "#85817f", "#a8a4a1", "#ccc8c5", "#f2edeb"] },
+      "deep-ink": { "role": "neutral", "displayName": "Deep Ink", "canonical": "#0c0a09", "tonalRamp": ["#0d0b0a", "#272423", "#444140", "#63605f", "#848280", "#a7a4a3", "#cbc8c7", "#f1eeec"] },
+      "chalk": { "role": "neutral", "displayName": "Chalk", "canonical": "#fafaf9", "tonalRamp": ["#0b0b0b", "#252524", "#424241", "#616160", "#828281", "#a5a5a4", "#c9c9c8", "#eeeeed"] },
+      "linen": { "role": "neutral", "displayName": "Linen", "canonical": "#f5f0e8", "tonalRamp": ["#0e0b06", "#28241f", "#45413b", "#65615a", "#86827a", "#a9a49d", "#cdc8c1", "#f3eee6"] },
+      "parchment": { "role": "neutral", "displayName": "Parchment", "canonical": "#e7e0d5", "tonalRamp": ["#0f0a04", "#29241c", "#474138", "#666057", "#888177", "#aba49a", "#cfc8bd", "#f5ede2"] },
+      "charcoal": { "role": "neutral", "displayName": "Charcoal", "canonical": "#292524", "tonalRamp": ["#0e0a09", "#282423", "#454140", "#65605f", "#868180", "#a9a4a2", "#cdc8c6", "#f3edec"] },
+      "pencil-lead": { "role": "neutral", "displayName": "Pencil Lead", "canonical": "#716b66", "tonalRamp": ["#0f0a07", "#292420", "#46413c", "#66605b", "#87817c", "#aaa49e", "#cec8c2", "#f4ede7"] },
+      "soft-lead": { "role": "neutral", "displayName": "Soft Lead", "canonical": "#a8a29e", "tonalRamp": ["#0e0a08", "#292421", "#46413d", "#65605c", "#87817d", "#aaa4a0", "#cec8c4", "#f3ede9"] },
+      "patina-teal": { "role": "primary", "displayName": "Patina Teal", "canonical": "#0f766e", "tonalRamp": ["#001411", "#00312c", "#005049", "#017169", "#39938a", "#5fb7ad", "#84dcd2", "#aafff7"] },
+      "brass": { "role": "secondary", "displayName": "Brass", "canonical": "#b45309", "tonalRamp": ["#310000", "#550000", "#7a1b00", "#9f4000", "#c56323", "#ed864b", "#ffab70", "#ffd094"] },
+      "oxblood": { "role": "tertiary", "displayName": "Oxblood", "canonical": "#9f1239", "tonalRamp": ["#380000", "#5e0009", "#850025", "#ac2443", "#d44c63", "#fd7185", "#ff96a8", "#ffbbcc"] },
+      "amethyst": { "role": "tertiary", "displayName": "Amethyst", "canonical": "#6d28d9", "tonalRamp": ["#230066", "#38008c", "#5100b2", "#6e29da", "#8d55ff", "#af7cff", "#d2a3ff", "#f6c9ff"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display Metric", "purpose": "Primary KPI numbers; one per metric band cell, never more. Tabular numerals." },
+      "headline": { "displayName": "Page Title", "purpose": "Page titles; editorial mode swaps to serif italic at 42px." },
+      "body": { "displayName": "Body", "purpose": "Descriptions, tooltips, settings copy. Max ~65ch for prose." },
+      "label": { "displayName": "Mono Caption", "purpose": "Meta lines, axis ticks, table headers, ALL CAPS status lines. Uppercase." },
+      "serif": { "displayName": "Editorial Serif", "purpose": "Editorial reading mode ledes and prose. Italic." }
+    },
+    "shadows": [
+      { "name": "flat-hover", "value": "0 1px 2px rgba(0,0,0,0.05), 0 8px 20px -6px rgba(0,0,0,0.12)", "purpose": "The only shadow in flat mode; interactive widgets on hover only. At rest: none." },
+      { "name": "glass-base", "value": "0 1px 3px 0 rgba(28,25,23,0.1), 0 1px 2px -1px rgba(28,25,23,0.1)", "purpose": "Legacy glass skin resting card shadow." },
+      { "name": "glass-lg", "value": "0 10px 15px -3px rgba(28,25,23,0.1), 0 4px 6px -4px rgba(28,25,23,0.1)", "purpose": "Legacy glass skin hover elevation." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Default easing for all state transitions." },
+      { "name": "duration-fast", "value": "150ms", "purpose": "Hover fills, tab underlines, toggle snaps, button presses." },
+      { "name": "duration-base", "value": "250ms", "purpose": "Theme and surface color transitions." },
+      { "name": "status-dot-pulse", "value": "2s ease-in-out infinite (opacity 1→0.35, scale 1→0.82)", "purpose": "Live tracking indicator; the only always-on animation." },
+      { "name": "number-tick", "value": "0.6s ease-out-expo (opacity 0→1, translateY 10px→0)", "purpose": "Metric value changes." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "1100px", "purpose": "Below this, the flat rail collapses to icons-only; metric band drops to 2 columns." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The observatory's single confident action: Ink fill, Paper text, small radius, presses down.",
+      "html": "<button class=\"ds-btn-primary\">REFRESH</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: \"Plus Jakarta Sans Variable\", system-ui, sans-serif; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; color: var(--primary-foreground, #faf8f5); background: var(--primary, #1c1917); padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 1px 3px 0 rgba(28,25,23,0.1), 0 1px 2px -1px rgba(28,25,23,0.1); } .ds-btn-primary:hover { opacity: 0.9; box-shadow: 0 4px 6px -1px rgba(28,25,23,0.1), 0 2px 4px -2px rgba(28,25,23,0.1); } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background, #faf8f5), 0 0 0 4px var(--ring, #a8a29e); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Bordered quiet action: Linen fill, 1px Parchment border, darkens on hover.",
+      "html": "<button class=\"ds-btn-secondary\">PAUSE</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: \"Plus Jakarta Sans Variable\", system-ui, sans-serif; font-size: 14px; font-weight: 500; color: var(--secondary-foreground, #1c1917); background: var(--secondary, #f5f0e8); padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border, #e7e0d5); cursor: pointer; transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-secondary:hover { background: var(--muted, #f0ebe3); } .ds-btn-secondary:active { transform: scale(0.97); } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background, #faf8f5), 0 0 0 4px var(--ring, #a8a29e); }"
+    },
+    {
+      "name": "Square Toggle (on)",
+      "kind": "input",
+      "refersTo": "toggle-on",
+      "description": "34x16 bordered switch with a square 14x12 block; snaps end/start via justify-content.",
+      "html": "<button class=\"ds-toggle\" role=\"switch\" aria-checked=\"true\"><span class=\"ds-toggle-block\"></span></button>",
+      "css": ".ds-toggle { display: flex; align-items: center; justify-content: flex-end; width: 34px; height: 16px; padding: 1px; background: transparent; border: 1px solid var(--foreground, #1c1917); border-radius: 0; cursor: pointer; transition: justify-content 150ms; } .ds-toggle-block { width: 14px; height: 12px; background: var(--foreground, #1c1917); border-radius: 0; } .ds-toggle[aria-checked=\"false\"] { justify-content: flex-start; border-color: var(--border, #e7e0d5); } .ds-toggle[aria-checked=\"false\"] .ds-toggle-block { background: var(--border, #e7e0d5); } .ds-toggle:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--background, #faf8f5), 0 0 0 4px var(--ring, #a8a29e); }"
+    },
+    {
+      "name": "Mono Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Bordered square mono tag with a square remove; the flat system's token container.",
+      "html": "<span class=\"ds-chip\">CHROME<button class=\"ds-chip-x\" aria-label=\"Remove\">×</button></span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px; border: 1px solid var(--border, #e7e0d5); border-radius: 0; font-family: \"JetBrains Mono Variable\", ui-monospace, monospace; font-size: 11px; font-weight: 400; letter-spacing: 0.06em; text-transform: uppercase; color: var(--foreground, #1c1917); background: transparent; } .ds-chip-x { border: none; background: none; padding: 0; font: inherit; color: var(--muted-foreground, #78716c); cursor: pointer; } .ds-chip-x:hover { color: var(--accent-negative, #9f1239); }"
+    },
+    {
+      "name": "Status Dot",
+      "kind": "custom",
+      "refersTo": "status-dot",
+      "description": "The only round thing in flat mode. Pulses while tracking is live; Pencil Lead when idle.",
+      "html": "<span class=\"ds-statusdot\"></span>",
+      "css": ".ds-statusdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-focus, #0f766e); } .ds-statusdot.pulsing { animation: ds-pulse 2s ease-in-out infinite; } @keyframes ds-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.82); } }"
+    },
+    {
+      "name": "Metric Value",
+      "kind": "custom",
+      "refersTo": "metric-value",
+      "description": "46px tabular display metric with a subordinate 24px unit suffix — the primary readout.",
+      "html": "<div class=\"ds-metric\">6h 42m<span class=\"ds-metric-unit\"></span></div>",
+      "css": ".ds-metric { font-family: \"Plus Jakarta Sans Variable\", system-ui, sans-serif; font-size: 46px; font-weight: 600; letter-spacing: -0.045em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--foreground, #1c1917); } .ds-metric-unit { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; color: var(--muted-foreground, #78716c); }"
+    },
+    {
+      "name": "Flat Bar (focus)",
+      "kind": "custom",
+      "refersTo": "bar",
+      "description": "Square track in Parchment with a Patina Teal fill; hair 2px / thin 3px / thick 6-12px.",
+      "html": "<div class=\"ds-bar\"><div class=\"ds-bar-fill\" style=\"width: 64%\"></div></div>",
+      "css": ".ds-bar { width: 100%; height: 3px; overflow: hidden; background: var(--border, #e7e0d5); border-radius: 0; } .ds-bar-fill { height: 100%; background: var(--accent-focus, #0f766e); border-radius: 0; }"
+    },
+    {
+      "name": "Nav Item (active)",
+      "kind": "nav",
+      "refersTo": "nav-active",
+      "description": "Text-only rail item; active = 2px left Ink rule + 700 weight, hover fills Linen.",
+      "html": "<a class=\"ds-nav\">Timeline</a>",
+      "css": ".ds-nav { display: flex; align-items: center; padding: 9px 22px; font-family: \"Plus Jakarta Sans Variable\", system-ui, sans-serif; font-size: 13px; letter-spacing: -0.01em; color: var(--muted-foreground, #78716c); text-decoration: none; border-left: 2px solid transparent; transition: color 150ms, background-color 150ms; } .ds-nav:hover { background: var(--surface, #f5f0e8); color: var(--foreground, #1c1917); } .ds-nav.active { border-left-color: var(--foreground, #1c1917); font-weight: 700; color: var(--foreground, #1c1917); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Observatory",
+    "overview": "Activity Tracker presents your digital day the way a well-run observatory presents the night sky: calm, precise, and honest about what it can and cannot measure. The default flat skin is a warm cream-and-stone instrument panel — hairline rules separate full-bleed bands like rows on a ledger, mono uppercase captions annotate every reading, and one 46px metric per cell carries the day's verdict. Nothing glows, nothing floats, nothing distracts from the numbers themselves.\n\nThe system's personality is disciplined Swiss instrumentation warmed by a cream-and-stone material palette. Depth is conveyed through 1px rules and tonal surface fills, never shadows; geometry is square by default (the 6px status dot is the only round thing); and interaction is confident and tactile — tabs underline, toggles snap a solid block between stops, buttons press. A legacy glass skin (blur, orbs, rounded cards, shadows) remains available in settings as the alternate visual theme, but the flat skin is the design authority and default.\n\nEditorial reading mode adds a second voice without breaking the instrument: the same numbers, re-narrated in an italic serif lede — \"the instrument is always right, and it tells you what it can't measure.\" Three switchable font pairs (swiss / geist / grotesk) re-skin type globally without touching component styles.",
+    "keyCharacteristics": [
+      "Warm paper-and-ink neutrality with exactly four accents, three visible per screen maximum",
+      "Full-bleed bands separated by 1px rules; no cards, no rounded containers, no shadows in flat mode",
+      "Mono uppercase caption voice for every label, timestamp, and axis; tabular numerals for every metric",
+      "Square geometry; the 6px status dot is the only round thing",
+      "Confident tactile responses: underline tabs, snap toggles, press buttons, hover surface fills",
+      "Strict motion budget: status-dot pulse, number ticks, and nothing else"
+    ],
+    "rules": [
+      { "name": "The Three-Accent Rule", "body": "Max three accents visible on any one screen. Idle, inactive, and empty data use Pencil Lead or Parchment, never a third accent.", "section": "colors" },
+      { "name": "The Never-A-Background Rule", "body": "An accent is never a background fill. Accents appear only as 1–2px strokes, the filled portion of a 2–3px bar, one word of text, or the 6px status dot.", "section": "colors" },
+      { "name": "The Two-Voice Rule", "body": "Numbers speak in the sans display voice; captions speak in mono uppercase; prose speaks in the serif. A reading never mixes two voices in one line.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. No gradients, no glow, no blur(), no box-shadow on flat-mode surfaces — separation is a 1px rule's job.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do separate regions with 1px Parchment rules and group headers with 1px Ink rules.",
+      "Do set every metric in tabular numerals (font-variant-numeric: tabular-nums).",
+      "Do write every caption, timestamp, and axis label as mono uppercase.",
+      "Do use Patina Teal for focus, Brass for warnings, Oxblood for negatives — and keep at most three accents per screen.",
+      "Do show — in Pencil Lead at metric size for missing data; one sentence, left-aligned, for empty tables.",
+      "Do keep motion to the status dot and number ticks; let tabs, toggles, and hovers respond in 150ms or less.",
+      "Do keep the same queries, tokens, and numbers across data and editorial reading modes — only the presentation differs."
+    ],
+    "donts": [
+      "Don't add gradients, glow, blur, or box-shadows to flat-mode surfaces.",
+      "Don't round flat-mode containers — radius 0 is the rule; the status dot and the EmptyState circle are the exceptions.",
+      "Don't use an accent as a background fill, and don't introduce a third accent for idle or empty states (use Pencil Lead / Parchment).",
+      "Don't use icons in the content area — lucide glyphs belong only in the rail and the header refresh control.",
+      "Don't animate entrances, spring layouts, or chart draw-ons in flat mode.",
+      "Don't pad chart axes past the last data hour.",
+      "Don't let the shared Button component's small radius leak into flat containers — buttons may be slightly rounded; bands, chips, and bars stay square."
+    ]
+  }
+}
