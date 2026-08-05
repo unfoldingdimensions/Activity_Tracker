@@ -4,18 +4,66 @@ import { GlassCard } from '../GlassCard';
 import { useAnalytics, getFlowColor } from '../../hooks/useAnalytics';
 import { Zap, Layers, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useVisualTheme } from '../../hooks/useVisualTheme';
+import { cn } from '../../utils/cn';
 
 export const FlowStateMetrics: React.FC = () => {
     const { flowScore, contextSwitchingRate, longestStreak, isFlowing } = useAnalytics();
+    const theme = useVisualTheme();
+    const isFlat = theme === 'flat';
 
     // Determine status text based on Flow Score
     const getFlowStatus = (score: number) => {
-        if (score >= 90) return 'Deep Focus';
+        if (score >= 90) return 'Deep focus';
         if (score >= 70) return 'Flowing';
         if (score >= 50) return 'Engaged';
         if (score >= 30) return 'Distracted';
         return 'Fragmented';
     };
+
+    // ---------- Flat: three-cell ruled KPI row ----------
+    if (isFlat) {
+        const cells = [
+            {
+                label: 'Flow score',
+                value: String(flowScore),
+                status: getFlowStatus(flowScore),
+                statusColor: getFlowColor(flowScore),
+            },
+            {
+                label: 'Context switches',
+                value: String(contextSwitchingRate),
+                status:
+                    contextSwitchingRate < 10
+                        ? 'low fragmentation'
+                        : contextSwitchingRate > 30
+                          ? 'high fragmentation'
+                          : 'moderate switching',
+                statusColor: 'var(--muted-foreground)',
+            },
+            {
+                label: 'Longest streak',
+                value: String(longestStreak),
+                status: `min · ${Math.min(100, Math.round((longestStreak / 60) * 100))}% of 60`,
+                statusColor: 'var(--muted-foreground)',
+            },
+        ];
+        return (
+            <div className="grid grid-cols-3 border-t border-[var(--border)] mt-4 pt-4">
+                {cells.map((cell, i) => (
+                    <div key={cell.label} className={cn(i > 0 && 'pl-6 border-l border-[var(--border)]')}>
+                        <div className="font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">{cell.label}</div>
+                        <div className="flex items-baseline gap-2 mt-2">
+                            <span className="sub-metric text-[var(--foreground)]">{cell.value}</span>
+                            <span className="text-[11px]" style={{ color: cell.statusColor }}>
+                                {cell.status}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

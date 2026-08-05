@@ -9,7 +9,11 @@ import { FocusFlowChart } from '../components/dashboard/FocusFlowChart';
 import { AppUsageChart } from '../components/dashboard/AppUsageChart';
 import { TimeRangeFilter, type TimeRange } from '../components/dashboard/TimeRangeFilter';
 import { RefreshButton } from '../components/shared/RefreshButton';
-
+import { SessionBanner } from '../components/dashboard/SessionBanner';
+import { MetricBand } from '../components/dashboard/MetricBand';
+import { AppUsageSide } from '../components/dashboard/AppUsageSide';
+import { InputIntensity } from '../components/dashboard/InputIntensity';
+import { ProgressFooter } from '../components/dashboard/ProgressFooter';
 
 // Data Hook
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -17,6 +21,8 @@ import { DailyDigest } from '../components/dashboard/DailyDigest';
 import { DeepWorkSessions } from '../components/dashboard/DeepWorkSessions';
 import { useSettings } from '../hooks/useSettings';
 import { formatDistance } from '../utils/formatters';
+import { useVisualTheme } from '../hooks/useVisualTheme';
+import { useInputHistory } from '../hooks/useTrackerData';
 
 // Feature components
 import { InputHistoryModal } from '../components/InputHistoryModal';
@@ -29,16 +35,28 @@ import { WorkPatterns } from '../components/insights/WorkPatterns';
 // Constants
 import { containerVariants, itemVariants } from '../constants/animations';
 
+const RANGE_LABELS: Record<TimeRange, string> = {
+    past_hour: 'PAST HOUR',
+    past_6h: 'PAST 6H',
+    past_12h: 'PAST 12H',
+    today: 'TODAY',
+    yesterday: 'YESTERDAY',
+    this_week: 'THIS WEEK',
+    this_month: 'THIS MONTH',
+};
+
 export function Dashboard() {
     const { settings } = useSettings();
+    const isFlat = useVisualTheme() === 'flat';
     // Local state
     const [timeRange, setTimeRange] = useState<TimeRange>(settings.dashboardDefaultRange);
     const [showInputModal, setShowInputModal] = useState(false);
 
     // Fetch unified data
-    const { stats, rawStats, appUsage, timelineData, focusSessions, digest, isLoading } = useDashboardData(timeRange);
+    const { stats, rawStats, appUsage, timelineData, focusSessions, digest, bucketMinutes, isLoading } = useDashboardData(timeRange);
+    const { data: inputHistory, isLoading: inputLoading } = useInputHistory(60, true);
 
-    // Build stats configuration for cards
+    // Build stats configuration for cards (glass skin)
     const statCards = useMemo(() => [
         {
             label: 'Screen Time',
@@ -76,6 +94,76 @@ export function Dashboard() {
         },
     ], [stats, rawStats, timeRange]);
 
+    const headerActions = (
+        <div className="flex items-center gap-4">
+            <RefreshButton />
+            <div className="w-[1px] h-6 bg-border/40 mx-1" />
+            <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+
+            <div className="w-[1px] h-6 bg-border/40 mx-1" />
+            <StreakCounter />
+        </div>
+    );
+
+    const now = new Date();
+    const metaLine = `${now.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()} · ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${RANGE_LABELS[timeRange]}`;
+
+    /* ================= FLAT SKIN — The Pulse ================= */
+    if (isFlat) {
+        return (
+            <div className="flex flex-col min-h-full">
+                {showInputModal && <InputHistoryModal onClose={() => setShowInputModal(false)} />}
+
+                <PageHeader title="The Pulse" meta={metaLine} actions={headerActions} />
+
+                <div className="pb-8">
+                    <SessionBanner timeline={timelineData} bucketMinutes={bucketMinutes} />
+
+                    <MetricBand
+                        screenTimeSeconds={rawStats?.total_active_seconds ?? 0}
+                        keystrokes={rawStats?.total_keystrokes ?? 0}
+                        mouseClicks={rawStats?.total_mouse_clicks ?? 0}
+                        mouseDistance={rawStats?.total_mouse_distance ?? 0}
+                        focusScore={stats.focusScore}
+                        spark={timelineData.map((d) => d.focus ?? 0)}
+                        isLoading={isLoading}
+                    />
+
+                    <DailyDigest digest={digest} isLoading={isLoading} />
+
+                    {/* Main split: focus flow + KPI row | app usage side */}
+                    <div className="grid grid-cols-[1fr_300px] border-b border-[var(--border)]">
+                        <div className="py-6 pl-8 pr-7">
+                            <FocusFlowChart data={timelineData} isLoading={isLoading} minHeight={250} title="Focus flow" />
+                            <FlowStateMetrics />
+                        </div>
+                        <div className="border-l border-[var(--border)]">
+                            <AppUsageSide appUsage={appUsage} isLoading={isLoading} />
+                        </div>
+                    </div>
+
+                    {/* Two-up: input intensity | work patterns */}
+                    <div className="grid grid-cols-2 border-b border-[var(--border)]">
+                        <div className="py-6 pl-8 pr-7 border-r border-[var(--border)]">
+                            <InputIntensity buckets={inputHistory ?? []} isLoading={inputLoading} />
+                        </div>
+                        <div className="py-6 pl-8 pr-7">
+                            <WorkPatterns />
+                        </div>
+                    </div>
+
+                    {/* Deep work sessions */}
+                    <div className="py-6 pl-8 pr-7 border-b border-[var(--border)]">
+                        <DeepWorkSessions sessions={focusSessions} isLoading={isLoading} />
+                    </div>
+
+                    <ProgressFooter />
+                </div>
+            </div>
+        );
+    }
+
+    /* ================= GLASS SKIN ================= */
     return (
         <div className="flex flex-col min-h-full">
             {/* Modals */}
@@ -85,16 +173,7 @@ export function Dashboard() {
             <PageHeader
                 title="The Pulse"
                 subtitle="Your productivity overview"
-                actions={
-                    <div className="flex items-center gap-4">
-                        <RefreshButton />
-                        <div className="w-[1px] h-6 bg-border/40 mx-1" />
-                        <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
-
-                        <div className="w-[1px] h-6 bg-border/40 mx-1" />
-                        <StreakCounter />
-                    </div>
-                }
+                actions={headerActions}
             />
 
             {/* Content */}

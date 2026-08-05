@@ -50,8 +50,10 @@ export const MOCK_TIMELINE: TimelineSegment[] = Array.from({ length: 12 }, (_, i
 }));
 
 export const MOCK_EVENTS: WindowEvent[] = [
-    { timestamp: new Date().toISOString(), process_name: 'Code.exe', window_title: 'Dashboard.tsx', duration_seconds: 300 },
     { timestamp: new Date(Date.now() - 300000).toISOString(), process_name: 'Chrome.exe', window_title: 'Google Search', duration_seconds: 120 },
+    { timestamp: new Date(Date.now() - 1500000).toISOString(), process_name: 'Code.exe', window_title: 'Dashboard.tsx', duration_seconds: 540 },
+    { timestamp: new Date(Date.now() - 900000).toISOString(), process_name: 'Code.exe', window_title: 'Dashboard.tsx', duration_seconds: 540 },
+    { timestamp: new Date(Date.now() - 300000).toISOString(), process_name: 'Code.exe', window_title: 'Dashboard.tsx', duration_seconds: 300 },
 ];
 
 export const MOCK_USER_STATS: UserStats = {

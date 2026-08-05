@@ -8,11 +8,14 @@ import { Tooltip } from '../ui/Tooltip';
 import { parseTimestamp } from '../../utils/formatters';
 import type { AppUsageEntry, InputHistoryBucket } from '../../api/tauri';
 import type { ChartDataPoint } from '../../types';
+import { useVisualTheme } from '../../hooks/useVisualTheme';
 
 export const WorkPatterns: React.FC = () => {
     // 24 hours of input history for the heatmap
     const { data: inputHistory } = useInputHistory(60, true);
     const { data: appUsage } = useAppUsage();
+    const theme = useVisualTheme();
+    const isFlat = theme === 'flat';
 
     // Placeholder buckets so the 24-cell heatmap renders before data arrives
     const heatmapBuckets: InputHistoryBucket[] = inputHistory || Array.from(
@@ -52,6 +55,52 @@ export const WorkPatterns: React.FC = () => {
         if (inputs < 1000) return 'bg-emerald-500/60';
         return 'bg-emerald-500';
     };
+
+    /* ---------- Flat: diversity & load band, bars not donuts ---------- */
+    if (isFlat) {
+        const topApp = appUsage && appUsage.length > 0 ? appUsage[0].name.replace(/\.exe$/i, '') : null;
+        return (
+            <div>
+                <div className="flex items-baseline justify-between">
+                    <h3 className="section-title text-[var(--foreground)]">Work patterns</h3>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">DIVERSITY & LOAD</span>
+                </div>
+                <div className="mt-5 space-y-4 max-w-[420px]">
+                    <div>
+                        <div className="flex justify-between text-[11.5px]">
+                            <span className="text-[var(--muted-foreground)]">App diversity</span>
+                            <span className="font-mono font-bold text-[var(--foreground)]">{diversityIndex} apps</span>
+                        </div>
+                        <div className="mt-2 h-[3px] bg-[var(--border)]">
+                            <div className="h-full" style={{ width: `${Math.min(100, diversityIndex * 15)}%`, backgroundColor: 'var(--foreground)', opacity: 0.6 }} />
+                        </div>
+                    </div>
+                    <div>
+                        <div className="flex justify-between text-[11.5px]">
+                            <span className="text-[var(--muted-foreground)]">Cognitive load</span>
+                            <span className={`font-mono font-bold ${cognitiveLoad === 'High' ? 'text-[var(--accent-negative)]' : cognitiveLoad === 'Medium' ? 'text-[var(--accent-warning)]' : 'text-[var(--accent-focus)]'}`}>
+                                {cognitiveLoad}
+                            </span>
+                        </div>
+                        <div className="mt-2 h-[3px] bg-[var(--border)]">
+                            <div
+                                className="h-full"
+                                style={{
+                                    width: cognitiveLoad === 'High' ? '80%' : cognitiveLoad === 'Medium' ? '50%' : '20%',
+                                    backgroundColor: cognitiveLoad === 'High' ? 'var(--accent-negative)' : cognitiveLoad === 'Medium' ? 'var(--accent-warning)' : 'var(--accent-focus)',
+                                }}
+                            />
+                        </div>
+                    </div>
+                    {topApp && (
+                        <p className="text-[11.5px] leading-relaxed text-[var(--muted-foreground)] pt-1">
+                            {diversityIndex} distinct apps in the last 24 hours — {topApp} leads.
+                        </p>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

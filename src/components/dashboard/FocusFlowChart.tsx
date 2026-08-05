@@ -1,6 +1,8 @@
 import {
     AreaChart,
     Area,
+    LineChart,
+    Line,
     XAxis,
     YAxis,
     Tooltip,
@@ -15,6 +17,8 @@ import { ChartTooltip } from '../charts/ChartTooltip';
 import { LoadingState } from '../shared/LoadingState';
 import { EmptyState } from '../shared/EmptyState';
 import { FLOW_COLORS } from '../../constants/colors';
+import { useVisualTheme } from '../../hooks/useVisualTheme';
+import { cn } from '../../utils/cn';
 
 export interface FocusFlowDataPoint {
     time: string;
@@ -62,6 +66,101 @@ export const FocusFlowChart = memo(function FocusFlowChart({
         { id: 'distraction', label: 'Other', color: FLOW_COLORS.distraction },
         { id: 'idle', label: 'Idle', color: '#78716c' },
     ];
+
+    const theme = useVisualTheme();
+    const isFlat = theme === 'flat';
+
+    /* ---------- Flat: hairline stroke chart, no fills ---------- */
+    if (isFlat) {
+        return (
+            <div className="flex flex-col h-full">
+                <div className="flex items-baseline justify-between">
+                    <h3 className="section-title text-[var(--foreground)]">{title}</h3>
+                    <div className="flex gap-4">
+                        {metrics.map((m) => {
+                            const isActive = activeMetrics.has(m.id);
+                            return (
+                                <button
+                                    key={m.id}
+                                    onClick={() => toggleMetric(m.id)}
+                                    className={cn(
+                                        'flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.08em] transition-opacity',
+                                        isActive ? 'text-[var(--foreground)]' : 'line-through opacity-60 text-[var(--muted-foreground)]'
+                                    )}
+                                >
+                                    <span className="w-3 h-[1.5px]" style={{ backgroundColor: m.color }} />
+                                    {m.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="flex-1 mt-4" style={{ minHeight }}>
+                    {isLoading ? (
+                        <div className="text-[11px] text-[var(--muted-foreground)]">Loading…</div>
+                    ) : hasData ? (
+                        <ResponsiveContainer width="100%" height="100%" minHeight={minHeight ?? 250}>
+                            <LineChart data={data} margin={{ top: 10, right: 8, bottom: 0, left: -18 }}>
+                                <CartesianGrid vertical={false} stroke="var(--border)" strokeWidth={1} />
+                                <XAxis
+                                    dataKey="time"
+                                    tick={{ fontSize: 8.5, fontFamily: 'var(--font-mono)', fill: 'var(--muted-foreground)' }}
+                                    tickLine={false}
+                                    axisLine={{ stroke: 'var(--border)' }}
+                                    interval={data.length > 8 ? Math.ceil(data.length / 6) : 0}
+                                    tickFormatter={(tick) => (typeof tick === 'string' && tick.includes(':') ? tick.slice(0, 5) : tick)}
+                                />
+                                <YAxis
+                                    domain={[0, 100]}
+                                    ticks={[0, 25, 50, 75, 100]}
+                                    tick={{ fontSize: 8.5, fontFamily: 'var(--font-mono)', fill: 'var(--muted-foreground)' }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(v: number) => `${v}`}
+                                />
+                                <Tooltip
+                                    cursor={{ stroke: 'var(--foreground)', strokeWidth: 1, opacity: 0.45 }}
+                                    content={({ active, payload, label }) => {
+                                        if (!active || !payload?.length) return null;
+                                        const p = payload[0].payload as FocusFlowDataPoint;
+                                        return (
+                                            <div className="bg-[var(--background)] border border-[var(--foreground)] px-2.5 py-2 font-mono text-[9px] leading-[1.7] tracking-[0.03em] whitespace-nowrap">
+                                                <div className="tracking-[0.1em] text-[var(--muted-foreground)]">{label}</div>
+                                                <div className="flex justify-between gap-4">
+                                                    <span>FOCUS</span>
+                                                    <span className="font-bold text-[var(--accent-focus)]">{Math.round(p.focus)}%</span>
+                                                </div>
+                                                <div className="flex justify-between gap-4">
+                                                    <span>OTHER</span>
+                                                    <span className="font-bold">{Math.round(p.distraction)}%</span>
+                                                </div>
+                                                <div className="flex justify-between gap-4 text-[var(--muted-foreground)]">
+                                                    <span>IDLE</span>
+                                                    <span>{Math.round(p.idle)}%</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    }}
+                                />
+                                {activeMetrics.has('focus') && (
+                                    <Line type="monotone" dataKey="focus" stroke={FLOW_COLORS.focus} strokeWidth={1.75} dot={false} activeDot={{ r: 3.5 }} isAnimationActive={false} />
+                                )}
+                                {activeMetrics.has('distraction') && (
+                                    <Line type="monotone" dataKey="distraction" stroke={FLOW_COLORS.distraction} strokeWidth={1.25} dot={false} activeDot={{ r: 3.5 }} isAnimationActive={false} />
+                                )}
+                                {activeMetrics.has('idle') && (
+                                    <Line type="monotone" dataKey="idle" stroke="var(--muted-foreground)" strokeWidth={1.25} strokeDasharray="3 3" opacity={0.6} dot={false} activeDot={{ r: 3.5 }} isAnimationActive={false} />
+                                )}
+                            </LineChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="text-[11px] text-[var(--muted-foreground)]">No activity recorded yet.</div>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <GlassCard className="p-6 h-full flex flex-col" hover={false}>

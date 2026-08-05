@@ -2,6 +2,8 @@ import { GlassCard } from '../GlassCard';
 import { Timer, Layers, Clock, Crown, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatDuration } from '../../utils/formatters';
 import type { DailyDigest as Digest } from '../../utils/focusSessions';
+import { useVisualTheme } from '../../hooks/useVisualTheme';
+import { cn } from '../../utils/cn';
 
 interface DailyDigestProps {
     digest: Digest;
@@ -13,6 +15,8 @@ interface DailyDigestProps {
  * peak hour, top app and the delta vs the previous period.
  */
 export function DailyDigest({ digest, isLoading }: DailyDigestProps) {
+    const theme = useVisualTheme();
+
     if (isLoading) {
         return (
             <GlassCard className="p-6" hover={false}>
@@ -41,6 +45,19 @@ export function DailyDigest({ digest, isLoading }: DailyDigestProps) {
             accent: delta !== null && delta > 0 ? 'text-emerald-500' : delta !== null && delta < 0 ? 'text-rose-500' : undefined,
         },
     ];
+
+    if (theme === 'flat') {
+        return (
+            <div className="grid grid-cols-5 border-b border-[var(--border)]">
+                {items.map(({ label, value, accent }, i) => (
+                    <div key={label} className={cn('py-[13px]', i > 0 ? 'px-7 border-l border-[var(--border)]' : 'px-8')}>
+                        <div className="font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">{label}</div>
+                        <div className={cn('font-mono text-[13px] font-bold mt-1', accent ?? 'text-[var(--foreground)]')}>{value}</div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
 
     return (
         <GlassCard className="p-6" hover={false}>

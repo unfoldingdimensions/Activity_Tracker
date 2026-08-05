@@ -5,6 +5,34 @@ import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
 import { renderWithClient } from '../utils';
 import { Dashboard } from '../../pages/Dashboard';
 import { BrowserRouter } from 'react-router-dom';
+import { SettingsContext, type UserSettings } from '../../context/SettingsContext';
+
+// Shared settings fixture. useVisualTheme reads SettingsContext directly,
+// so the provider (not a useSettings hook mock) drives the visual skin.
+export const TEST_SETTINGS: UserSettings = {
+    dashboardDefaultRange: 'today',
+    trackWindowTitles: true,
+    idleThreshold: 60,
+    blacklistedApps: [],
+    retentionDays: 90,
+    launchOnStartup: false,
+    startMinimized: false,
+    redactedKeywords: [],
+    appLimits: {},
+    appClassification: {},
+    readingMode: 'data',
+    writeSummarySentence: true,
+    visualTheme: 'glass',
+    fontPair: 'swiss',
+};
+
+export function renderDashboard(ui: ReactNode) {
+    return renderWithClient(
+        <SettingsContext.Provider value={{ settings: TEST_SETTINGS, updateSettings: vi.fn() }}>
+            {ui}
+        </SettingsContext.Provider>
+    );
+}
 
 vi.mock('recharts', async () => {
     const Original = await vi.importActual('recharts');
@@ -61,24 +89,6 @@ vi.mock('../../components/ui/AnimatedNumber', () => ({
 // But assume isTauri is false in test env, so it uses MOCK_APP_USAGE which is also fine for integration
 // If we want to test "Real" flow we should mock isTauri to true
 
-vi.mock('../../hooks/useSettings', () => ({
-    useSettings: () => ({
-        settings: {
-            dashboardDefaultRange: 'today',
-            trackWindowTitles: true,
-            idleThreshold: 60,
-            blacklistedApps: [],
-            retentionDays: 90,
-            launchOnStartup: false,
-            startMinimized: false,
-            redactedKeywords: [],
-            appLimits: {},
-            appClassification: {}
-        },
-        updateSettings: vi.fn()
-    })
-}));
-
 describe('Dashboard Integration', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -90,7 +100,7 @@ describe('Dashboard Integration', () => {
     });
 
     it('renders dashboard with stats and charts', async () => {
-        renderWithClient(
+        renderDashboard(
             <BrowserRouter>
                 <Dashboard />
             </BrowserRouter>

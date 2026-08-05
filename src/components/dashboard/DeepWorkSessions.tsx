@@ -2,6 +2,8 @@ import { GlassCard } from '../GlassCard';
 import { Flame, AlertTriangle } from 'lucide-react';
 import { formatDuration } from '../../utils/formatters';
 import type { FocusSession } from '../../utils/focusSessions';
+import { useVisualTheme } from '../../hooks/useVisualTheme';
+import { cn } from '../../utils/cn';
 
 interface DeepWorkSessionsProps {
     sessions: FocusSession[];
@@ -21,6 +23,55 @@ function formatTime(epochMs: number): string {
  * selected range: time span, duration, dominant app and interruptions.
  */
 export function DeepWorkSessions({ sessions, isLoading }: DeepWorkSessionsProps) {
+    const theme = useVisualTheme();
+    const isFlat = theme === 'flat';
+
+    if (isFlat) {
+        return (
+            <div>
+                <div className="flex items-baseline justify-between">
+                    <h3 className="section-title text-[var(--foreground)]">Deep work sessions</h3>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                        ≥ 25 MIN · {sessions.length} CLOSED · {formatDuration(sessions.reduce((s, x) => s + x.durationSeconds, 0))} TOTAL
+                    </span>
+                </div>
+
+                {isLoading && sessions.length === 0 ? (
+                    <div className="mt-5 text-[11px] text-[var(--muted-foreground)]">Loading…</div>
+                ) : sessions.length === 0 ? (
+                    <p className="mt-5 text-[11px] text-[var(--muted-foreground)]/60">
+                        No deep work sessions in this range yet — blocks of 25+ focused minutes will show here.
+                    </p>
+                ) : (
+                    <div className="grid grid-cols-3 mt-5">
+                        {sessions.slice(0, 3).map((session, index) => (
+                            <div key={`${session.startTime}-${index}`} className={cn('py-1', index > 0 && 'pl-6 border-l border-[var(--border)]')}>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="font-display text-2xl font-semibold tracking-[-0.04em] text-[var(--foreground)]">
+                                        {formatDuration(session.durationSeconds)}
+                                    </span>
+                                    <span className="text-[12px] text-[var(--muted-foreground)]">{session.appName}</span>
+                                </div>
+                                <div className="mt-2 h-[3px] bg-[var(--border)]">
+                                    <div
+                                        className="h-full bg-[var(--accent-focus)]"
+                                        style={{ width: `${Math.min(100, (session.durationSeconds / (60 * 60)) * 100)}%` }}
+                                    />
+                                </div>
+                                <div className="font-mono text-[9px] text-[var(--muted-foreground)] mt-2">
+                                    {formatTime(session.startTime)} → {formatTime(session.endTime)} ·{' '}
+                                    {session.interruptions === 0
+                                        ? 'CLEAN'
+                                        : `${session.interruptions} ${session.interruptions === 1 ? 'INTERRUPTION' : 'INTERRUPTIONS'}`}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
         <GlassCard className="p-6" hover={false}>
             <div className="flex items-center gap-3 mb-4">

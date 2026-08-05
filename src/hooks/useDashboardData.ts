@@ -405,6 +405,7 @@ export function useDashboardData(timeRange: TimeRange) {
         timelineData: unifiedTimeline,
         focusSessions,
         digest,
+        bucketMinutes: bucketSizeMs / 60000,
         isLoading
     };
 }
