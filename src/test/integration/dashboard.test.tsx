@@ -35,10 +35,7 @@ vi.mock('../../components/gamification/StreakCounter', () => ({ StreakCounter: (
 vi.mock('../../components/gamification/Achievements', () => ({ Achievements: () => <div data-testid="mock-achievements">Achievements</div> }));
 vi.mock('../../components/insights/FlowStateMetrics', () => ({ FlowStateMetrics: () => <div data-testid="mock-flow-state-metrics">FlowStateMetrics</div> }));
 vi.mock('../../components/insights/WorkPatterns', () => ({ WorkPatterns: () => <div data-testid="mock-work-patterns">WorkPatterns</div> }));
-vi.mock('../../components/wellbeing/ErgonomicMetrics', () => ({ ErgonomicMetrics: () => <div data-testid="mock-ergonomic-metrics">ErgonomicMetrics</div> }));
 vi.mock('../../components/wellbeing/BreathingWidget', () => ({ BreathingWidget: () => <div data-testid="mock-breathing-widget">BreathingWidget</div> }));
-vi.mock('../../components/tools/GoalSetter', () => ({ GoalSetter: () => <div data-testid="mock-goal-setter">GoalSetter</div> }));
-vi.mock('../../components/tools/PomodoroTimer', () => ({ PomodoroTimer: () => <div data-testid="mock-pomodoro-timer">PomodoroTimer</div> }));
 
 // Mock framer-motion
 vi.mock('framer-motion', async () => {

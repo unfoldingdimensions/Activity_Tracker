@@ -34,10 +34,7 @@ vi.mock('../../components/gamification/StreakCounter', () => ({ StreakCounter: (
 vi.mock('../../components/gamification/Achievements', () => ({ Achievements: () => <div /> }));
 vi.mock('../../components/insights/FlowStateMetrics', () => ({ FlowStateMetrics: () => <div /> }));
 vi.mock('../../components/insights/WorkPatterns', () => ({ WorkPatterns: () => <div /> }));
-vi.mock('../../components/wellbeing/ErgonomicMetrics', () => ({ ErgonomicMetrics: () => <div /> }));
 vi.mock('../../components/wellbeing/BreathingWidget', () => ({ BreathingWidget: () => <div /> }));
-vi.mock('../../components/tools/GoalSetter', () => ({ GoalSetter: () => <div /> }));
-vi.mock('../../components/tools/PomodoroTimer', () => ({ PomodoroTimer: () => <div /> }));
 
 vi.mock('framer-motion', () => ({
     motion: {

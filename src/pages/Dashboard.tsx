@@ -25,10 +25,6 @@ import { StreakCounter } from '../components/gamification/StreakCounter';
 import { Achievements } from '../components/gamification/Achievements';
 import { FlowStateMetrics } from '../components/insights/FlowStateMetrics';
 import { WorkPatterns } from '../components/insights/WorkPatterns';
-import { ErgonomicMetrics } from '../components/wellbeing/ErgonomicMetrics';
-import { BreathingWidget } from '../components/wellbeing/BreathingWidget';
-import { GoalSetter } from '../components/tools/GoalSetter';
-import { PomodoroTimer } from '../components/tools/PomodoroTimer';
 
 // Constants
 import { containerVariants, itemVariants } from '../constants/animations';
@@ -38,7 +34,6 @@ export function Dashboard() {
     // Local state
     const [timeRange, setTimeRange] = useState<TimeRange>(settings.dashboardDefaultRange);
     const [showInputModal, setShowInputModal] = useState(false);
-    const [showBreathing, setShowBreathing] = useState(false);
 
     // Fetch unified data
     const { stats, rawStats, appUsage, timelineData, focusSessions, digest, isLoading } = useDashboardData(timeRange);
@@ -84,7 +79,6 @@ export function Dashboard() {
     return (
         <div className="flex flex-col min-h-full">
             {/* Modals */}
-            <BreathingWidget isOpen={showBreathing} onClose={() => setShowBreathing(false)} />
             {showInputModal && <InputHistoryModal onClose={() => setShowInputModal(false)} />}
 
             {/* Header */}
@@ -209,25 +203,6 @@ export function Dashboard() {
                     viewport={{ once: true, amount: 0.2 }}
                 >
                     <DeepWorkSessions sessions={focusSessions} isLoading={isLoading} />
-                </motion.div>
-
-                {/* 7. Wellbeing & Tools */}
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    whileInView="show"
-                    viewport={{ once: true, amount: 0.2 }}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                >
-                    <motion.div variants={itemVariants}>
-                        <ErgonomicMetrics onStartBreathing={() => setShowBreathing(true)} />
-                    </motion.div>
-                    <motion.div variants={itemVariants}>
-                        <GoalSetter />
-                    </motion.div>
-                    <motion.div variants={itemVariants}>
-                        <PomodoroTimer />
-                    </motion.div>
                 </motion.div>
             </div>
         </div>
