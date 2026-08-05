@@ -28,6 +28,29 @@ typography:
     fontSize: "34px"
     fontWeight: 700
     letterSpacing: "-0.035em"
+  headline-editorial:
+    fontFamily: '"Instrument Serif", Georgia, serif'
+    fontSize: "42px"
+    fontWeight: 400
+    fontStyle: "italic"
+    letterSpacing: "-0.01em"
+  sub-metric:
+    fontFamily: '"Plus Jakarta Sans Variable", system-ui, sans-serif'
+    fontSize: "30px"
+    fontWeight: 600
+    letterSpacing: "-0.04em"
+    lineHeight: 1
+    fontFeature: "tnum"
+  section:
+    fontFamily: '"Plus Jakarta Sans Variable", system-ui, sans-serif'
+    fontSize: "16px"
+    fontWeight: 600
+    letterSpacing: "-0.02em"
+  row:
+    fontFamily: '"Plus Jakarta Sans Variable", system-ui, sans-serif'
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.65
   body:
     fontFamily: '"Plus Jakarta Sans Variable", system-ui, sans-serif'
     fontSize: "13px"
@@ -39,6 +62,28 @@ typography:
     fontWeight: 400
     letterSpacing: "0.11em"
     lineHeight: 1
+  caption:
+    fontFamily: '"JetBrains Mono Variable", ui-monospace, monospace'
+    fontSize: "9.5px"
+    fontWeight: 400
+    letterSpacing: "0.1em"
+    lineHeight: 1
+  caption-sm:
+    fontFamily: '"JetBrains Mono Variable", ui-monospace, monospace'
+    fontSize: "9px"
+    fontWeight: 400
+    letterSpacing: "0.08em"
+    lineHeight: 1
+  unit:
+    fontFamily: '"Plus Jakarta Sans Variable", system-ui, sans-serif'
+    fontSize: "24px"
+    fontWeight: 500
+    letterSpacing: "-0.02em"
+  meta:
+    fontFamily: '"Instrument Serif", Georgia, serif'
+    fontSize: "15px"
+    fontWeight: 400
+    fontStyle: "italic"
   serif:
     fontFamily: '"Instrument Serif", Georgia, serif'
     fontSize: "22px"
@@ -46,9 +91,11 @@ typography:
     lineHeight: 1.45
     fontStyle: "italic"
 rounded:
+  xs: "2px"
   sm: "6px"
   md: "8px"
   lg: "12px"
+  xl: "28px"
   pill: "9999px"
 spacing:
   page-gutter: "32px"
@@ -144,11 +191,15 @@ A warm observational palette: cream paper and warm ink in light mode, deep ink a
 ### Hierarchy
 - **Display** (600, 46px, line-height 1, −0.045em, tabular): the primary KPI number on each page — one per metric band cell, never more.
 - **Headline** (700, 34px, −0.035em): page titles — "The Pulse", "Timeline". Editorial mode swaps to the serif italic at 42px.
-- **Title** (600, 16px, −0.02em): section headings.
+- **Sub-metric** (600, 30px, −0.04em, tabular): secondary numbers — flow score, longest streak, timer reads.
+- **Section** (600, 16px, −0.02em): section headings.
+- **Row** (400, 12px, line-height 1.65): app names, setting labels, table rows, chart legends.
 - **Body** (400, 11.5–13.5px, line-height 1.65–1.75, `text-wrap: pretty`): descriptions, tooltips, settings copy. Max ~65ch for prose passages.
 - **Label** (400, 10.5px, +0.11em, uppercase): mono captions — meta lines, axis ticks, table headers, ALL CAPS status lines.
+- **Caption** (400, 9.5px, +0.10em, uppercase) and **Caption-sm** (400, 9px, +0.08em, uppercase): tight mono micro-labels — footers, chip text, tray lines.
 - **Data value** (700, 10–11px, +0.06em, mono): table figures, durations, percentages.
-- **Unit suffix** (500, 20–24px, −0.02em, Pencil Lead): subordinate to the digits inside a metric (e.g. the `m` in `6h 42m`).
+- **Unit suffix** (500, 24px, −0.02em, Pencil Lead): subordinate to the digits inside a metric (e.g. the `m` in `6h 42m`).
+- **Meta** (400 italic serif, 15px): editorial-mode supporting line under the lede.
 
 ### Named Rules
 **The Two-Voice Rule.** Numbers speak in the sans display voice; captions speak in mono uppercase; prose speaks in the serif. A reading never mixes two voices in one line.

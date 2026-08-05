@@ -96,7 +96,7 @@ export function Layout() {
                                     >
                                         <span>{item.label}</span>
                                         {item.isNew && (
-                                            <span className="font-mono text-[8px] tracking-[0.08em] px-[4px] py-[2px] border border-[var(--border)] text-[var(--accent-focus)]">
+                                            <span className="font-mono text-[9px] tracking-[0.08em] px-[4px] py-[2px] border border-[var(--border)] text-[var(--accent-focus)]">
                                                 NEW
                                             </span>
                                         )}
@@ -162,7 +162,7 @@ export function Layout() {
                                         />
                                         <span className="font-medium">{item.label}</span>
                                         {item.isNew && (
-                                            <span className="font-mono text-[8px] tracking-[0.08em] px-[4px] py-[2px] border border-[var(--border)] rounded text-[var(--accent-focus)]">
+                                            <span className="font-mono text-[9px] tracking-[0.08em] px-[4px] py-[2px] border border-[var(--border)] rounded text-[var(--accent-focus)]">
                                                 NEW
                                             </span>
                                         )}

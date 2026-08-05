@@ -64,7 +64,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
     const metrics: { id: MetricType; label: string; color: string }[] = [
         { id: 'focus', label: 'Focus', color: FLOW_COLORS.focus },
         { id: 'distraction', label: 'Other', color: FLOW_COLORS.distraction },
-        { id: 'idle', label: 'Idle', color: '#78716c' },
+        { id: 'idle', label: 'Idle', color: 'var(--muted-foreground)' },
     ];
 
     const theme = useVisualTheme();
@@ -296,7 +296,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                                 <Area
                                     type="monotone"
                                     dataKey="idle"
-                                    stroke="#78716c"
+                                    stroke="var(--muted-foreground)"
                                     fill="url(#grayGradient)"
                                     fillOpacity={0.2}
                                     strokeWidth={2}
