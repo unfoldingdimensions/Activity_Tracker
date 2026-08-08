@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeProvider';
 import { SettingsProvider } from './context/SettingsProvider';
@@ -78,6 +78,8 @@ function App() {
                         </Route>
                         {/* Standalone Tray Route */}
                         <Route path="/tray" element={<TrayPopup />} />
+                        {/* Unknown paths: land on the dashboard instead of a blank window */}
+                        <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Suspense>
                   </BrowserRouter>

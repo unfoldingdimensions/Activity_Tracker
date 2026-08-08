@@ -37,6 +37,10 @@
   /* Toggle ON fill: ink in light mode; a warm mid-stone in dark mode so
      the white thumb stays visible (chalk --primary would hide it) */
   --toggle-on: #1c1917;
+  /* Glass-toggle thumbs: white on the dark ON track; ink on the pale OFF
+     track so the off state stays visible in light mode */
+  --toggle-thumb-on: #ffffff;
+  --toggle-thumb-off: #1c1917;
 
   /* Chart Colors */
   --chart-1: #1c1917;
@@ -110,6 +114,9 @@
 
   /* Toggle ON fill in dark mode: dark warm stone, not chalk */
   --toggle-on: #57534e;
+  /* Dark mode: white thumbs on both tracks (both are dark enough) */
+  --toggle-thumb-on: #ffffff;
+  --toggle-thumb-off: #ffffff;
 
   /* Chart Colors - Brighter for Dark Mode */
   --chart-1: #fafaf9;

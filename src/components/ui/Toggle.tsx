@@ -50,8 +50,8 @@ export function Toggle({ checked, onChange, label, className }: ToggleProps) {
         >
             <span
                 className={cn(
-                    'absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-150',
-                    checked ? 'left-[22px]' : 'left-0.5'
+                    'absolute top-0.5 w-5 h-5 rounded-full transition-all duration-150',
+                    checked ? 'left-[22px] bg-[var(--toggle-thumb-on)]' : 'left-0.5 bg-[var(--toggle-thumb-off)]'
                 )}
             />
         </button>

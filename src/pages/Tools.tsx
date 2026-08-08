@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useVisualTheme } from '../hooks/useVisualTheme';
 import { useWellbeing } from '../hooks/useWellbeing';
@@ -10,6 +10,7 @@ import { formatDuration, formatAppName } from '../utils/formatters';
 import { buildToolsInsights } from '../utils/editorialInsights';
 import { BreathingWidget } from '../components/wellbeing/BreathingWidget';
 import { useSettings } from '../hooks/useSettings';
+import { isTauri } from '../utils/isTauri';
 import { EditorialIntro } from '../components/shared/EditorialIntro';
 
 /* ------------------------------------------------------------------ */
@@ -98,6 +99,40 @@ export function Tools() {
     const { eyeStrainProgress, sedentaryMinutes, typingFatigue, needsBreak } = useWellbeing();
     const [showBreathing, setShowBreathing] = useState(false);
     const [breathingSessions, setBreathingSessions] = useState(0);
+    // Tracks whether *this* widget session requested fullscreen, so closing
+    // only exits fullscreen when we were the ones who entered it.
+    const breathingFullscreenRef = useRef(false);
+
+    /** Enter OS/webview fullscreen (Tauri setFullscreen, browser Fullscreen API). */
+    const enterBreathingFullscreen = async () => {
+        try {
+            if (isTauri()) {
+                const { getCurrentWindow } = await import('@tauri-apps/api/window');
+                await getCurrentWindow().setFullscreen(true);
+            } else if (document.fullscreenEnabled && !document.fullscreenElement) {
+                await document.documentElement.requestFullscreen();
+            }
+            breathingFullscreenRef.current = true;
+        } catch (error) {
+            // Fullscreen denied (rare) — fall back to the plain overlay.
+            console.error('Failed to enter fullscreen:', error);
+        }
+    };
+
+    const exitBreathingFullscreen = async () => {
+        if (!breathingFullscreenRef.current) return;
+        breathingFullscreenRef.current = false;
+        try {
+            if (isTauri()) {
+                const { getCurrentWindow } = await import('@tauri-apps/api/window');
+                await getCurrentWindow().setFullscreen(false);
+            } else if (document.fullscreenElement) {
+                await document.exitFullscreen();
+            }
+        } catch (error) {
+            console.error('Failed to exit fullscreen:', error);
+        }
+    };
 
     const [timer, dispatch] = useReducer(timerReducer, {
         timeLeft: MODES.Work,
@@ -181,6 +216,7 @@ export function Tools() {
     const closeBreathing = () => {
         setBreathingSessions((s) => s + 1);
         setShowBreathing(false);
+        void exitBreathingFullscreen();
     };
 
     /* One structure for both skins; glass gets glass containers. */
@@ -497,7 +533,10 @@ export function Tools() {
                                     Start
                                 </button>
                                 <button
-                                    onClick={() => setShowBreathing(true)}
+                                    onClick={() => {
+                                        void enterBreathingFullscreen();
+                                        setShowBreathing(true);
+                                    }}
                                     className={timerBtn(false)}
                                 >
                                     Full screen
