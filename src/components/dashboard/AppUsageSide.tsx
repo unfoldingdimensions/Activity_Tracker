@@ -8,7 +8,7 @@ import { formatDuration } from '../../utils/formatters';
 interface AppUsageLike {
     /** display name */
     name: string;
-    /** seconds of use (chart data uses `value`) */
+    /** seconds of use */
     value: number;
 }
 
@@ -27,7 +27,19 @@ export function AppUsageSide({ appUsage, isLoading = false }: AppUsageSideProps)
     const { settings } = useSettings();
     const [filtered, setFiltered] = useState<string | null>(null);
 
-    const rows = [...(appUsage ?? [])].sort((a, b) => b.value - a.value);
+    // Merge case-insensitive duplicates (e.g. "claude.exe" vs "Claude.exe" are
+    // the same app on Windows) and sort by usage descending.
+    const merged = new Map<string, AppUsageLike>();
+    for (const app of appUsage ?? []) {
+        const key = app.name.toLowerCase();
+        const existing = merged.get(key);
+        if (existing) {
+            existing.value += app.value;
+        } else {
+            merged.set(key, { ...app });
+        }
+    }
+    const rows = [...merged.values()].sort((a, b) => b.value - a.value);
     const total = rows.reduce((s, a) => s + a.value, 0) || 1;
     const visible = filtered ? rows.filter((a) => a.name.toLowerCase().includes(filtered.toLowerCase())) : rows;
     const top = visible[0];

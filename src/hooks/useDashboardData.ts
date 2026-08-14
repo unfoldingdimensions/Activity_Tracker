@@ -9,7 +9,7 @@ import {
 } from './queries';
 import type { TimeRange } from '../components/dashboard/TimeRangeFilter';
 import type { AppUsageEntry, WindowEvent } from '../api/tauri';
-import { formatStatsForCards, formatAppUsageForChart } from './useTrackerData';
+import { formatStatsForCards } from './useTrackerData';
 import { parseTimestamp, toLocalDateString } from '../utils/formatters';
 import { useAppClassifier } from './useAppClassifier';
 import { computeFocusSessions, buildDigest } from '../utils/focusSessions';
@@ -370,7 +370,9 @@ export function useDashboardData(timeRange: TimeRange) {
         start.setHours(0, 0, 0, 0);
         const end = new Date(start);
         end.setHours(23, 59, 59, 999);
-        return { start: start.toISOString(), end: end.toISOString() };
+        // app_usage is keyed by LOCAL date (YYYY-MM-DD); a full ISO timestamp
+        // compares greater than every stored date string and returns an empty set.
+        return { start: toLocalDateString(start), end: toLocalDateString(end) };
     }, []);
     const yesterdayUsageQuery = useAppUsageRange(yesterdayWindow.start, yesterdayWindow.end, isToday);
 
@@ -401,7 +403,9 @@ export function useDashboardData(timeRange: TimeRange) {
     return {
         stats,
         rawStats: unifiedStats,
-        appUsage: formatAppUsageForChart(unifiedAppUsage),
+        // Pass raw SECONDS to the sidebar. The chart-only formatter
+        // (formatAppUsageForChart) converts to minutes and must NOT be used here.
+        appUsage: (unifiedAppUsage ?? []).map(({ name, seconds }) => ({ name, value: seconds })),
         timelineData: unifiedTimeline,
         focusSessions,
         digest,

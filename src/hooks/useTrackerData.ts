@@ -14,9 +14,8 @@
  * ```
  */
 
-import { formatDuration, formatAppName } from '../utils/formatters';
-import { CHART_COLORS } from '../constants/colors';
-import type { DailyStats, AppUsageEntry, TimelineSegment } from '../api/tauri';
+import { formatDuration } from '../utils/formatters';
+import type { DailyStats } from '../api/tauri';
 
 // Re-export all hooks from new locations
 export {
@@ -78,38 +77,4 @@ export function formatStatsForCards(stats: DailyStats | null | undefined) {
         keystrokes: keys.toLocaleString(),
         focusScore,
     };
-}
-
-/**
- * Format app usage for pie chart
- */
-export function formatAppUsageForChart(usage: AppUsageEntry[] | undefined) {
-    if (!usage || usage.length === 0) {
-        return [];
-    }
-
-    const colors = CHART_COLORS;
-
-    return usage.slice(0, 6).map((entry, i) => ({
-        name: formatAppName(entry.name),
-        value: Math.round(entry.seconds / 60), // Convert to minutes
-        color: colors[i % colors.length],
-    }));
-
-}
-
-/**
- * Format timeline for bar charts
- */
-export function formatTimelineForChart(timeline: TimelineSegment[] | undefined) {
-    if (!timeline || timeline.length === 0) return [];
-
-    return timeline.map(segment => ({
-        time: segment.time,
-        active: Math.round(segment.active_seconds / 60), // Minutes
-        idle: Math.round(segment.idle_seconds / 60),
-        // Simulate other metrics for now until backend supports them
-        keystrokes: Math.round(segment.active_seconds * 1.5),
-        clicks: Math.round(segment.active_seconds * 0.5),
-    }));
 }
