@@ -1,7 +1,7 @@
 use rusqlite::{Connection, Result};
 use std::path::PathBuf;
 use std::collections::HashMap;
-use chrono::{Datelike, TimeZone};
+use chrono::{Timelike, TimeZone};
 
 /// Initialize the SQLite database with the activity tracking schema
 pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
@@ -127,15 +127,6 @@ pub fn get_all_input_activity(conn: &Connection) -> Result<Vec<(String, u32, u32
     rows.collect()
 }
 
-/// Read a single setting value (stored as JSON text)
-pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
-    match conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| row.get(0)) {
-        Ok(value) => Ok(Some(value)),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e),
-    }
-}
-
 /// Write a single setting value (JSON text)
 pub fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<()> {
     conn.execute(
@@ -224,18 +215,19 @@ pub fn get_app_usage(conn: &Connection, date: &str) -> Result<Vec<(String, u32)>
     rows.collect()
 }
 
-/// Get daily stats computed from app_usage table
-/// Get daily stats computed from app_usage, snapshots and input tables
+/// Get daily stats computed from activity snapshots and input activity.
+/// Active/idle seconds are per-second snapshot row counts over the UTC range —
+/// the same definition `get_stats_range` uses — so the headline metric stays
+/// consistent whether the frontend asks for "today" or a historical range.
 pub fn get_daily_stats(
     conn: &Connection, 
-    date: &str, // Local date for app_usage (YYYY-MM-DD)
     start_timestamp: &str, // UTC start (ISO 8601)
     end_timestamp: &str    // UTC end (ISO 8601)
 ) -> Result<Option<DailyStats>> {
-    // Get total active seconds from app usage (sum of all app usage for the local day)
+    // Active/Idle seconds from per-second activity snapshots
     let total_active: u32 = conn.query_row(
-        "SELECT COALESCE(SUM(total_seconds), 0) FROM app_usage WHERE date = ?1",
-        [date],
+        "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 0",
+        [start_timestamp, end_timestamp],
         |row| row.get(0),
     ).unwrap_or(0);
 
@@ -307,11 +299,15 @@ pub fn get_stats_range(
     })
 }
 
-/// Get activity timeline grouped by local hour for a specific range
+/// Get activity timeline grouped by local hour for a specific range.
 /// Timestamps are stored as UTC ISO-8601 strings; we group by the full
 /// UTC hour in SQL, then re-bucket each UTC hour into the local hour so the
 /// resulting "HH:00" labels match the machine's timezone (same convention as
 /// `app_usage.date`).
+///
+/// Buckets are keyed by local HOUR ONLY (0-23), so the range must span a
+/// single local day — the only caller (`get_today_timeline`) passes local
+/// midnight -> 23:59:59. A multi-day range would collapse into one 24h cycle.
 pub fn get_activity_timeline(
     conn: &Connection, 
     start_timestamp: &str, 
@@ -371,27 +367,6 @@ pub fn get_recent_window_events(conn: &Connection) -> Result<Vec<WindowEvent>> {
     )?;
     
     let rows = stmt.query_map([], |row| {
-        Ok(WindowEvent {
-            timestamp: row.get(0)?,
-            process_name: row.get(1)?,
-            window_title: row.get(2)?,
-            duration_seconds: row.get(3)?,
-        })
-    })?;
-    
-    rows.collect()
-}
-
-/// Get window events in range
-pub fn get_window_events_in_range(conn: &Connection, start_iso: &str, end_iso: &str) -> Result<Vec<WindowEvent>> {
-    let mut stmt = conn.prepare(
-        "SELECT timestamp, process_name, window_title, duration_seconds 
-         FROM window_events 
-         WHERE timestamp >= ?1 AND timestamp <= ?2
-         ORDER BY timestamp DESC"
-    )?;
-    
-    let rows = stmt.query_map([start_iso, end_iso], |row| {
         Ok(WindowEvent {
             timestamp: row.get(0)?,
             process_name: row.get(1)?,
@@ -572,15 +547,6 @@ pub fn update_streak(conn: &Connection, today: &str) -> Result<()> {
     Ok(())
 }
 
-/// Unlock an achievement
-pub fn unlock_achievement(conn: &Connection, code: &str, timestamp: &str) -> Result<()> {
-    conn.execute(
-        "INSERT OR IGNORE INTO achievements (code, unlocked_at) VALUES (?1, ?2)",
-        (code, timestamp),
-    )?;
-    Ok(())
-}
-
 /// Unlock an achievement and award bonus XP the first time it is earned.
 /// Returns `true` if the achievement was newly unlocked (and XP awarded).
 pub fn unlock_achievement_with_reward(conn: &Connection, code: &str, timestamp: &str, reward_xp: u32) -> Result<bool> {
@@ -632,12 +598,6 @@ pub fn cleanup_old_window_events(conn: &Connection, retention_days: u32) -> Resu
         "DELETE FROM window_events WHERE timestamp < ?1",
         [&cutoff],
     )
-}
-
-/// Run vacuum to reclaim disk space
-pub fn vacuum_database(conn: &Connection) -> Result<()> {
-    conn.execute("VACUUM", [])?;
-    Ok(())
 }
 
 /// Clear all data from the database (activity + gamification)

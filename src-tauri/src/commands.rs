@@ -46,16 +46,6 @@ pub fn hide_tray_window(app_handle: tauri::AppHandle) {
     }
 }
 
-/// Enable/disable recording of window titles (privacy setting)
-#[tauri::command]
-pub fn set_track_window_titles(state: State<AppState>, enabled: bool) {
-    if let Ok(tracker) = state.tracker.lock() {
-        tracker.set_track_titles(enabled);
-    } else {
-        log::error!("Failed to lock tracker for set_track_window_titles");
-    }
-}
-
 /// Escape a field for CSV (quote + double inner quotes)
 fn csv_field(value: &str) -> String {
     if value.contains(',') || value.contains('"') || value.contains('\n') {
@@ -118,7 +108,7 @@ pub fn export_data(state: State<AppState>, path: String, format: String) -> Resu
         serde_json::to_string_pretty(&snapshot).map_err(|e| e.to_string())?
     };
 
-    std::fs::write(&path, contents).map_err(|e| format!("Failed to write {}: {}", path, e))?;
+    std::fs::write(&path, &contents).map_err(|e| format!("Failed to write {}: {}", path, e))?;
     log::info!("Exported {} bytes of data to {}", contents.len(), path);
     Ok(())
 }
@@ -283,16 +273,6 @@ pub fn get_recent_events(state: State<AppState>) -> Vec<WindowEvent> {
     tracker.get_recent_events()
 }
 
-/// Get events in range
-#[tauri::command]
-pub fn get_timeline_range(state: State<AppState>, start_iso: String, end_iso: String) -> Vec<WindowEvent> {
-    let Ok(tracker) = state.tracker.lock() else {
-        log::error!("Failed to lock tracker for get_timeline_range");
-        return Vec::new();
-    };
-    tracker.get_events_range(&start_iso, &end_iso)
-}
-
 /// Get events in range with pagination
 #[tauri::command]
 pub fn get_timeline_range_paginated(state: State<AppState>, start_iso: String, end_iso: String, limit: u32, offset: u32) -> Vec<WindowEvent> {
@@ -334,7 +314,14 @@ pub fn get_input_history(state: State<AppState>, interval_minutes: u32) -> Vec<I
     let start_time = now - Duration::hours(24);
     let end_time = now;
     
-    get_input_history_range(state, start_time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true), end_time.to_rfc3339_opts(chrono::SecondsFormat::Secs, true), interval_minutes)
+    // Millis precision to match how rows are stored, so the final bucket's
+    // rows aren't excluded by a coarser end bound.
+    get_input_history_range(
+        state,
+        start_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        end_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        interval_minutes,
+    )
 }
 
 /// Get input history bucketed by interval in range
@@ -365,8 +352,11 @@ pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_is
 
     let raw_data = match state.tracker.lock() {
         Ok(tracker) => tracker.get_input_history_range(
-            &start_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true), 
-            &end_iso,
+            &start_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+            // Query with the SAME normalized end used for bucketing (it falls
+            // back to Utc::now() when end_iso is unparseable) rather than the
+            // raw input string, which could disagree with the buckets.
+            &end_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
         ),
         Err(_) => {
             log::error!("Failed to lock tracker for get_input_history_range");
@@ -378,8 +368,10 @@ pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_is
     
     let diff_total = end_time.signed_duration_since(start_time);
     let total_minutes = diff_total.num_minutes().max(0);
-    // Exact bucket count: ceil(minutes / interval), so no empty trailing bucket
-    let num_buckets = total_minutes.div_ceil(interval as i64).max(1) as u32;
+    // Exact bucket count: ceil(minutes / interval), so no empty trailing bucket.
+    // Manual ceil division: `div_ceil` is still gated behind the unstable
+    // `int_roundings` feature on this toolchain.
+    let num_buckets = ((total_minutes + (interval as i64) - 1) / (interval as i64)).max(1) as u32;
     
     // Initialize buckets
     for i in 0..num_buckets {
@@ -417,15 +409,6 @@ pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_is
     buckets
 }
 
-/// Check if the system is idle
-#[tauri::command]
-pub fn is_idle(state: State<AppState>) -> bool {
-    let Ok(tracker) = state.tracker.lock() else {
-        return false;
-    };
-    tracker.is_idle()
-}
-
 /// Get idle time in seconds
 #[tauri::command]
 pub fn get_idle_seconds(state: State<AppState>) -> u32 {
@@ -437,9 +420,9 @@ pub fn get_idle_seconds(state: State<AppState>) -> u32 {
 
 /// Manually start tracking (usually auto-started)
 #[tauri::command]
-pub fn start_tracking(state: State<AppState>) {
+pub fn start_tracking(app_handle: tauri::AppHandle, state: State<AppState>) {
     if let Ok(tracker) = state.tracker.lock() {
-        tracker.start();
+        tracker.start(app_handle);
     } else {
         log::error!("Failed to lock tracker for start_tracking");
     }
@@ -509,16 +492,6 @@ pub fn get_unlocked_achievements(state: State<AppState>) -> Vec<String> {
         return Vec::new();
     };
     tracker.get_unlocked_achievements()
-}
-
-/// Unlock achievement (debug/manual)
-#[tauri::command]
-pub fn unlock_achievement(state: State<AppState>, code: String) -> bool {
-    let Ok(tracker) = state.tracker.lock() else {
-        log::error!("Failed to lock tracker for unlock_achievement");
-        return false;
-    };
-    tracker.unlock_achievement(&code)
 }
 
 /// Get the application icon as base64 string

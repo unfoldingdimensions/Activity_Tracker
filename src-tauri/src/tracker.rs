@@ -8,9 +8,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use chrono::{Datelike, TimeZone};
+use chrono::{Timelike, TimeZone};
 use tauri::Emitter;
-use tauri::Manager;
 use tauri_plugin_notification::NotificationExt;
 
 /// Compact duration like "2h 5m" / "45m" for limit notifications
@@ -97,7 +96,7 @@ fn check_app_limits(
                 continue;
             }
 
-            let key = format!("{}|{}", lower, today);
+            let key = format!("{}|{}|{}", lower, pattern.to_lowercase(), today);
             if !notified_guard.insert(key) {
                 continue;
             }
@@ -122,7 +121,7 @@ fn check_app_limits(
             // Amber tray state: swap the tray icon to the amber variant
             if let Some(tray) = app.tray_by_id("main") {
                 if let Some(png) = crate::icons::amber_tray_icon_png(app) {
-                    if let Ok(image) = tauri::image::Image::from_bytes(png) {
+                    if let Ok(image) = tauri::image::Image::from_bytes(&png) {
                         let _ = tray.set_icon(Some(image));
                     }
                 }
@@ -133,40 +132,65 @@ fn check_app_limits(
 }
 
 /// Replace every occurrence of each keyword (case-insensitive) in `title`
-/// with a mask of bullet characters ("•"). Byte-slicing is clamped to char
-/// boundaries so non-ASCII titles never panic.
+/// with a mask of bullet characters ("•").
+///
+/// Matching runs over a char-flattened lowercase view of the title. That keeps
+/// case-insensitive search correct when lowercasing changes a char's UTF-8
+/// length (e.g. 'İ' → "i̇") — the previous byte-based `to_lowercase().find`
+/// could desync the offset and either mask the wrong span or panic on a
+/// non-char-boundary slice. All indexing here is char-indexed, and every
+/// matched source char becomes a single bullet.
 fn redact_title(title: &str, keywords: &[String]) -> String {
     if title.is_empty() || keywords.is_empty() {
         return title.to_string();
     }
 
-    let mut result = title.to_string();
+    let chars: Vec<char> = title.chars().collect();
+    let mut masked: Vec<bool> = vec![false; chars.len()];
+
     for keyword in keywords {
         if keyword.is_empty() {
             continue;
         }
-        let needle = keyword.to_lowercase();
-        let mask: String = "•".repeat(keyword.chars().count());
 
-        let mut out = String::with_capacity(result.len());
-        let mut rest = result.as_str();
-        while let Some(pos) = rest.to_lowercase().find(&needle) {
-            out.push_str(&rest[..pos]);
-            out.push_str(&mask);
-            // Advance past the match, clamped to a char boundary
-            let mut end = pos + keyword.len();
-            if end > rest.len() {
-                end = rest.len();
+        // Flattened lowercase of each char, plus which source char produced
+        // each lowercase char (one source char can lowercase to several).
+        let mut lower: Vec<char> = Vec::new();
+        let mut lower_origin: Vec<usize> = Vec::new();
+        for (i, &c) in chars.iter().enumerate() {
+            for lc in c.to_lowercase() {
+                lower.push(lc);
+                lower_origin.push(i);
             }
-            while end > pos && !rest.is_char_boundary(end) {
-                end -= 1;
-            }
-            rest = &rest[end..];
         }
-        out.push_str(rest);
-        result = out;
+
+        let needle: Vec<char> = keyword.chars().flat_map(|c| c.to_lowercase()).collect();
+        if needle.is_empty() {
+            continue;
+        }
+
+        let mut start = 0usize;
+        while start + needle.len() <= lower.len() {
+            if &lower[start..start + needle.len()] == needle.as_slice() {
+                for &origin in &lower_origin[start..start + needle.len()] {
+                    masked[origin] = true;
+                }
+                start += needle.len();
+            } else {
+                start += 1;
+            }
+        }
     }
-    result
+
+    let mut out = String::with_capacity(title.len());
+    for (i, &c) in chars.iter().enumerate() {
+        if masked[i] {
+            out.push('•');
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 
 /// The main tracker state
@@ -184,6 +208,11 @@ pub struct Tracker {
     /// Latest top-CPU processes sampled by the power thread
     /// (process name, cpu percent)
     cpu_snapshot: Arc<Mutex<Vec<(String, f32)>>>,
+    /// When the last retention cleanup ran; kept on the Tracker (not per
+    /// `start`) so frequent pause/resume can't keep postponing the 24h pass.
+    last_cleanup: Arc<Mutex<std::time::Instant>>,
+    /// Guards against stacking duplicate cleanup threads across pause/resume.
+    cleanup_thread_active: Arc<Mutex<bool>>,
 }
 
 impl Tracker {
@@ -211,6 +240,8 @@ impl Tracker {
             track_titles: Arc::new(AtomicBool::new(true)),
             settings,
             cpu_snapshot: Arc::new(Mutex::new(Vec::new())),
+            last_cleanup: Arc::new(Mutex::new(std::time::Instant::now())),
+            cleanup_thread_active: Arc::new(Mutex::new(false)),
         }
     }
 
@@ -227,7 +258,7 @@ impl Tracker {
             let mut sys = sysinfo::System::new_all();
             loop {
                 sys.refresh_processes(
-                    sysinfo::ProcessRefreshKind::everything(),
+                    sysinfo::ProcessesToUpdate::All,
                     true,
                 );
                 let mut top: Vec<(String, f32)> = sys
@@ -270,21 +301,6 @@ impl Tracker {
         self.settings.lock().unwrap().clone()
     }
 
-    /// Idle threshold in seconds (setting `idle_threshold`, default 60).
-    fn get_idle_threshold(&self) -> u32 {
-        self.settings
-            .lock()
-            .unwrap()
-            .get("idle_threshold")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(60) as u32
-    }
-
-    /// Enable or disable recording of window titles (privacy setting)
-    pub fn set_track_titles(&self, enabled: bool) {
-        self.track_titles.store(enabled, Ordering::Relaxed);
-    }
-
     /// Whether the tracking loop is currently running
     pub fn is_running(&self) -> bool {
         *self.is_running.lock().unwrap()
@@ -299,6 +315,8 @@ impl Tracker {
         let track_titles = self.track_titles.clone();
         let loop_active = self.loop_active.clone();
         let settings = self.settings.clone();
+        let last_cleanup = self.last_cleanup.clone();
+        let cleanup_active = self.cleanup_thread_active.clone();
         // Once-per-app-per-day dedupe for distraction-guard notifications
         let limit_notified = Arc::new(Mutex::new(HashSet::<String>::new()));
 
@@ -345,61 +363,74 @@ impl Tracker {
             // Day the tray icon was last reset (amber limit state is per-day)
             let mut tray_reset_day = String::new();
 
-            // Cleanup scheduling - run in separate thread to avoid blocking
-            let last_cleanup = Arc::new(Mutex::new(std::time::Instant::now()));
+            // Cleanup scheduling - run in a separate thread so it never blocks
+            // the per-second loop. The 24h timer lives on the Tracker (not per
+            // start) and a guard stops quick pause/resume cycles from stacking
+            // duplicate cleanup threads or resetting the retention clock.
             let cleanup_db = db.clone();
             let cleanup_running = is_running.clone();
             let cleanup_settings = settings.clone();
-            
-            std::thread::spawn(move || {
-                const CLEANUP_INTERVAL: Duration = Duration::from_secs(86400);
-                
-                loop {
-                    std::thread::sleep(Duration::from_secs(60)); // Check every minute
-                    
-                    let should_run = {
-                        let running = cleanup_running.lock().unwrap();
-                        if !*running { break; }
+            let cleanup_last = last_cleanup.clone();
+
+            {
+                let mut active = cleanup_active.lock().unwrap();
+                if *active {
+                    log::info!("Cleanup thread is already running; nothing to start");
+                } else {
+                    *active = true;
+                    let cleanup_guard = cleanup_active.clone();
+                    std::thread::spawn(move || {
+                        const CLEANUP_INTERVAL: Duration = Duration::from_secs(86400);
                         
-                        let last = last_cleanup.lock().unwrap();
-                        last.elapsed() >= CLEANUP_INTERVAL
-                    };
-                    
-                    if should_run {
-                        log::info!("Background cleanup: Starting database maintenance...");
+                        loop {
+                            std::thread::sleep(Duration::from_secs(60)); // Check every minute
+                            
+                            let should_run = {
+                                let running = cleanup_running.lock().unwrap();
+                                if !*running { break; }
+                                
+                                let last = cleanup_last.lock().unwrap();
+                                last.elapsed() >= CLEANUP_INTERVAL
+                            };
+                            
+                            if should_run {
+                                log::info!("Background cleanup: Starting database maintenance...");
 
-                        // Retention is user-configurable (default 90 days);
-                        // 0 means "keep forever" (skip cleanup entirely).
-                        let retention_days = cleanup_settings
-                            .lock()
-                            .unwrap()
-                            .get("retention_days")
-                            .and_then(|v| v.as_u64())
-                            .unwrap_or(90) as u32;
+                                // Retention is user-configurable (default 90 days);
+                                // 0 means "keep forever" (skip cleanup entirely).
+                                let retention_days = cleanup_settings
+                                    .lock()
+                                    .unwrap()
+                                    .get("retention_days")
+                                    .and_then(|v| v.as_u64())
+                                    .unwrap_or(90) as u32;
 
-                        if retention_days == 0 {
-                            log::info!("Background cleanup: retention set to forever, skipping");
-                        } else if let Ok(conn) = cleanup_db.lock() {
-                            if let Err(e) = database::cleanup_old_snapshots(&conn, retention_days) {
-                                log::error!("Background cleanup: Error cleaning snapshots: {}", e);
+                                if retention_days == 0 {
+                                    log::info!("Background cleanup: retention set to forever, skipping");
+                                } else if let Ok(conn) = cleanup_db.lock() {
+                                    if let Err(e) = database::cleanup_old_snapshots(&conn, retention_days) {
+                                        log::error!("Background cleanup: Error cleaning snapshots: {}", e);
+                                    }
+                                    if let Err(e) = database::cleanup_old_input_activity(&conn, retention_days) {
+                                        log::error!("Background cleanup: Error cleaning input: {}", e);
+                                    }
+                                    if let Err(e) = database::cleanup_old_window_events(&conn, retention_days) {
+                                        log::error!("Background cleanup: Error cleaning events: {}", e);
+                                    }
+                                    // Note: no VACUUM here - it holds the DB write lock and would
+                                    // stall the per-second tracking inserts. Freed pages are reused.
+                                    log::info!("Background cleanup: Completed successfully");
+                                }
+                                
+                                let mut last = cleanup_last.lock().unwrap();
+                                *last = std::time::Instant::now();
                             }
-                            if let Err(e) = database::cleanup_old_input_activity(&conn, retention_days) {
-                                log::error!("Background cleanup: Error cleaning input: {}", e);
-                            }
-                            if let Err(e) = database::cleanup_old_window_events(&conn, retention_days) {
-                                log::error!("Background cleanup: Error cleaning events: {}", e);
-                            }
-                            // Note: no VACUUM here - it holds the DB write lock and would
-                            // stall the per-second tracking inserts. Freed pages are reused.
-                            log::info!("Background cleanup: Completed successfully");
                         }
-                        
-                        let mut last = last_cleanup.lock().unwrap();
-                        *last = std::time::Instant::now();
-                    }
+                        log::info!("Background cleanup thread stopped");
+                        *cleanup_guard.lock().unwrap() = false;
+                    });
                 }
-                log::info!("Background cleanup thread stopped");
-            });
+            }
 
             loop {
                 // Check if we should stop
@@ -505,14 +536,15 @@ impl Tracker {
                                         let prev_title = current_title.as_deref().unwrap_or("");
                                         
                                         if duration > 0 {
-                                            // Calculate actual end timestamp
-                                            let end_timestamp = app_start_time.elapsed().as_secs();
-                                            let actual_end = chrono::Utc::now() - chrono::Duration::seconds(end_timestamp as i64);
-                                            let end_iso = actual_end.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+                                            // The stored timestamp is the event START (now minus the
+                                            // previous window's duration); the frontend treats each
+                                            // event as covering [timestamp, timestamp + duration].
+                                            let start_iso = (chrono::Utc::now() - chrono::Duration::seconds(duration as i64))
+                                                .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
                                             
                                             if let Err(e) = database::insert_window_event(
                                                 &conn, 
-                                                &end_iso,
+                                                &start_iso,
                                                 prev_process,
                                                 prev_title,
                                                 duration
@@ -699,8 +731,6 @@ impl Tracker {
 
     /// Get daily stats for today (from local midnight to now)
     pub fn get_today_stats(&self) -> Option<database::DailyStats> {
-        let today = windows_api::get_today();
-        
         // Calculate UTC boundaries for local "today"
         let local_start = chrono::Local::now().date_naive().and_hms_opt(0, 0, 0).unwrap();
         let local_end = chrono::Local::now().date_naive().and_hms_opt(23, 59, 59).unwrap();
@@ -712,7 +742,7 @@ impl Tracker {
         let end_iso = end_utc.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
 
         if let Ok(conn) = self.db.lock() {
-            database::get_daily_stats(&conn, &today, &start_iso, &end_iso).unwrap_or(None)
+            database::get_daily_stats(&conn, &start_iso, &end_iso).unwrap_or(None)
         } else {
             None
         }
@@ -754,15 +784,6 @@ impl Tracker {
         }
     }
     
-    /// Get window events in range
-    pub fn get_events_range(&self, start: &str, end: &str) -> Vec<database::WindowEvent> {
-         if let Ok(conn) = self.db.lock() {
-             database::get_window_events_in_range(&conn, start, end).unwrap_or_default()
-         } else {
-             Vec::new()
-         }
-    }
-
     /// Get window events for process in range
     pub fn get_events_for_process_range(&self, process_name: &str, start: &str, end: &str) -> Vec<database::WindowEvent> {
          if let Ok(conn) = self.db.lock() {
@@ -799,11 +820,6 @@ impl Tracker {
         }
     }
 
-    /// Check if currently idle (respects the `idle_threshold` setting)
-    pub fn is_idle(&self) -> bool {
-        windows_api::get_idle_seconds() > self.get_idle_threshold()
-    }
-
     /// Get idle seconds
     pub fn get_idle_seconds(&self) -> u32 {
         windows_api::get_idle_seconds()
@@ -826,14 +842,5 @@ impl Tracker {
         }
     }
 
-    /// Unlock an achievement manually (for testing/future logic)
-    pub fn unlock_achievement(&self, code: &str) -> bool {
-        if let Ok(conn) = self.db.lock() {
-            let timestamp = windows_api::get_timestamp();
-            database::unlock_achievement(&conn, code, &timestamp).is_ok()
-        } else {
-            false
-        }
-    }
 }
 

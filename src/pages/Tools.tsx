@@ -190,7 +190,8 @@ export function Tools() {
 
     /* --- Derived status line --- */
     const breakDue = needsBreak ? 'NOW' : `${Math.max(0, 60 - sedentaryMinutes)}m`;
-    const statusLine = `${timer.workSessions} POMODOROS TODAY | ${goalsMet} OF ${goals.length} TARGETS MET | BREAK DUE IN ${breakDue}`;
+    const breakLabel = breakDue === 'NOW' ? 'BREAK DUE NOW' : `BREAK DUE IN ${breakDue}`;
+    const statusLine = `${timer.workSessions} POMODOROS TODAY | ${goalsMet} OF ${goals.length} TARGETS MET | ${breakLabel}`;
 
     const insights = useMemo(
         () => buildToolsInsights(timer.workSessions, goalsMet, goals.length, {

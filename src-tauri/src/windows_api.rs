@@ -133,11 +133,6 @@ pub fn get_idle_seconds() -> u32 {
     0
 }
 
-/// Check if the system is considered idle (more than 60 seconds without input)
-pub fn is_system_idle() -> bool {
-    get_idle_seconds() > 60
-}
-
 /// Get the current timestamp in ISO 8601 format (Local)
 pub fn get_timestamp() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)

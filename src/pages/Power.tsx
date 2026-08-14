@@ -163,7 +163,7 @@ export function Power() {
                         <div className="flex items-baseline justify-between">
                             <h3 className="section-title text-[var(--foreground)]">Power impact map</h3>
                             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
-                                x hours · y watts · size cpu
+                                hours · watts · size = cpu %
                             </span>
                         </div>
                         <div className="mt-4 h-[220px]">

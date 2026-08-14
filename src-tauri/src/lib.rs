@@ -82,8 +82,7 @@ pub fn run() {
                let show = tauri::menu::MenuItem::with_id(&handle, "show", "Open Dashboard", true, None::<&str>).unwrap();
                let menu = tauri::menu::Menu::with_items(&handle, &[&show, &quit]).unwrap();
                
-               let _ = tauri::tray::TrayIconBuilder::new()
-                .id("main")
+               let _ = tauri::tray::TrayIconBuilder::with_id("main")
                 .icon(handle.default_window_icon().unwrap().clone())
                  .menu(&menu)
                  .on_menu_event(|app: &tauri::AppHandle, event| {
@@ -178,7 +177,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::show_main_window, 
             commands::hide_tray_window,
-            commands::set_track_window_titles,
             commands::get_settings,
             commands::set_settings,
             commands::export_data,
@@ -191,20 +189,17 @@ pub fn run() {
             commands::get_stats_range,
             commands::get_activity_timeline,
             commands::get_recent_events,
-            commands::get_timeline_range,
             commands::get_timeline_range_paginated,
             commands::get_timeline_range_for_app,
             commands::get_app_usage_range,
             commands::get_input_history,
             commands::get_input_history_range,
-            commands::is_idle,
             commands::get_idle_seconds,
             commands::start_tracking,
             commands::stop_tracking,
             commands::clear_data,
             commands::get_user_stats,
             commands::get_unlocked_achievements,
-            commands::unlock_achievement,
             commands::get_app_icon,
         ])
 

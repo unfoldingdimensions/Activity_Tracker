@@ -55,7 +55,6 @@ vi.mock('@tauri-apps/api/core', () => ({
             get_user_stats: { total_xp: 100, current_level: 1, current_streak: 3, last_activity_date: null },
             get_unlocked_achievements: [],
             get_idle_seconds: 0,
-            is_idle: false,
             get_input_history: [],
         };
         return Promise.resolve(mockResponses[command] ?? null);

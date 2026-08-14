@@ -29,30 +29,24 @@ export function TrayPopup() {
     // Note: Click-outside-to-close is handled at the Rust backend level via WindowEvent::Focused
 
     const handleClosePopup = async () => {
-        console.log('[DEBUG] handleClosePopup triggered - using backend command');
         try {
             await invoke('hide_tray_window');
-            console.log('[DEBUG] hide_tray_window command completed');
         } catch (error) {
-            console.error('[DEBUG] Failed to hide tray window:', error);
+            console.error('Failed to hide tray window:', error);
         }
     };
 
     const openMainWindow = async (path: string = '/') => {
-        console.log(`[DEBUG] Attempting to show main window with path: ${path}`);
         try {
-            // Updated invoke to pass the path object to the backend
-            console.log('[DEBUG] Invoking show_main_window with path:', path);
             await invoke('show_main_window', { path: path });
 
             // Wait slightly for the main window to show
             await new Promise(resolve => setTimeout(resolve, 50));
 
             // Hide the tray popup
-            console.log('[DEBUG] Hiding tray popup');
             await handleClosePopup();
         } catch (error) {
-            console.error('[DEBUG] Failed to open main window:', error);
+            console.error('Failed to open main window:', error);
         }
     };
 
@@ -207,20 +201,14 @@ export function TrayPopup() {
                     </div>
                     <div className="flex items-center gap-1.5">
                         <button
-                            onClick={() => {
-                                console.log('[DEBUG] Settings button clicked');
-                                openMainWindow('/settings');
-                            }}
+                            onClick={() => openMainWindow('/settings')}
                             className="p-2.5 hover:bg-[var(--secondary)] rounded-full transition-colors text-[var(--muted-foreground)] hover:text-[var(--foreground)] active:scale-95"
                             title="Settings"
                         >
                             <SettingsIcon size={20} />
                         </button>
                         <button
-                            onClick={() => {
-                                console.log('[DEBUG] Close button clicked');
-                                handleClosePopup();
-                            }}
+                            onClick={() => handleClosePopup()}
                             className="p-2.5 hover:bg-[var(--secondary)] rounded-full transition-colors text-[var(--muted-foreground)] hover:text-[var(--foreground)] active:scale-95"
                             title="Close"
                         >
@@ -321,10 +309,7 @@ export function TrayPopup() {
 
                     <div className="grid grid-cols-1 gap-2 mx-2">
                         <button
-                            onClick={() => {
-                                console.log('[DEBUG] Open Full App button clicked');
-                                openMainWindow('/');
-                            }}
+                            onClick={() => openMainWindow('/')}
                             className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-primary-foreground rounded-2xl text-xs font-black tracking-tight hover:shadow-xl hover:shadow-primary/20 transition-all btn-press"
                         >
                             <Maximize2 size={14} />

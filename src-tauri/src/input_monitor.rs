@@ -44,9 +44,13 @@ impl InputMonitor {
                                 // cursor positions (screen pixels). The first event
                                 // after a (re)start has no reference point and is
                                 // skipped. Lock order: counts -> last_mouse_pos.
+                                let (x, y): (f64, f64) = (x, y);
                                 if let Ok(mut last) = last_mouse_pos.lock() {
-                                    if let Some((lx, ly)) = *last {
-                                        c.mouse_distance += ((x - lx).abs() + (y - ly).abs()) as u32;
+                                    let last_opt: Option<(f64, f64)> = *last;
+                                    if let Some((lx, ly)) = last_opt {
+                                        let dx: f64 = (x - lx).abs();
+                                        let dy: f64 = (y - ly).abs();
+                                        c.mouse_distance += (dx + dy) as u32;
                                     }
                                     *last = Some((x, y));
                                 }

@@ -868,7 +868,7 @@ export function Settings() {
                                 </div>
                             ) : (
                                 <Button variant="secondary" size="sm" onClick={handleExport}>
-                                    <Download size={14} className="mr-1" /> Export
+                                    <Download size={14} className="mr-1" /> JSON / CSV
                                 </Button>
                             )
                         }
@@ -888,7 +888,7 @@ export function Settings() {
                                 </button>
                             ) : (
                                 <Button variant="destructive" size="sm" onClick={handleClearData} loading={isClearing}>
-                                    Clear Data
+                                    Delete everything
                                 </Button>
                             )
                         }

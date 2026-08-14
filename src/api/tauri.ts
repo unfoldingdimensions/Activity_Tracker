@@ -94,13 +94,6 @@ export async function getRecentEvents(): Promise<WindowEvent[]> {
     return invoke<WindowEvent[]>('get_recent_events');
 }
 
-/**
- * Get window events in range
- */
-export async function getTimelineRange(startIso: string, endIso: string): Promise<WindowEvent[]> {
-    return invoke<WindowEvent[]>('get_timeline_range', { startIso, endIso });
-}
-
 export async function getTimelineRangePaginated(
     startIso: string,
     endIso: string,
@@ -140,13 +133,6 @@ export async function getInputHistoryRange(startIso: string, endIso: string, int
 }
 
 /**
- * Check if the system is idle
- */
-export async function isIdle(): Promise<boolean> {
-    return invoke<boolean>('is_idle');
-}
-
-/**
  * Get idle time in seconds
  */
 export async function getIdleSeconds(): Promise<number> {
@@ -165,13 +151,6 @@ export async function startTracking(): Promise<void> {
  */
 export async function stopTracking(): Promise<void> {
     return invoke<void>('stop_tracking');
-}
-
-/**
- * Enable/disable recording of window titles (privacy setting)
- */
-export async function setTrackWindowTitles(enabled: boolean): Promise<void> {
-    return invoke<void>('set_track_window_titles', { enabled });
 }
 
 /**
@@ -235,42 +214,4 @@ export async function getUserStats(): Promise<UserStats | null> {
  */
 export async function getUnlockedAchievements(): Promise<string[]> {
     return invoke<string[]>('get_unlocked_achievements');
-}
-
-/**
- * Unlock achievement (manual/debug)
- */
-export async function unlockAchievement(code: string): Promise<boolean> {
-    return invoke<boolean>('unlock_achievement', { code });
-}
-
-// Utility functions
-
-/**
- * Format seconds as human-readable time
- */
-export function formatDuration(seconds: number): string {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-
-    if (hours > 0) {
-        return `${hours}h ${minutes}m`;
-    }
-    if (minutes > 0) {
-        return `${minutes}m`;
-    }
-    return `${Math.floor(seconds)}s`;
-}
-
-/**
- * Calculate focus score (0-100) based on daily stats
- */
-export function calculateFocusScore(stats: DailyStats | null): number {
-    if (!stats) return 0;
-
-    const totalSeconds = stats.total_active_seconds + stats.total_idle_seconds;
-    if (totalSeconds === 0) return 0;
-
-    const activeRatio = stats.total_active_seconds / totalSeconds;
-    return Math.round(activeRatio * 100);
 }
