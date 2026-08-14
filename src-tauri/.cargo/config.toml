@@ -1,0 +1,5 @@
+[build]
+# Keep ALL build artifacts on the E: drive (C: is nearly full).
+# Applies to both `tauri dev` and `tauri build` since cargo resolves this
+# from the project root (src-tauri/).
+target-dir = "E:/DevTools/activity-tracker/target"
