@@ -1,4 +1,4 @@
-# Activity Tracker 🕒
+# Activity Tracker
 
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%20%26%2011-0f766e)](https://www.microsoft.com/windows)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2-24c8db)](https://v2.tauri.app/)
@@ -10,15 +10,13 @@
 
 Activity Tracker answers the question *"where did my day actually go?"* — from fully local, content-free data. It watches the foreground window and application usage in real time, counts keystrokes and mouse clicks without ever recording their content, estimates power draw, detects deep-work sessions, gamifies focus, and guards against distraction. Everything stays on your machine.
 
-> 🔒 Your data belongs to you: no keystroke content, no screenshots, no telemetry, no cloud sync.
+> Your data belongs to you: no keystroke content, no screenshots, no telemetry, no cloud sync.
 
-## Screenshots
-
-![The Pulse dashboard — focus score, screen time, focus flow chart and app usage](assets/AT_SC_1.png)
-
-![Timeline — focus calendar and per-app usage grid](assets/AT_SC_2.png)
-
-![Activity — daily focus bars, input stats and GitHub-style focus calendar](assets/AT_SC_3.png)
+<p align="center">
+  <img src="assets/AT_SC_1.png" alt="The Pulse dashboard — focus score, screen time, focus flow chart and app usage" width="32%"/>
+  <img src="assets/AT_SC_2.png" alt="Timeline — focus calendar and per-app usage grid" width="32%"/>
+  <img src="assets/AT_SC_3.png" alt="Activity — daily focus bars, input stats and GitHub-style focus calendar" width="32%"/>
+</p>
 
 ## Table of Contents
 
@@ -32,20 +30,20 @@ Activity Tracker answers the question *"where did my day actually go?"* — from
 
 ## Features
 
-- **🔒 Privacy-first by design** — data lives in a local SQLite database at `C:\ProgramData\ActivityTracker` (shared across Windows user profiles), never in the cloud.
-- **⏱️ Real-time tracking** — foreground window/app monitoring, global keystroke and click counts, mouse distance, idle detection with a configurable threshold.
-- **📅 Historical analysis** — date-range filters (Today, Yesterday, This Week, Previous Week, This Month), chronological log, app-wise aggregation, and a GitHub-style 52-week focus calendar.
-- **💓 The Pulse** — a high-level daily overview: focus score, screen time, deep-work sessions, peak hour, top app, and deltas vs. yesterday.
-- **🌊 Focus Flow** — a continuous 24-hour timeline of focus intensity with strict interval alignment.
-- **🎯 Deep Work Sessions** — contiguous focus blocks (≥ 25 min) with duration, dominant app, and interruptions.
-- **📖 Two reading modes** — *data* (numbers-led) or *editorial* (a serif prose narrative of your day). Same queries, same numbers, different presentation.
-- **⚡ Energy Vampire** — honest power-draw estimates per app (wattage bands × time), clearly labeled as estimates, not hardware measurements.
-- **🎮 Gamification** — XP, levels, streaks, and six achievements (Early Bird, Night Owl, Deep Diver, Consistency King, Month Marathon, Century Club) with native notifications on unlock.
-- **🛡️ Distraction Guard** — per-app daily time limits; one native notification per day, an in-app alert, and an amber tray icon when a limit is crossed.
-- **🔍 Smart branding** — process names are cleaned automatically (`visual_studio_code.exe` → `Visual Studio Code`), with support for common acronyms.
-- **⚙️ Machine-wide settings** — launch on startup, start minimized to tray, idle threshold, app blacklist, per-app Focus/Distraction/Ignore classification, sensitive-title redaction, data retention (30/90/180 days or forever).
-- **📤 Data export** — full history as JSON or CSV via the native save dialog.
-- **🎨 Premium UI** — Plus Jakarta Sans typography, glassmorphism, spotlight hover effects, dark/light/system themes, and smooth transitions.
+- **Privacy-first by design** — data lives in a local SQLite database at `C:\ProgramData\ActivityTracker` (shared across Windows user profiles), never in the cloud.
+- **Real-time tracking** — foreground window/app monitoring, global keystroke and click counts, mouse distance, idle detection with a configurable threshold.
+- **Historical analysis** — date-range filters (Today, Yesterday, This Week, Previous Week, This Month), chronological log, app-wise aggregation, and a GitHub-style 52-week focus calendar.
+- **The Pulse** — a high-level daily overview: focus score, screen time, deep-work sessions, peak hour, top app, and deltas vs. yesterday.
+- **Focus Flow** — a continuous 24-hour timeline of focus intensity with strict interval alignment.
+- **Deep Work Sessions** — contiguous focus blocks (≥ 25 min) with duration, dominant app, and interruptions.
+- **Two reading modes** — *data* (numbers-led) or *editorial* (a serif prose narrative of your day). Same queries, same numbers, different presentation.
+- **Energy Vampire** — honest power-draw estimates per app (wattage bands × time), clearly labeled as estimates, not hardware measurements.
+- **Gamification** — XP, levels, streaks, and six achievements (Early Bird, Night Owl, Deep Diver, Consistency King, Month Marathon, Century Club) with native notifications on unlock.
+- **Distraction Guard** — per-app daily time limits; one native notification per day, an in-app alert, and an amber tray icon when a limit is crossed.
+- **Smart branding** — process names are cleaned automatically (`visual_studio_code.exe` → `Visual Studio Code`), with support for common acronyms.
+- **Machine-wide settings** — launch on startup, start minimized to tray, idle threshold, app blacklist, per-app Focus/Distraction/Ignore classification, sensitive-title redaction, data retention (30/90/180 days or forever).
+- **Data export** — full history as JSON or CSV via the native save dialog.
+- **Premium UI** — Plus Jakarta Sans typography, glassmorphism, spotlight hover effects, dark/light/system themes, and smooth transitions.
 
 ## Tech Stack
 
@@ -128,4 +126,4 @@ Questions and bug reports are welcome via [GitHub Issues](https://github.com/unf
 
 ---
 
-Built with ❤️ for focused developers.
+Built for focused developers.
