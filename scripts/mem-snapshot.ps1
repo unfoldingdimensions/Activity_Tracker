@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
-    Sample the Private Working Set (PWS) of the Activity Tracker app and all
-    msedgewebview2.exe processes; append one timestamped row to a CSV.
+    Sample the Private Working Set (PWS) of the Activity Tracker app, its own
+    WebView2 process tree, and (separately) session-wide WebView2 processes not
+    owned by the app; append one timestamped row to a CSV.
 
 .DESCRIPTION
     Phase 0 of the memory-optimization plan
@@ -14,11 +15,17 @@
       - "activity-tracker-v2"  -> Cargo.toml [package] name; dev builds
                                   (cargo run / tauri dev) produce this .exe.
       - "activity_tracker_v2"  -> belt-and-braces (Cargo underscore normalization).
-    All msedgewebview2.exe processes are summed (any WebView2 host in the session;
-    note that other WebView2 apps would be counted too).
+
+    WebView2 attribution is scoped to the app's own process tree: each
+    msedgewebview2.exe process is walked up its ParentProcessId chain (max 6
+    hops; the walk stops if a parent has already exited) and counted as
+    "owned" only when an app candidate is an ancestor. Remaining session-wide
+    msedgewebview2.exe processes (SearchHost, Widgets, or any other WebView2
+    app) are reported separately in the other_* columns so the contamination
+    stays visible but is excluded from the totals.
 
     If the app is not running, a graceful all-zero row is appended instead of
-    erroring (webview2 columns are zero too, per protocol).
+    erroring (owned/other webview2 columns are zero too, per protocol).
 
     Private Working Set is read from the "\Process(*)\Working Set - Private"
     performance counter and matched to processes by PID (counter instance names
@@ -27,7 +34,7 @@
 .PARAMETER OutFile
     CSV file to append to. Defaults to "<this script dir>\mem-samples.csv".
     The header is auto-created on first use:
-    timestamp,app_exe_name,app_pws_mb,webview2_count,webview2_pws_mb,total_pws_mb
+    timestamp,app_exe_name,app_pws_mb,owned_webview2_count,owned_webview2_pws_mb,total_pws_mb,other_webview2_count,other_webview2_pws_mb
 
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts\mem-snapshot.ps1
@@ -40,6 +47,7 @@ $ErrorActionPreference = "Stop"
 
 $AppCandidates = @("Activity Tracker v2", "activity-tracker-v2", "activity_tracker_v2")
 $WebView2Name   = "msedgewebview2"
+$MaxParentHops  = 6
 
 function Get-PrivateWorkingSetMap {
     <#
@@ -75,23 +83,35 @@ function Get-PrivateWorkingSetMap {
     }
 }
 
-function Get-ProcessPws {
+function Get-PwsBytes {
     <#
-    Sum of private working set bytes for one or more Process objects.
-    Falls back to WorkingSet64 (total working set) for any PID missing from the
-    perf-counter map (process exited mid-sample, or counters unavailable).
+    Private working set bytes for one PID from the perf-counter map, falling
+    back to WorkingSet64 (total working set) when the PID is missing (process
+    exited mid-sample, or counters unavailable). 0.0 if the PID is gone from
+    both views.
     #>
-    param($Process, $Map)
-    $total = 0.0
-    foreach ($p in @($Process)) {
-        $id = [long]$p.Id
-        if ($null -ne $Map -and $Map.ContainsKey($id)) {
-            $total += [double]$Map[$id]
-        } else {
-            try { $total += [double]$p.WorkingSet64 } catch { }
-        }
+    param([long]$Id, $Map, $Ws64ById)
+    if ($null -ne $Map -and $Map.ContainsKey($Id)) { return [double]$Map[$Id] }
+    if ($null -ne $Ws64ById -and $Ws64ById.ContainsKey($Id)) { return [double]$Ws64ById[$Id] }
+    return 0.0
+}
+
+function Test-WebView2OwnedByApp {
+    <#
+    Walks $ProcessId's ParentProcessId chain up to $MaxParentHops hops and
+    returns $true iff an app candidate PID is an ancestor. Stops and returns
+    $false if an ancestor is missing from $ParentMap (parent already exited)
+    or the hop budget is exhausted.
+    #>
+    param([long]$ProcessId, $ParentMap, $AppPids)
+    $current = $ProcessId
+    for ($hop = 0; $hop -lt $MaxParentHops; $hop++) {
+        if (-not $ParentMap.ContainsKey($current)) { return $false }  # exited parent
+        $parent = $ParentMap[$current]
+        if ($AppPids.Contains($parent)) { return $true }
+        $current = $parent
     }
-    return $total
+    return $false
 }
 
 function Write-MemSnapshot {
@@ -101,37 +121,80 @@ function Write-MemSnapshot {
     $inv = [System.Globalization.CultureInfo]::InvariantCulture
     $fmt = { param($v) ([double]$v).ToString("0.0", $inv) }
 
-    $appProcs = @(Get-Process -Name $AppCandidates -ErrorAction SilentlyContinue)
+    # Census: one CIM pass gives PID + ParentProcessId for every live process.
+    $allProcs = @(Get-CimInstance Win32_Process -ErrorAction Stop)
+    $parentMap  = @{}
+    $procById   = @{}
+    $appPids    = [System.Collections.Generic.HashSet[long]]::new()
+    $appPidList = [System.Collections.Generic.List[long]]::new()
+    $wv2Pids    = [System.Collections.Generic.List[long]]::new()
+    foreach ($p in $allProcs) {
+        $procId = [long]$p.ProcessId
+        $name = [string]$p.Name
+        $parentMap[$procId] = [long]$p.ParentProcessId
+        $procById[$procId] = $p
+        foreach ($c in $AppCandidates) {
+            if ($name -eq ($c + ".exe")) {
+                if (-not $appPids.Contains($procId)) {
+                    [void]$appPids.Add($procId)
+                    [void]$appPidList.Add($procId)
+                }
+                break
+            }
+        }
+        if ($name -eq ($WebView2Name + ".exe")) { [void]$wv2Pids.Add($procId) }
+    }
+
+    # WorkingSet64 fallback snapshot for PIDs missing from the perf map.
+    $ws64ById = @{}
+    foreach ($p in @(Get-Process -ErrorAction SilentlyContinue)) {
+        $ws64ById[[long]$p.Id] = [double]$p.WorkingSet64
+    }
+
     $map = Get-PrivateWorkingSetMap
     if ($null -eq $map) {
         Write-Warning "perf counter unavailable; falling back to WorkingSet64 (total, not private)"
     }
 
-    if ($appProcs.Count -eq 0) {
+    if ($appPidList.Count -eq 0) {
         # App not running: graceful zero row, still exit 0.
-        $appName   = "not_running"
-        $appMb     = 0.0
-        $wv2Count  = 0
-        $wv2Mb     = 0.0
+        $appName    = "not_running"
+        $appMb      = 0.0
+        $ownedCount = 0
+        $ownedMb    = 0.0
+        $otherCount = 0
+        $otherMb    = 0.0
     } else {
-        $appName  = $appProcs[0].ProcessName
-        $appMb    = (Get-ProcessPws -Process $appProcs -Map $map) / 1MB
+        $appName = (($procById[$appPidList[0]].Name) -replace '\.exe$', '')
 
-        $wv2Procs = @(Get-Process -Name $WebView2Name -ErrorAction SilentlyContinue)
-        $wv2Count = $wv2Procs.Count
-        $wv2Mb    = (Get-ProcessPws -Process $wv2Procs -Map $map) / 1MB
+        $appMb = 0.0
+        foreach ($ap in $appPidList) { $appMb += Get-PwsBytes -Id $ap -Map $map -Ws64ById $ws64ById }
+        $appMb = $appMb / 1MB
+
+        $ownedCount = 0; $ownedMb = 0.0
+        $otherCount = 0; $otherMb = 0.0
+        foreach ($w in $wv2Pids) {
+            $mb = (Get-PwsBytes -Id $w -Map $map -Ws64ById $ws64ById) / 1MB
+            if (Test-WebView2OwnedByApp -ProcessId $w -ParentMap $parentMap -AppPids $appPids) {
+                $ownedCount++
+                $ownedMb += $mb
+            } else {
+                $otherCount++
+                $otherMb += $mb
+            }
+        }
     }
-    $totalMb = $appMb + $wv2Mb
+    $totalMb = $appMb + $ownedMb
 
-    $header = "timestamp,app_exe_name,app_pws_mb,webview2_count,webview2_pws_mb,total_pws_mb"
+    $header = "timestamp,app_exe_name,app_pws_mb,owned_webview2_count,owned_webview2_pws_mb,total_pws_mb,other_webview2_count,other_webview2_pws_mb"
     if (-not (Test-Path -LiteralPath $Path)) {
         Add-Content -LiteralPath $Path -Value $header -Encoding UTF8
     }
-    $row = "{0},{1},{2},{3},{4},{5}" -f $timestamp, $appName, (& $fmt $appMb), $wv2Count, (& $fmt $wv2Mb), (& $fmt $totalMb)
+    $row = "{0},{1},{2},{3},{4},{5},{6},{7}" -f $timestamp, $appName, (& $fmt $appMb), $ownedCount, (& $fmt $ownedMb), (& $fmt $totalMb), $otherCount, (& $fmt $otherMb)
     Add-Content -LiteralPath $Path -Value $row -Encoding UTF8
 
-    Write-Host ("mem-snapshot: {0} app={1} app_pws_mb={2} webview2_count={3} webview2_pws_mb={4} total_pws_mb={5} -> {6}" -f `
-        $timestamp, $appName, (& $fmt $appMb), $wv2Count, (& $fmt $wv2Mb), (& $fmt $totalMb), $Path)
+    Write-Host ("mem-snapshot: {0} app={1} app_pws_mb={2} owned_webview2_count={3} owned_webview2_pws_mb={4} total_pws_mb={5} other_webview2_count={6} other_webview2_pws_mb={7} -> {8}" -f `
+        $timestamp, $appName, (& $fmt $appMb), $ownedCount, (& $fmt $ownedMb), (& $fmt $totalMb), $otherCount, (& $fmt $otherMb), $Path)
 }
 
 # Auto-run on direct execution (also when invoked via & from mem-soak.ps1).

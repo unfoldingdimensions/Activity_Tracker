@@ -3,8 +3,11 @@
 Phase 0 of `.hermes/plans/2026-08-17_133000-memory-leak-review-optimization.md`.
 Every later optimization is judged against these numbers, so capture them on a
 **release build** (`npm run tauri build`), on the machine whose process names
-are confirmed below, with no other WebView2 apps running (the snapshot script
-sums **all** `msedgewebview2.exe` processes in the session).
+are confirmed below. WebView2 attribution is scoped to the app's own process
+tree: each `msedgewebview2.exe` is walked up its parent chain and counted only
+when an app candidate is an ancestor; any other session-wide WebView2 hosts
+(SearchHost, Widgets, other WebView2 apps) are reported in the `other_*`
+columns and excluded from the totals.
 
 ## Tooling
 
@@ -13,12 +16,14 @@ sums **all** `msedgewebview2.exe` processes in the session).
 - Continuous soak:
   `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\mem-soak.ps1 -IntervalSeconds 30 -DurationMinutes 65`
 - Rows land in `scripts\mem-samples.csv` (auto-created on first run):
-  `timestamp,app_exe_name,app_pws_mb,webview2_count,webview2_pws_mb,total_pws_mb`
+  `timestamp,app_exe_name,app_pws_mb,owned_webview2_count,owned_webview2_pws_mb,total_pws_mb,other_webview2_count,other_webview2_pws_mb`
 - Process names matched by the script:
   - `Activity Tracker v2` — bundled exe name (tauri.conf.json `productName`),
   - `activity-tracker-v2` — dev-build exe name (Cargo `[package]` name),
-  - plus all `msedgewebview2.exe` (WebView2 child processes).
-  The CSV's `app_exe_name` column records which one was actually found.
+  - plus `msedgewebview2.exe` processes whose parent chain leads back to the
+    app (WebView2 child processes); other WebView2 trees are reported
+    separately in the `other_*` columns.
+  The CSV's `app_exe_name` column records which app exe was actually found.
 
 ## Capture steps (one pass, ~55 minutes)
 
@@ -33,8 +38,8 @@ sums **all** `msedgewebview2.exe` processes in the session).
 9. **Idle 30 min.** Leave the app on the Dashboard with no input for 30 minutes (no navigation, no tray interaction). Run one snapshot at the end, then stop the soak.
 10. **Record.** Create `.hermes/plans/baseline-<date>.md` with the table below, pulling each checkpoint's row (by timestamp) from `scripts\mem-samples.csv`. Include min/max/avg of the idle 30-min window from the soak rows.
 
-| Checkpoint | Timestamp | app_pws_mb | webview2_count | webview2_pws_mb | total_pws_mb |
-|---|---|---|---|---|---|
+| Checkpoint | Timestamp | app_pws_mb | owned_webview2_count | owned_webview2_pws_mb | total_pws_mb | other_webview2_count | other_webview2_pws_mb |
+|---|---|---|---|---|---|---|---|
 | Startup + 1 min | | | | | |
 | Main window open 5 min | | | | | |
 | Tray-only 5 min | | | | | |
