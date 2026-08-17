@@ -31,6 +31,9 @@ GITHUB_PUSH.md
 # Generated graph tooling output
 graphify-out/
 
+# Generated memory measurement data (Phase 0 harness output)
+scripts/mem-samples.csv
+
 # Impeccable live mode: machine-specific state
 .impeccable/live/roots.json
 .impeccable/live/sessions/
