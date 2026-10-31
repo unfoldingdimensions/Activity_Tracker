@@ -61,7 +61,6 @@ windows = { version = "0.58", features = [
     "Win32_UI_Shell",
     "Win32_Graphics_Gdi",
     "Win32_System_Threading",
-    "Win32_System_ProcessStatus",
     "Win32_System_SystemInformation",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_Graphics_Imaging",

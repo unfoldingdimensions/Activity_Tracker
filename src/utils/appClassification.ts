@@ -26,6 +26,13 @@ export function isProductiveAppDefault(name: string): boolean {
 }
 
 /**
+ * Classification for a process whose executable could not be resolved at the Win32
+ * boundary. Historically these rows were recorded as `"Unknown"` (elevated and
+ * packaged windows, before D-020 fixed name resolution).
+ */
+export const UNATTRIBUTED_PROCESS_NAME = 'Unknown';
+
+/**
  * Classify a process name, honoring user overrides first.
  * Override keys match by case-insensitive substring, same as the defaults
  * (e.g. "chrome" matches "Chrome.exe"). 'ignore' excludes the app from
@@ -42,6 +49,13 @@ export function classifyApp(
                 return cls;
             }
         }
+    }
+    // Unattributable time cannot be judged focus or distraction. Scoring it as
+    // distraction punished the user for a resolver failure — 45 hours of history
+    // is already in that bucket — so it is excluded from the ratio instead (D-020).
+    // Exact match: a real app called "UnknownGame.exe" is still classified normally.
+    if (n === UNATTRIBUTED_PROCESS_NAME.toLowerCase()) {
+        return 'ignore';
     }
     return isProductiveAppDefault(name) ? 'focus' : 'distraction';
 }

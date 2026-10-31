@@ -59,8 +59,9 @@ not copy them; correct them when you are in the file.
 
 ## 1.6 Platform and toolchain facts that have bitten
 
-- `GetModuleBaseNameW` requires `PROCESS_VM_READ`; a `PROCESS_QUERY_LIMITED_INFORMATION` handle cannot resolve
-  a name. Use `QueryFullProcessImageNameW` for elevated processes.
+- `GetModuleBaseNameW` requires `PROCESS_VM_READ`, which elevated and packaged processes refuse — a
+  `PROCESS_QUERY_LIMITED_INFORMATION` handle cannot resolve a name that way. `windows_api.rs` uses
+  `QueryFullProcessImageNameW` with that same limited handle; keep it that way (D-020).
 - Release builds register no logger (`lib.rs:29-35`) — a write-path error is invisible in the shipped app.
   Verify against a release build before declaring a failure path fixed (`docs/learning.md` L-09).
 - Gate commands: `npm run test:run`, `npm run lint`, `npm run build` (`tsc -b && vite build`). They are green

@@ -165,3 +165,19 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   metrics (recon finding P1-2). A user comparing two screens saw a contradiction that was really two metrics.
 - Consequence: the card and the tray popup now show the same number by construction, and the chart says what it
   is a share *of*. If a future screen needs the active/idle ratio it must be named for the clock, not for focus.
+
+## D-020 · Process names resolve via QueryFullProcessImageNameW; unattributable rows are not judged
+**2026-10-31 · Active · [code]**
+- `get_process_name` opens the process with `PROCESS_QUERY_LIMITED_INFORMATION` only, resolves the image path
+  with `QueryFullProcessImageNameW`, and takes the file name from that path (`windows_api.rs`).
+- The previous code asked for `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ` and fell back to a limited handle
+  for `GetModuleBaseNameW` — which itself needs `PROCESS_VM_READ`, so the fallback could never succeed. Every
+  elevated or packaged window therefore arrived as `"Unknown"`: 45.2 h measured (~8% of tracked time), of which
+  AutoClaw alone accounted for 1,029 window events, then Task Manager, Windows Security and admin shells.
+- `classifyApp` returns `ignore` for exactly the name `"Unknown"` (case-insensitive; an explicit user override
+  still wins), so unattributable time leaves the ratio instead of being scored as distraction.
+- Why: the focus score was being deflated by the tracker's own resolver failure (recon finding P1-3).
+- Consequence: historical rows keep the name they were written with — they cannot be re-attributed, only
+  excluded. A process that refuses even `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)` still lands in
+  `"Unknown"` and is now excluded rather than judged. History shows an `"Unknown"` bucket until it ages out;
+  the Timeline still lists those rows, they simply no longer colour the score.

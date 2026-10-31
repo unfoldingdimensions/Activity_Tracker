@@ -36,6 +36,11 @@ Two files currently bypass the `api/tauri.ts` boundary and import `invoke` direc
 `src/components/shared/AppIcon.tsx:2` and `src/pages/TrayPopup.tsx:4`. That is a layering violation to
 correct, not a pattern to copy.
 
+**Win32 boundary rule.** `windows_api.rs` resolves the foreground process with `QueryFullProcessImageNameW`
+on a `PROCESS_QUERY_LIMITED_INFORMATION` handle — the access right Windows actually grants for elevated and
+packaged processes. `GetModuleBaseNameW` needs `PROCESS_VM_READ`, which those processes refuse; using it is
+what produced the `"Unknown"` bucket of 45 h (D-020).
+
 ## 3. Runtime topology (Rust)
 
 | Thread / task | Cadence | Where | Owns |

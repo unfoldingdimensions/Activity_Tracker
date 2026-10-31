@@ -3,14 +3,15 @@
 
 #[cfg(windows)]
 use windows::{
-    Win32::Foundation::{CloseHandle, HWND, MAX_PATH},
+    core::PWSTR,
+    Win32::Foundation::{CloseHandle, HWND},
     Win32::UI::WindowsAndMessaging::{
         GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
     },
     Win32::System::Threading::{
-        OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
     },
-    Win32::System::ProcessStatus::GetModuleBaseNameW,
     Win32::System::SystemInformation::GetTickCount,
     Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO},
 };
@@ -64,40 +65,45 @@ pub fn get_active_window() -> Option<ActiveWindow> {
     })
 }
 
-/// Get the process name from a process ID
+/// Get the executable file name for a process ID.
+///
+/// Uses `QueryFullProcessImageNameW` with only `PROCESS_QUERY_LIMITED_INFORMATION`,
+/// the access right Windows actually grants for elevated and packaged processes.
+/// The previous implementation asked for `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ`
+/// and fell back to a *limited* handle for `GetModuleBaseNameW` — which itself needs
+/// `PROCESS_VM_READ`, so the fallback could never succeed and every elevated window
+/// (Task Manager, admin shells, AutoClaw) was recorded as "Unknown" (D-020).
 #[cfg(windows)]
 fn get_process_name(process_id: u32) -> Option<String> {
     unsafe {
-        // Try with PROCESS_QUERY_INFORMATION | PROCESS_VM_READ first (for GetModuleBaseName)
-        let handle_result = OpenProcess(
-            PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 
-            false, 
-            process_id
-        );
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id).ok()?;
 
-        let handle = match handle_result {
-            Ok(h) => h,
-            Err(_) => {
-                // Fallback to LIMITED_INFORMATION
-                OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id).ok()?
-            }
-        };
-        
-        // Try GetModuleBaseNameW
-        let mut name_buffer = [0u16; MAX_PATH as usize];
-        let len = GetModuleBaseNameW(handle, None, &mut name_buffer);
+        // Full path, not just the module name; 1024 UTF-16 units covers every
+        // realistic install path including long user directories.
+        let mut path_buffer = [0u16; 1024];
+        let mut size = path_buffer.len() as u32;
+        let queried = QueryFullProcessImageNameW(
+            handle,
+            PROCESS_NAME_WIN32,
+            PWSTR(path_buffer.as_mut_ptr()),
+            &mut size,
+        );
 
         // The windows crate returns raw (non-owning) HANDLEs from OpenProcess,
         // so we must close it explicitly. Called once per second by the
         // tracking loop, so leaking here would grow the process table over time.
         let _ = CloseHandle(handle);
 
-        if len > 0 {
-            Some(String::from_utf16_lossy(&name_buffer[..len as usize]))
-        } else {
-            // Log failure if needed
-            None
+        if queried.is_err() || size == 0 {
+            return None;
         }
+
+        // Callers key on the executable name, never on where it is installed.
+        String::from_utf16_lossy(&path_buffer[..size as usize])
+            .rsplit('\\')
+            .next()
+            .filter(|name| !name.is_empty())
+            .map(str::to_string)
     }
 }
 
