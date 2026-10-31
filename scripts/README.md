@@ -2,6 +2,7 @@
 
 - `mem-snapshot.ps1 [-State <label>]` — one sample of the app's Private Working Set plus the WebView2 processes attributed to the app's own process tree (each `msedgewebview2.exe` is walked up its parent chain; any other session-wide WebView2 hosts land in the `other_*` columns, excluded from totals). Appends to `mem-samples.csv` (auto-creates header; appends a zero row if the app isn't running). `-State` records what the UI was doing — a memory number without its state is not comparable.
 - `mem-soak.ps1 -IntervalSeconds 30 -DurationMinutes 60` — loops snapshots for a soak period, printing a progress line per sample.
+- `db-latency.py [--runs N] [--db path]` — times the five read paths the UI waits on (`daily stats`, `app usage`, `timeline page`, `focus calendar`, `drill-down`) over a read-only connection, reporting rows, payload bytes and median/min ms. It never writes and never blocks the app's writer.
 
 Full manual baseline procedure (checkpoints + DevTools heap snapshots): `.hermes/plans/baseline-protocol.md`.
 
