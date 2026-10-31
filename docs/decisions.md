@@ -374,3 +374,22 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   reason `quit`; the pause run above is the evidence that the helper writes correctly.
 - "Resume" was verified too: after Resume at 13:10:44 the loop restarted and snapshots flowed (23 in the
   following minute), so the flush left nothing in a state that blocks a restart.
+
+## D-030 · The autostart entry is corrected to the installed executable
+**2026-10-31 · Active · [code] · closes P2-8**
+- The registry value `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Activity Tracker v2` held
+  `E:\DevTools\activity-tracker\target\release\activity-tracker-v2.exe` — a cargo build output, not the installed
+  copy in `%LOCALAPPDATA%\Activity Tracker v2`.
+- Two consequences, both seen this session: signing in started a binary one build behind the installed app, and
+  **`npm run tauri build` failed with `Access is denied`** because the binary being written was running.
+- Cause: `auto-launch` writes the path of whichever executable enables it, and `is_enabled()` only checks that the
+  value *exists*. A stale path is therefore never corrected — it reads as "on" forever.
+- Fix: `heal_autostart_entry()` at startup compares the registered value with the running executable and rewrites
+  it when they differ, logging the old and new paths. It is skipped when the running binary lives under
+  `target/debug` or `target/release`, because a dev build must never register itself as what starts at sign-in.
+  A missing value is left missing: creating one would resurrect an entry the user removed.
+- Verified both directions on the shipped build:
+  - installed copy → `Autostart entry points at "E:\…\target\release\activity-tracker-v2.exe "; rewriting it to C:\Users\ADMIN\AppData\Local\Activity Tracker v2\activity-tracker-v2.exe`, and the registry now holds that path;
+  - build-tree copy → `Autostart: running from a build tree; leaving the entry untouched`, registry unchanged.
+- The write also refreshes the `StartupApproved` value `auto-launch` keeps, so Windows' startup manager sees the
+  same entry rather than a second one.

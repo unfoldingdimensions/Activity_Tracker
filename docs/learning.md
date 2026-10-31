@@ -162,3 +162,10 @@ nothing errored, because the row simply never existed. Measured loss: 44 s on a 
 focus run on a long one.
 **Rule:** if a loop can be stopped from outside, anything it must write when it stops has to live outside the loop.
 Publish it on the owner object as it goes, then the stop path and the exit path call one function that closes it.
+
+### L-20 · A setting that only reports existence cannot be trusted
+`is_enabled()` for the autostart entry returned `true` while the entry pointed at a build directory, because it
+only asked whether the value existed. The app looked correctly configured and started the wrong binary for months;
+the first symptom was a compiler error (`Access is denied`) when a rebuild tried to replace a running executable.
+**Rule:** when a config surface can hold a stale value, read the value and compare it to what it should be —
+otherwise the only way to discover the drift is by its downstream damage.

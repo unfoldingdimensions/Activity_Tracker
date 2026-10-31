@@ -59,6 +59,9 @@ tauri-plugin-single-instance = "=2.3.1"
 
 # Windows API bindings
 [target.'cfg(windows)'.dependencies]
+# Reading the autostart Run value so a stale path can be corrected (D-030).
+# 0.55 is already in the lock through another dependency, so this adds no new tree.
+winreg = "0.55"
 windows = { version = "0.58", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",

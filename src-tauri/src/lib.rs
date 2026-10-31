@@ -63,6 +63,63 @@ fn reveal_main_window(app: &tauri::AppHandle) {
     }
 }
 
+/// Point the autostart entry at the executable that is actually installed.
+///
+/// `auto-launch` writes `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\<app name>` and
+/// only ever checks that the value **exists**, so a path recorded by an earlier launch is never
+/// corrected. On this machine it recorded a cargo build output
+/// (`E:/DevTools/activity-tracker/target/release/activity-tracker-v2.exe`), which meant sign-in
+/// started a binary one build behind the installed copy — and one a rebuild cannot replace
+/// while it runs (D-030).
+///
+/// The heal is a single registry write, and it is skipped when the running binary lives inside
+/// a cargo target directory: a dev build must never register itself as what starts at sign-in.
+#[cfg(windows)]
+fn heal_autostart_entry(app: &tauri::AppHandle) {
+    use tauri_plugin_autostart::ManagerExt;
+    use winreg::enums::{HKEY_CURRENT_USER, KEY_READ};
+    use winreg::RegKey;
+
+    const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
+
+    let exe = match std::env::current_exe() {
+        Ok(path) => path.to_string_lossy().to_string(),
+        Err(e) => {
+            log::warn!("Autostart: cannot read the current executable path: {}", e);
+            return;
+        }
+    };
+    // Forward slashes, so the check reads the same whichever separator the path uses.
+    let normalised = exe.replace('\\', "/").to_lowercase();
+    if normalised.contains("/target/debug") || normalised.contains("/target/release") {
+        log::info!("Autostart: running from a build tree; leaving the entry untouched");
+        return;
+    }
+
+    let app_name = app.package_info().name.clone();
+    let registered = RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey_with_flags(RUN_KEY, KEY_READ)
+        .ok()
+        .and_then(|key| key.get_value::<String, _>(&app_name).ok());
+
+    match registered {
+        // Nothing registered: creating one here would resurrect an entry the user removed.
+        None => log::debug!("Autostart: no entry to check"),
+        Some(value) if value.trim().trim_matches('"').starts_with(&exe) => {
+            log::debug!("Autostart entry already points at {}", exe);
+        }
+        Some(value) => {
+            log::info!("Autostart entry points at {:?}; rewriting it to {}", value, exe);
+            if let Err(e) = app.autolaunch().enable() {
+                log::warn!("Autostart: rewriting the entry failed: {}", e);
+            }
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn heal_autostart_entry(_app: &tauri::AppHandle) {}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -127,6 +184,9 @@ pub fn run() {
                     .build(),
             )?;
 
+
+            // Correct an autostart entry left pointing at a build output (D-030).
+            heal_autostart_entry(app.handle());
 
             // Initialize database
             let db = database::init_database(app_data_dir)
