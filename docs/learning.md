@@ -129,3 +129,11 @@ read paths produced **zero** warnings — the database is in WAL mode, and reade
 probe looked like proof the new warning code did not work; it was proof the injection could not reach the code.
 **Rule:** to test a read path, break what the read depends on — a column, a table, the schema — not the lock. And
 name the failure a probe actually provoked before quoting it as evidence.
+
+### L-16 · An `Ok` is not an effect
+`window.show()` and `window.unminimize()` both returned `Ok`, and the window stayed iconic and invisible — the
+code read correctly and the log said nothing, because every result went into `let _ =`. Reading the window state
+back after the call is what exposed it, and the fix was the raw Win32 sequence an earlier capture had already
+proved works.
+**Rule:** when a call exists only for its side effect on something visible or stored, read the effect back and log
+it. `Ok` means the request was accepted, not that anything changed.

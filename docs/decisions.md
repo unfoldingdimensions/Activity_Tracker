@@ -270,3 +270,36 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   rolled back byte-for-byte — 3,070,676 snapshots / 62,408 events / 2,007,210 s verified identical before and
   after, ~71 s of capture lost during the swap.
 - Consequence: a broken read costs one log line instead of a day of unexplained zeros.
+
+## D-026 · One instance per session, and a second launch is a request to see the window
+**2026-10-31 · Active · [code] · closes P2-7**
+- `tauri-plugin-single-instance` is registered as the **first** plugin — before autostart, the tray webview and the
+  1 Hz tracker thread — so a second process exits before it can open the database or write a row.
+- Pinned `=2.3.1` on purpose: 2.4+ requires `tauri >= 2.10`, which drags the crate past `@tauri-apps/api 2.9.1`
+  and the CLI refuses to build mismatched minor versions. Upgrading the Tauri stack is its own commit, not a
+  rider on a bug fix.
+- The Windows half of the plugin creates the mutex `com.activitytracker.app-sim` **without** a `Global\` prefix, so
+  the guard is per Windows session, not per machine. Two RDP users could each run an instance against the same
+  `%ProgramData%` database. Acceptable for a single-user tool; stated so it is not rediscovered as a bug.
+- The second process hands its argv to a hidden window in instance one (`WM_COPYDATA`) and calls
+  `std::process::exit(0)`. It never runs `setup()`, never opens the database, never starts a tracker thread.
+- `reveal_main_window()` is shared by the tray "Show" item and the second-launch callback, and uses raw
+  `ShowWindow(SW_RESTORE) → ShowWindow(SW_SHOW) → SetForegroundWindow` rather than Tauri's
+  `show()`/`unminimize()`/`set_focus()`: those return `Ok` and leave the window iconic and hidden, because the
+  window is created minimised and the `Resized` handler hides anything that still reports as minimised.
+- Measured on the shipped release build, before and after:
+
+  | | two instances, no guard | one instance, guard |
+  |---|---|---|
+  | snapshots in the window | 40 in 20 s = **2.00/s** | 63 in 63 s = **1.00/s** |
+  | duplicate timestamps | 0 — the extra rows are new rows, not constraint violations | 0 |
+  | second process | stayed alive and recorded | exits itself in **0.1 s**, code 0 |
+  | window after second launch | — | visible, 1294 × 838 |
+
+  Log evidence: `Second launch detected - revealing the running instance`, exactly one startup banner, no
+  WARN/ERROR.
+- Consequence: autostart plus a shortcut click can no longer double every recorded second. The defect was silent
+  by construction — two rows per second, nothing violated, no error, just numbers twice too large.
+- Also owed to `AGENTS.md` §1.6: the one-instance rule (plugin registered first, pinned `=2.3.1`, per-session
+  mutex). The write to `AGENTS.md` was blocked — the approval prompt timed out — so it is recorded here and not
+  retried until the owner approves it (D-013's rule about protected instruction files).

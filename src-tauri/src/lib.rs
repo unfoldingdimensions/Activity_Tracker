@@ -15,9 +15,65 @@ use commands::AppState;
 use std::sync::Mutex;
 use tauri::Manager;
 
+/// Bring the main window to the front — for the tray "Show" item and for a second launch.
+///
+/// Tauri's own `show()` / `unminimize()` are not enough here: the main window is created
+/// minimised and hidden (`start_minimized`), and the `Resized` handler hides anything that
+/// still reports as minimised. Restore *before* showing, then claim the foreground — the
+/// sequence measured to work on this app (D-026). One routine for both callers keeps the
+/// tray path and the second-launch path from drifting.
+#[cfg(windows)]
+fn reveal_main_window(app: &tauri::AppHandle) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        IsIconic, SetForegroundWindow, ShowWindow, SW_RESTORE, SW_SHOW,
+    };
+
+    let Some(window) = app.get_webview_window("main") else {
+        log::warn!("Reveal: no main window to show");
+        return;
+    };
+    let Ok(handle) = window.hwnd() else {
+        log::warn!("Reveal: main window has no HWND");
+        return;
+    };
+
+    let hwnd = HWND(handle.0 as _);
+    unsafe {
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+        }
+        let _ = ShowWindow(hwnd, SW_SHOW);
+        let _ = SetForegroundWindow(hwnd);
+    }
+
+    log::info!(
+        "Reveal: visible={:?} minimized={:?}",
+        window.is_visible(),
+        window.is_minimized()
+    );
+}
+
+#[cfg(not(windows))]
+fn reveal_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Registered first, on purpose (D-026): the guard has to decide before autostart,
+        // the tray webview or the 1 Hz tracker thread does anything. Two instances means
+        // two writers on one database — every second recorded twice.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            // A second launch is the user asking to see the window, not a second recorder.
+            log::info!("Second launch detected - revealing the running instance");
+            reveal_main_window(app);
+        }))
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
@@ -136,11 +192,7 @@ pub fn run() {
                             app.exit(0);
                         }
                         "show" => {
-                             if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.show();
-                                let _ = window.unminimize();
-                                let _ = window.set_focus();
-                            }
+                            reveal_main_window(app);
                         }
                         _ => {}
                     }

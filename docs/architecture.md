@@ -50,6 +50,7 @@ what produced the `"Unknown"` bucket of 45 h (D-020).
 | Power sampler | 5 s | `tracker.rs:255-284` | top-15 CPU processes via `sysinfo` |
 | Icon extraction | per request | `commands.rs:500-523` | `spawn_blocking` so icon work never stalls the UI |
 | Tray builder | once | `lib.rs:80-134` | tray icon, menu (Open Dashboard / Quit), popup positioning |
+| Single-instance guard | once, before anything else | `lib.rs:20-35` | decides whether this process is the instance at all (D-026) |
 
 Shared state is `AppState { tracker: Mutex<Tracker> }` (`commands.rs:15-17`). Inside `Tracker`:
 
