@@ -37,6 +37,10 @@ import { buildTimelineInsights } from '../utils/editorialInsights';
 type TimeRange = 'today' | 'yesterday' | 'week' | 'prev_week' | 'month';
 type ViewMode = 'all' | 'apps' | 'sessions';
 
+/** Rendered log rows per batch. The query returns the whole range; the list does not
+ *  render all of it at once, and the row above the list always says how much is shown. */
+const EVENT_BATCH = 250;
+
 const RANGE_OPTIONS: { id: TimeRange; label: string }[] = [
     { id: 'today', label: 'Today' },
     { id: 'yesterday', label: 'Yesterday' },
@@ -137,15 +141,31 @@ export function Timeline() {
 
     // Group events logic
     const displayEvents = selectedApp ? appEvents : events;
+    const allEvents = useMemo(() => displayEvents ?? [], [displayEvents]);
+
+    // The range query now returns every event in the range, so the log renders in
+    // explicit batches rather than being silently capped at the query. The limit
+    // resets whenever the range, the view or the selected app changes (keyed state,
+    // so no effect and no extra render).
+    const windowKey = `${range}|${viewMode}|${selectedApp ?? 'all'}`;
+    const [eventWindow, setEventWindow] = useState<{ key: string; limit: number }>({
+        key: windowKey,
+        limit: EVENT_BATCH,
+    });
+    const eventLimit = eventWindow.key === windowKey ? eventWindow.limit : EVENT_BATCH;
+    const shownEvents = useMemo(
+        () => (allEvents.length > eventLimit ? allEvents.slice(0, eventLimit) : allEvents),
+        [allEvents, eventLimit]
+    );
     const sessions = useMemo(
         () => computeFocusSessions(events ?? [], classify),
         [events, classify]
     );
     const groupedEvents = useMemo(() => {
-        if (!displayEvents) return [];
-        const groups: { [key: string]: typeof displayEvents } = {};
+        if (shownEvents.length === 0) return [];
+        const groups: { [key: string]: typeof shownEvents } = {};
 
-        displayEvents.forEach((event) => {
+        shownEvents.forEach((event) => {
             const dateObj = new Date(event.timestamp);
             const dateStr = dateObj.toLocaleDateString([], { year: 'numeric', month: '2-digit', day: '2-digit' });
             const hour = dateObj.getHours().toString().padStart(2, '0');
@@ -157,7 +177,7 @@ export function Timeline() {
         return Object.entries(groups)
             .map(([time, items]) => ({ time, items }))
             .sort((a, b) => b.time.localeCompare(a.time));
-    }, [displayEvents]);
+    }, [shownEvents]);
 
     const insights = useMemo(
         () => buildTimelineInsights(groupedEvents, sessions),
@@ -302,6 +322,25 @@ export function Timeline() {
         </motion.button>
     ) : undefined;
 
+    // Visible bound for the rendered log, shown in both skins so the count can never
+    // be hidden: the query returns the whole range, the list reveals it in batches.
+    const eventWindowControl = allEvents.length > EVENT_BATCH ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
+                Showing the newest {Math.min(eventLimit, allEvents.length).toLocaleString()} of{' '}
+                {allEvents.length.toLocaleString()} events
+            </span>
+            {eventLimit < allEvents.length ? (
+                <button
+                    onClick={() => setEventWindow({ key: windowKey, limit: eventLimit + EVENT_BATCH })}
+                    className="font-mono text-[10px] uppercase tracking-[0.08em] px-3 py-1.5 border border-[var(--border)] text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
+                >
+                    Show {Math.min(EVENT_BATCH, allEvents.length - eventLimit)} more
+                </button>
+            ) : null}
+        </div>
+    ) : null;
+
     /* ---------------- Flat: ruled bands ---------------- */
     if (isFlat) {
         return (
@@ -321,6 +360,7 @@ export function Timeline() {
 
                 <div className="w-full px-8 pt-2 pb-10 space-y-4">
                     <FocusCalendar />
+                    {eventWindowControl}
 
                     {viewMode === 'sessions' && !selectedApp ? (
                         <div className="py-2 border-b border-[var(--border)]">
@@ -448,6 +488,7 @@ export function Timeline() {
             <div className="p-8 pt-6 space-y-6 flex-1">
                 {/* Year overview - presence patterns */}
                 <FocusCalendar />
+                {eventWindowControl}
 
                 <AnimatePresence mode="wait">
                     {viewMode === 'sessions' && !selectedApp ? (

@@ -75,7 +75,7 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   are scored as distraction and deflate the focus score.
 
 ## D-011 · Range reads cap at 5,000 window events
-**2026-08-14 · Under review · [code]** `useTimeline.ts:82-83`
+**2026-08-14 · Superseded by D-017 · [code]** `useTimeline.ts:82-83`
 - Why: an explicit guard against multi-MB arrays in the JS heap ("prevent memory explosion").
 - Consequence: silent truncation — a 30-day range holds ~21k events, so only the newest ~9.5 days render.
   Nothing in the UI signals that data was dropped.
@@ -113,3 +113,19 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   table every 60 s, no `gcTime`, no `[profile.release]`, no SQLite pragmas beyond WAL, no per-day aggregate
   command, no settings whitelist.
 - Consequence: an approved plan is not a built feature. Re-verify against the code before citing it as done.
+
+## D-017 · Range events are collected in full, and the list renders in batches
+**2026-10-31 · Active · [code] · supersedes D-011**
+- `useTimelineEventsRange` walks `get_timeline_range_paginated` in 2,000-row pages until the range is
+  exhausted (`src/utils/timelinePaging.ts`, `src/hooks/queries/useTimeline.ts`). A 200,000-event guard remains
+  as a runaway limit and **throws** instead of returning a partial range.
+- The Timeline log renders 250 rows per batch behind a visible "newest N of M" row with a "Show more"
+  control, in both skins (`pages/Timeline.tsx`).
+- Why: the old single call returned the newest 5,000 events and silently dropped the rest — measured
+  5,000 of 20,990 for a 30-day window, reaching back only 9.5 days, so the Month view described a month from
+  a third of it (P0-1 in the 2026-10-31 recon).
+- Consequence: event-derived numbers now cover a whole range, so the Focus Flow chart, deep-work sessions and
+  the digest changed for Month/Week views — the earlier readings were incomplete, not wrong-but-comparable.
+  Historical data needs no migration: the rows were always there.
+- Also: `refetchInterval` now polls only while the range still contains "now", since the payload is the whole
+  range rather than one page.

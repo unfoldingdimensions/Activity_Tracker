@@ -41,9 +41,11 @@ query returns rows, which takes priority for the chart.
 - `get_stats_range` → screen time / keystrokes / clicks, counted directly off `activity_snapshots` and
   `input_activity` for a UTC range (accurate at any length).
 - `get_app_usage_range` → per-process seconds from `app_usage`, local date keys.
-- `get_timeline_range_paginated` → window events, **capped at 5,000 rows ordered newest-first**
-  (`src/hooks/queries/useTimeline.ts:82-83`). This is the current P0: a 30-day range holds ~21k events, so
-  the oldest ~20 days of every event-derived number are missing.
+- `get_timeline_range_paginated` → window events, **walked in 2,000-row pages until the range is exhausted**
+  (`src/utils/timelinePaging.ts`, `useTimeline.ts`). The whole range is fetched, so every event-derived number
+  covers it completely. The 200,000-event guard is a runaway limit, not a display cap, and it trips loudly
+  rather than returning a partial range. The log *list* renders 250 rows per batch behind a visible
+  "newest N of M" row with a "Show more" control (`Timeline.tsx`).
 - `get_timeline_range_for_app` → drill-down, exact `process_name` match, no limit.
 
 Sub-day ranges (past 1 h / 6 h / 12 h) compute app usage **client-side** by overlapping window events with
@@ -111,7 +113,7 @@ defect under `AGENTS.md` §3 (duplication) — pick one owner and delete the oth
 
 | # | Distortion | Reaches | Ref |
 |---|---|---|---|
-| P0 | Range events capped at 5,000 newest → old part of any long range renders empty | Focus Flow, deep work, digest on This Month | `useTimeline.ts:82-83` |
+| ~~P0~~ **fixed** | Range events were capped at 5,000 newest, so the old part of any long range rendered empty. Now every page is collected; verified 20,990 rows over 30 days in 11 pages, none duplicated or skipped | was: Focus Flow, deep work, digest on This Month | D-017 |
 | P1 | Wall-clock duration includes idle → focus surfaces overstate by the idle share (measured 49.4% of event time) | Focus Flow, deep work, Timeline, sub-day app split | `tracker.rs:535` |
 | P1 | Unresolved process → `"Unknown"`, classified as distraction (45.2 h measured) | Focus score, top-app list | `windows_api.rs:69-101`, `appClassification.ts:46` |
 | P1 | `Claude.exe` vs `claude.exe` split; merged only in the dashboard sidebar | Activity page rows, Timeline drill-down | `AppUsageSide.tsx:30-42` vs `Activity.tsx:97` |

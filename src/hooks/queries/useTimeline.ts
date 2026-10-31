@@ -15,6 +15,7 @@ import {
     type WindowEvent,
 } from '../../api/tauri';
 import { MOCK_TIMELINE, MOCK_EVENTS } from './mockData';
+import { collectAllPages, RANGE_EVENT_CEILING } from '../../utils/timelinePaging';
 
 /**
  * Get activity timeline for today
@@ -75,17 +76,41 @@ export function useTimelineEventsRange(
     enabled = true
 ) {
     const { visible } = useVisibility();
+    // Only poll a range that still contains "now": a historical range cannot change,
+    // and the payload is now the whole range rather than the newest page of it.
+    // The clock is read inside the refetch callback (React Query's timer), never
+    // during render.
+    const rangeEndMs = Date.parse(endIso);
+    const rangeIsLive = Number.isNaN(rangeEndMs) ? null : rangeEndMs;
+
     return useQuery({
         queryKey: ['timelineEventsRange', startIso, endIso],
         queryFn: async (): Promise<WindowEvent[]> => {
-            if (isTauri()) {
-                // Limit to 5000 events to prevent memory explosion
-                return await getTimelineRangePaginated(startIso, endIso, 5000, 0);
+            if (!isTauri()) {
+                return MOCK_EVENTS;
             }
-            return MOCK_EVENTS;
+
+            // Collect every page. A single capped request used to return the newest
+            // 5000 events of the range and drop the rest with no signal, so a 30-day
+            // view rendered only its last ~9 days (finding P0-1).
+            const { items, pagesFetched, truncated } = await collectAllPages<WindowEvent>(
+                (limit, offset) => getTimelineRangePaginated(startIso, endIso, limit, offset)
+            );
+
+            // Loud on purpose: a partial range must never be presented as complete.
+            if (truncated) {
+                throw new Error(
+                    `Timeline range ${startIso} → ${endIso} exceeded ${RANGE_EVENT_CEILING} ` +
+                    `events after ${pagesFetched} pages; refusing to render a partial range.`
+                );
+            }
+
+            return items;
         },
         enabled,
-        refetchInterval: visible ? 30000 : false, // 30 seconds - reduced from 5s to prevent backend overload
+        refetchInterval: visible
+            ? () => (rangeIsLive === null || rangeIsLive >= Date.now() - 3_600_000 ? 30_000 : false)
+            : false,
     });
 }
 
