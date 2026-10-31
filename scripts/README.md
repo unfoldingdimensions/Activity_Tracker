@@ -3,6 +3,15 @@
 - `mem-snapshot.ps1 [-State <label>]` — one sample of the app's Private Working Set plus the WebView2 processes attributed to the app's own process tree (each `msedgewebview2.exe` is walked up its parent chain; any other session-wide WebView2 hosts land in the `other_*` columns, excluded from totals). Appends to `mem-samples.csv` (auto-creates header; appends a zero row if the app isn't running). `-State` records what the UI was doing — a memory number without its state is not comparable.
 - `mem-soak.ps1 -IntervalSeconds 30 -DurationMinutes 60` — loops snapshots for a soak period, printing a progress line per sample.
 - `db-latency.py [--runs N] [--db path]` — times the five read paths the UI waits on (`daily stats`, `app usage`, `timeline page`, `focus calendar`, `drill-down`) over a read-only connection, reporting rows, payload bytes and median/min ms. It never writes and never blocks the app's writer.
+- `webview-heap.mjs [--port 9222] [--sample-ms 3000] [--json]` — per-renderer attribution over CDP: JS heap used/committed, DOM nodes and listeners, and the biggest sampled allocators. Needs the app started once with a debugging port (no code change):
+
+  ```powershell
+  $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222"
+  Start-Process "$env:LOCALAPPDATA\Activity Tracker v2\activity-tracker-v2.exe"
+  node scripts/webview-heap.mjs --sample-ms 6000
+  ```
+
+  Every target's URL names its window (`/` main, `/tray` popup, `/timeline` …), which is how the two renderers are told apart. **Unset the variable and restart afterwards** — the debug port is open to any local process while the app runs.
 
 Full manual baseline procedure (checkpoints + DevTools heap snapshots): `.hermes/plans/baseline-protocol.md`.
 
