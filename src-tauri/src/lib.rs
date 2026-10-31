@@ -158,6 +158,14 @@ pub fn run() {
                 Err(e) => log::error!("Process-name normalisation failed: {}", e),
             }
 
+            // Reclaim pages left behind by a "clear all data" or a retention delete.
+            // VACUUM rewrites the whole file under an exclusive lock, so it runs here —
+            // before the tracking loop starts — and only when the freelist is large
+            // enough to be worth the wait (D-027).
+            if let Err(e) = database::vacuum_if_fragmented(&db) {
+                log::error!("Startup vacuum failed: {}", e);
+            }
+
             // Create tracker and start it
             let tracker = tracker::Tracker::new(db);
 

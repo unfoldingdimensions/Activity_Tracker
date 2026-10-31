@@ -67,8 +67,11 @@ still draining, and `is_running` is a cooperative stop flag — the loop exits o
 ## 4. Storage
 
 File: `%ProgramData%\ActivityTracker\activity.db` — machine-wide, shared across Windows profiles
-(`lib.rs:39-44`). WAL journal, `page_size` 4096, no `VACUUM`, no freelist. Measured 2026-10-31: **283 MB /
+(`lib.rs:39-44`). WAL journal, `page_size` 4096, no freelist. Measured 2026-10-31: **283 MB /
 3.05 M rows / 4 MB WAL**.
+
+Two operations reshape the file: `clear_database()` (transaction → `VACUUM` → `wal_checkpoint(TRUNCATE)`, 285 MB
+→ 64 KB in 274 ms, D-027) and, at startup, `vacuum_if_fragmented()` when freelist ÷ pages ≥ 20%.
 
 | Table | Grain | Key columns | Measured rows |
 |---|---|---|---|
@@ -121,8 +124,10 @@ binding: a second derivation of the same number is a defect, not an optimisation
 
 ## 7. Known structural debt
 
-- **Single connection behind a mutex.** A 283 MB `VACUUM` in `clear_data` (`database.rs:604-616`) holds that
-  mutex while the 1 Hz loop needs it, so snapshots stop for the duration.
+- **Single connection behind a mutex.** The connection is shared, so any long operation blocks the 1 Hz loop.
+  `clear_data` is bounded now — one transaction, `VACUUM`, `wal_checkpoint(TRUNCATE)`, measured 0.21 s total, so
+  the loop loses at most one tick (D-027). `VACUUM` from anywhere else still holds the mutex for its duration;
+  the startup vacuum in `lib.rs` runs before the loop starts for exactly that reason.
 - **Two resident WebView2 windows** (main + hidden tray popup, `tauri.conf.json`), the dominant idle RAM floor.
 - **God files**: `pages/Settings.tsx` 910, `tracker.rs` 846, `pages/Timeline.tsx` 595, `pages/Tools.tsx` 570.
 - **No Rust test suite.** Zero `#[cfg(test)]` in `src-tauri/src`; all 88 tests are frontend.

@@ -137,3 +137,12 @@ back after the call is what exposed it, and the fix was the raw Win32 sequence a
 proved works.
 **Rule:** when a call exists only for its side effect on something visible or stored, read the effect back and log
 it. `Ok` means the request was accepted, not that anything changed.
+
+### L-17 · A delete is not an erase
+`DELETE` frees pages; it does not remove their bytes. In WAL mode the picture is worse: `VACUUM` writes the
+rewritten database into the `-wal`, so immediately after a "clear", the main file was still 285 MB and still
+held 3,627 copies of a window title the user had just been told was permanently deleted. Only
+`wal_checkpoint(TRUNCATE)` made the file shrink and the bytes go.
+**Rule:** when a feature's promise is about storage ("deleted", "exported", "uploaded"), verify it by reading the
+bytes back, not by checking that the rows are gone from the table. And keep the expensive rewrite: an estimate
+said "tens of seconds", the measurement said 0.18 s, and trusting the estimate would have shipped a worse lie.

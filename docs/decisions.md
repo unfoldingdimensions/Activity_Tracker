@@ -303,3 +303,38 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
 - Also owed to `AGENTS.md` §1.6: the one-instance rule (plugin registered first, pinned `=2.3.1`, per-session
   mutex). The write to `AGENTS.md` was blocked — the approval prompt timed out — so it is recorded here and not
   retried until the owner approves it (D-013's rule about protected instruction files).
+
+## D-027 · "Clear all data" is one transaction, and it actually reaches the disk
+**2026-10-31 · Active · [code] · closes P2-5**
+- The clear is now three ordered steps: **one transaction** for the five deletes plus the `user_stats`
+  delete+reinsert, then **`VACUUM`**, then **`wal_checkpoint(TRUNCATE)`**.
+- **Transaction.** The old code ran seven statements outside any transaction, so an interruption could leave
+  `user_stats` empty — and every later `update_streak` then fails against a missing row, silently.
+- **Checkpoint.** This is the part the original entry missed. `VACUUM` in WAL mode writes the new database into
+  the `-wal`; measured straight after a clear, the main file was **still 285 MB and still held 3,627 copies of a
+  window title** from the history the user had just "permanently deleted". After the checkpoint: 65,536 bytes,
+  zero copies (scanned the raw bytes for `Remote Sales Pipeline` and `Claude`).
+- **Keep the `VACUUM`.** The recon estimated "tens of seconds"; measured on the live 285 MB database it is
+  **0.18 s**, because it runs on an emptied database. Dropping it — the obvious "it holds the lock" fix — would
+  have made erasure a lie: after a plain transactional delete the file stayed 272.6 MB with **3,624 of 3,627**
+  title copies still in it.
+- Measured cost to the tracking loop, with a second connection writing every 100 ms: **0.21 s** worst stall, no
+  lost snapshot. In the shipped build the log records the real run:
+  `Cleared all data: 5 tables emptied, user_stats reset to one row, database 285855744 -> 65536 bytes in 273.8ms`.
+- **Interruption tested, not argued:** a run killed after two of the five deletes (never committed) left all
+  3,075,304 snapshots, 62,625 events and the stats row intact.
+- `vacuum_if_fragmented()` (startup, before the 1 Hz loop) is the safety net for a clear that dies between its
+  checkpoint and its commit — it fires only when freelist ÷ page count ≥ 20% and always checkpoints afterwards.
+  It is also the hook P2-2's retention will need.
+- Rust tests added (`clear_empties_the_bulk_tables_and_keeps_one_stats_row`, `clear_can_run_twice`,
+  `vacuum_is_skipped_when_nothing_is_free`) are **compile-verified only** — `cargo test` still cannot load on
+  this machine (L-11). The behaviour above was proven by running it.
+
+## P2-8 (open) · Autostart points into the build tree, not at the installed app
+**2026-10-31 · Open · [env]**
+- `HKCU\...\Run\Activity Tracker v2` = `E:\DevTools\activity-tracker\target\release\activity-tracker-v2.exe`.
+- Consequences: a rebuild cannot replace the binary while it runs (`Access is denied` — hit this while building
+  D-027), the installed copy in `%LOCALAPPDATA%\Activity Tracker v2` is a *different* binary from the one that
+  starts at sign-in, and "which build am I running?" is unanswerable from the UI.
+- Suggested fix: on startup, if autostart is enabled and the registered path differs from the running
+  executable, rewrite it (self-heal), and say so in the log at `info`.
