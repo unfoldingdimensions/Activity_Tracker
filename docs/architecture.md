@@ -70,6 +70,9 @@ File: `%ProgramData%\ActivityTracker\activity.db` — machine-wide, shared acros
 (`lib.rs:39-44`). WAL journal, `page_size` 4096, no freelist. Measured 2026-10-31: **283 MB /
 3.05 M rows / 4 MB WAL**.
 
+Retention is deliberately **off** — `retention_days = 0`, ~1.2 GB/year accepted by the owner (D-032). The
+cleanup thread runs but skips its deletes; `clear all data` is the only bulk delete.
+
 Two operations reshape the file: `clear_database()` (transaction → `VACUUM` → `wal_checkpoint(TRUNCATE)`, 285 MB
 → 64 KB in 274 ms, D-027) and, at startup, `vacuum_if_fragmented()` when freelist ÷ pages ≥ 20%.
 

@@ -331,7 +331,7 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   this machine (L-11). The behaviour above was proven by running it.
 
 ## P2-8 (open) · Autostart points into the build tree, not at the installed app
-**2026-10-31 · Open · [env]**
+**2026-10-31 · Fixed by D-030 · [env]**
 - `HKCU\...\Run\Activity Tracker v2` = `E:\DevTools\activity-tracker\target\release\activity-tracker-v2.exe`.
 - Consequences: a rebuild cannot replace the binary while it runs (`Access is denied` — hit this while building
   D-027), the installed copy in `%LOCALAPPDATA%\Activity Tracker v2` is a *different* binary from the one that
@@ -410,3 +410,23 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   startup logged nothing.
 - Consequence: a refused unlock now costs a failed UNIQUE check and nothing else. The other tables keep
   `AUTOINCREMENT` because they never use `INSERT OR IGNORE`; if one starts to, this is the same defect.
+
+## D-032 · Retention stays off: the growth rate is accepted
+**2026-11-01 · Active · [owner] · P2-2 closed as accepted, not fixed**
+- The recon filed P2-2 as "retention is set to forever". The measurement stands: **285 MB over 79 days =
+  3.45 MB/day ≈ 1.23 GB/year**, and nothing is ever deleted.
+- **Owner's decision (2026-11-01): the growth rate is acceptable.** The default does not change —
+  `retention_days` stays `0` and `Forever` stays a first-class option in Settings → Data retention.
+- Recorded here so the next pass does not re-derive it:
+  - a 30-day cleanup deletes 2,388,689 snapshot + input + event rows. As one `DELETE` per table under the tracker
+    mutex that **stalls the 1 Hz loop for 2.21 s**; batched at 5,000 rows with a 20 ms pause it is **0.02 s**
+    (14.8 s of background work instead). Any future retention must batch — the shape is settled even though the
+    default is not;
+  - `app_usage` is the one table keyed by **local** date, so its cutoff must be a local date string, never the UTC
+    timestamp cutoff the other three use (§1.1);
+  - afterwards the freelist held **63 %** of pages, which `vacuum_if_fragmented()` (D-027) reclaims at the next
+    startup: 285 MB → ~105 MB;
+  - the Focus Calendar's "focused in the last year" is only true while retention is Forever. Turning retention on
+    means changing that label in the same commit.
+- Consequence: the file grows ~1.2 GB/year and is never reclaimed. `clear all data` (D-027) remains the only bulk
+  delete, and it is the answer for anyone who wants the space back.
