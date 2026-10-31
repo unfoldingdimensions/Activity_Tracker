@@ -454,3 +454,34 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   either shows them in the retained set or kills them, and it is the only way to explain +98 MB.
 - Consequence: no task in the list is accepted on a code diff — each carries a before/after number from
   `mem-snapshot.ps1` or the query probes.
+
+## D-034 · The footprint is Chromium, not the app's caches
+
+**2026-11-01 · Active · [plan] · closes T0.1–T0.3 of D-033**
+
+- **Tools, one commit each:** `mem-snapshot.ps1 -State <label>` (T0.1, `49262b7`), `db-latency.py` (T0.3,
+  `68a2f9f`), `webview-heap.mjs` (T0.2, `e81efc7`). Full report and caveats:
+  `.hermes/recon/2026-11-01_memory-attribution.md`.
+- **Three states, private working set of the app plus its owned WebView2 tree:** idle-hidden **233.3 MB**,
+  dashboard-visible **236.2 MB**, timeline-visible with 20,990 events held **241.4 MB**. Rendering the heaviest
+  page in the product costs **+8.1 MB**; the other 233 MB is residency, and it is paid whether or not a window is
+  ever shown.
+- **Per process (commit charge, not PWS — quoted for ranking only):** gpu-process **168.0 MB**, main renderer
+  72.3, browser 48.8, **tray renderer 38.2**, utility 13.6 + 9.4, crashpad 2.3.
+- **The app's object graph is 6–9 MB.** Main window JS heap 6.5 MB hidden, 8.6 MB holding a full 30-day range;
+  DOM 684 → 2,920 nodes; tray popup 2.8 MB and 140 nodes.
+- **Consequences, all of them subtractions:**
+  - **T7a/b/c dropped** as memory items (`app_limits` is `{}`; toast ids are dozens of strings; settings are
+    144 bytes) and **T10 dropped** (3.9 rows per refetch, nothing sampled while hidden). They were carried over
+    from the Aug-17 plan and its premise does not survive measurement.
+  - **T6 loses its memory claim**, keeping only the boundedness invariant.
+  - **T1's ceiling is one renderer: −38 MB, not the −100 to −130 MB estimated in D-033.** The tray renderer is
+    resident from launch and holds 2.8 MB of JS, so the popup costs its process whether opened or not.
+  - **New T1b: the GPU process at 168 MB** is now the largest single item and the app writes none of it. It needs a
+    flags experiment (`--disable-gpu-compositing`, `--in-process-gpu`, occlusion feature) with a CPU column and a
+    screenshot per theme before any adoption.
+- **Hot reads (T0.3, median of 7, read-only):** daily stats 0.20 ms, app usage 0.01 ms, timeline page 1.52 ms,
+  focus calendar 0.81 ms, drill-down worst app (11,466 rows) 17.39 ms. The database remains a non-issue, which is
+  why T3/T4 are small and T2 is a stall-avoidance fix rather than a speed fix.
+- **Rule this establishes:** a memory plan item must name the process or object graph it expects to shrink. "It
+  holds a cache" is not evidence; a per-process table is.
