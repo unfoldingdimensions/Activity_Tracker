@@ -338,3 +338,19 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   starts at sign-in, and "which build am I running?" is unanswerable from the UI.
 - Suggested fix: on startup, if autostart is enabled and the registered path differs from the running
   executable, rewrite it (self-heal), and say so in the log at `info`.
+
+## D-028 · An empty title is a fact; a blank row is a bug
+**2026-10-31 · Active · [ui] · closes P2-4**
+- Measured 2026-10-31: **6,743 of 62,601** window events carry no title (10.8 %). Of those, **5,927 are
+  `explorer.exe`** — the desktop and taskbar genuinely have no title — plus chrome 172, `unknown` 144, opera 143,
+  claude 112, zcode 54. Today alone: 103 of 672 events.
+- The rows rendered `event.window_title || 'No title'` in one skin and `'No Title'` in the other — two spellings of
+  the same non-answer, and both read as a failed capture rather than "this window has no title".
+- One owner now: `displayWindowTitle(processName, windowTitle)` — a real title is shown trimmed, `explorer.exe`
+  renders as **Desktop**, anything else falls back to `formatAppName` (and to "Unattributed" if even that is
+  empty). Both skins call it; a source-level test fails if a third skin reintroduces the raw fallback, proven by
+  planting one and watching it go red.
+- The stored value is **not** changed. `window_events.window_title` keeps `""` because that is what Windows
+  reported, and an export must carry the fact rather than the presentation.
+- Consequence: no row can render an empty cell. What it does not do is invent information: a titleless Chrome
+  window shows "Chrome", which names the app and nothing more.

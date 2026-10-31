@@ -47,6 +47,11 @@ query returns rows, which takes priority for the chart.
   rather than returning a partial range. The log *list* renders 250 rows per batch behind a visible
   "newest N of M" row with a "Show more" control (`Timeline.tsx`).
 - `get_timeline_range_for_app` → drill-down, exact `process_name` match, no limit.
+- The title cell is rendered through `displayWindowTitle()` (`src/utils/windowTitle.ts`), never from the raw
+  column: 10.8 % of events carry no title and 88 % of those are `explorer.exe`, which has none to give, so the
+  desktop is named and every other empty title falls back to its app (D-028). The stored value is untouched —
+  an export still carries exactly what Windows reported.
+
 
 Sub-day ranges (past 1 h / 6 h / 12 h) compute app usage **client-side** by overlapping window events with
 the range (`useDashboardData.ts:184-193`) — so they inherit the window-event distortions entirely.

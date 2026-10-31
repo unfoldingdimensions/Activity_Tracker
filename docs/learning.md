@@ -146,3 +146,11 @@ held 3,627 copies of a window title the user had just been told was permanently 
 **Rule:** when a feature's promise is about storage ("deleted", "exported", "uploaded"), verify it by reading the
 bytes back, not by checking that the rows are gone from the table. And keep the expensive rewrite: an estimate
 said "tens of seconds", the measurement said 0.18 s, and trusting the estimate would have shipped a worse lie.
+
+### L-18 · Fix the layer that owns the question
+An empty window title looked like a capture defect (10.8 % of rows), until the breakdown showed 88 % of them were
+`explorer.exe` — the desktop, which has no title by design. Patching the capture would have invented data; the
+blank cell was a rendering decision in two places, spelled two different ways.
+**Rule:** before fixing a "missing" value, ask whether the absence is the data or the display. If it is the
+display, put the decision in one function and make the page call it — then guard the call site, because the next
+skin will retype the old fallback otherwise.

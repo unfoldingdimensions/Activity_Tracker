@@ -29,6 +29,7 @@ import { containerVariantsFast, itemVariantsSubtle } from '../constants/animatio
 import { formatDuration, formatAppName, toLocalDateString } from '../utils/formatters';
 import { useAppClassifier } from '../hooks/useAppClassifier';
 import { computeFocusSessions } from '../utils/focusSessions';
+import { displayWindowTitle } from '../utils/windowTitle';
 import { DeepWorkSessions } from '../components/dashboard/DeepWorkSessions';
 import { FocusCalendar } from '../components/insights/FocusCalendar';
 import { EditorialIntro } from '../components/shared/EditorialIntro';
@@ -400,7 +401,7 @@ export function Timeline() {
                                                     </div>
                                                     <div className="flex items-center gap-4 min-w-0">
                                                         <span className="text-[12px] text-[var(--muted-foreground)] truncate max-w-[280px]">
-                                                            {event.window_title || 'No title'}
+                                                            {displayWindowTitle(event.process_name, event.window_title)}
                                                         </span>
                                                         <span
                                                             className="font-mono text-[9px] uppercase tracking-[0.1em] px-2 py-0.5 border flex-shrink-0"
@@ -542,7 +543,7 @@ export function Timeline() {
                                                                 </span>
                                                             </div>
                                                             <p className="text-sm text-[var(--muted-foreground)] mt-1 truncate max-w-md">
-                                                                {event.window_title || 'No Title'}
+                                                                {displayWindowTitle(event.process_name, event.window_title)}
                                                             </p>
                                                         </div>
                                                         <div className="text-right pl-4 flex-shrink-0">
