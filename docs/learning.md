@@ -82,3 +82,13 @@ and zero Rust tests. That last fact reframed every backend finding: nothing in `
 could have caught it.
 **Rule:** record the gate result (pass/fail/nonexistent) with a date before proposing backend changes; "no
 test exists" is a finding, not a blank.
+
+### L-11 · A test you cannot execute is a claim, not evidence
+**2026-10-31 · toolchain · `src-tauri/src/database.rs`**
+Bitten: the first Rust tests in this repo compile (`cargo check --all-targets` clean) but the harness dies at
+process load — `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139), before any test output, so it is the GNU-toolchain
+linker/loader and not the assertions. Claiming "tests pass" would have been a fiction; deleting them would
+have thrown away the invariant.
+**Rule:** run a new gate once before trusting it. When it cannot run, say so in the commit, and pin the
+behaviour with something that *does* execute — here the same backfill SQL replayed over an in-memory database
+asserting the idle exclusion, the exclusive end boundary and idempotency.

@@ -34,7 +34,13 @@ export interface WindowEvent {
     timestamp: string;
     process_name: string;
     window_title: string | null;
+    /** Wall-clock span of the event, first tick -> last tick. Includes idle time. */
     duration_seconds: number;
+    /**
+     * Seconds inside that span where the machine was not idle. Absent on rows
+     * recorded before the column existed (see `withActiveDuration`).
+     */
+    active_seconds?: number | null;
 }
 
 export interface InputHistoryBucket {

@@ -16,6 +16,7 @@ import {
 } from '../../api/tauri';
 import { MOCK_TIMELINE, MOCK_EVENTS } from './mockData';
 import { collectAllPages, RANGE_EVENT_CEILING } from '../../utils/timelinePaging';
+import { withActiveDurations, type NormalisedWindowEvent } from '../../utils/windowEvents';
 
 /**
  * Get activity timeline for today
@@ -52,11 +53,11 @@ export function useRecentEvents() {
     const { visible } = useVisibility();
     return useQuery({
         queryKey: ['recentEvents'],
-        queryFn: async (): Promise<WindowEvent[]> => {
+        queryFn: async (): Promise<NormalisedWindowEvent[]> => {
             if (isTauri()) {
-                return await getRecentEvents();
+                return withActiveDurations(await getRecentEvents());
             }
-            return MOCK_EVENTS;
+            return withActiveDurations(MOCK_EVENTS);
         },
         refetchInterval: visible ? 30000 : false, // 30 seconds - reduced from 10s to prevent backend overload
         staleTime: 25000,
@@ -85,9 +86,9 @@ export function useTimelineEventsRange(
 
     return useQuery({
         queryKey: ['timelineEventsRange', startIso, endIso],
-        queryFn: async (): Promise<WindowEvent[]> => {
+        queryFn: async (): Promise<NormalisedWindowEvent[]> => {
             if (!isTauri()) {
-                return MOCK_EVENTS;
+                return withActiveDurations(MOCK_EVENTS);
             }
 
             // Collect every page. A single capped request used to return the newest
@@ -105,7 +106,7 @@ export function useTimelineEventsRange(
                 );
             }
 
-            return items;
+            return withActiveDurations(items);
         },
         enabled,
         refetchInterval: visible
@@ -130,9 +131,9 @@ export function useTimelineRangeForApp(
 ) {
     return useQuery({
         queryKey: ['timelineRangeForApp', processName, startIso, endIso],
-        queryFn: async (): Promise<WindowEvent[]> => {
+        queryFn: async (): Promise<NormalisedWindowEvent[]> => {
             if (isTauri() && processName) {
-                return await getTimelineRangeForApp(processName, startIso, endIso);
+                return withActiveDurations(await getTimelineRangeForApp(processName, startIso, endIso));
             }
             return [];
         },

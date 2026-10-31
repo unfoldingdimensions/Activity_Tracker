@@ -64,9 +64,12 @@ not copy them; correct them when you are in the file.
 - Release builds register no logger (`lib.rs:29-35`) — a write-path error is invisible in the shipped app.
   Verify against a release build before declaring a failure path fixed (`docs/learning.md` L-09).
 - Gate commands: `npm run test:run`, `npm run lint`, `npm run build` (`tsc -b && vite build`). They are green
-  as of 2026-10-31: 88 tests / 8 files.
-- **There is no Rust test suite.** Zero `#[cfg(test)]` in `src-tauri/src`. The first Rust test you add sets the
-  pattern for every one after it — make it a real one per §2 below.
+  as of 2026-10-31: 101 tests / 10 files, lint and build clean.
+- **Rust tests exist but cannot run on this machine yet.** `database.rs` carries the first Rust tests
+  (`#[cfg(test)]`, backfill + schema). `cargo check --all-targets` is clean, but `cargo test --lib` fails at
+  **process load** with `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139) before any test output — a GNU-toolchain
+  loader problem, not an assertion failure. Until the harness loads, Rust tests are documentation: pin the
+  behaviour with something that actually executes, and say which you did (`docs/learning.md` L-11).
 - `@tauri-apps/*` npm packages and the `tauri` crate must stay on matching majors; builds need the
   `E:\DevTools` toolchain and the redirected cargo target.
 - Capture loop = 1 Hz on one thread with one mutexed SQLite connection. Anything that holds that mutex for

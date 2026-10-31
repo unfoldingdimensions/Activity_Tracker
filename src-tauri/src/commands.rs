@@ -77,14 +77,15 @@ pub fn export_data(state: State<AppState>, path: String, format: String) -> Resu
         for (date, name, seconds) in &app_usage {
             csv.push_str(&format!("{},{},{}\n", csv_field(date), csv_field(name), seconds));
         }
-        csv.push_str("\nwindow_events\ntimestamp,process_name,window_title,duration_seconds\n");
-        for (timestamp, name, title, duration) in &window_events {
+        csv.push_str("\nwindow_events\ntimestamp,process_name,window_title,duration_seconds,active_seconds\n");
+        for (timestamp, name, title, duration, active) in &window_events {
             csv.push_str(&format!(
-                "{},{},{},{}\n",
+                "{},{},{},{},{}\n",
                 csv_field(timestamp),
                 csv_field(name),
                 csv_field(title.as_deref().unwrap_or("")),
-                duration
+                duration,
+                active.map(|s| s.to_string()).unwrap_or_default()
             ));
         }
         csv.push_str("\ninput_activity\ntimestamp,keystrokes,mouse_clicks,mouse_distance\n");
@@ -98,8 +99,9 @@ pub fn export_data(state: State<AppState>, path: String, format: String) -> Resu
             "app_usage": app_usage.iter().map(|(date, name, seconds)| serde_json::json!({
                 "date": date, "process_name": name, "total_seconds": seconds
             })).collect::<Vec<_>>(),
-            "window_events": window_events.iter().map(|(timestamp, name, title, duration)| serde_json::json!({
-                "timestamp": timestamp, "process_name": name, "window_title": title, "duration_seconds": duration
+            "window_events": window_events.iter().map(|(timestamp, name, title, duration, active)| serde_json::json!({
+                "timestamp": timestamp, "process_name": name, "window_title": title,
+                "duration_seconds": duration, "active_seconds": active
             })).collect::<Vec<_>>(),
             "input_activity": input_activity.iter().map(|(timestamp, keys, clicks, distance)| serde_json::json!({
                 "timestamp": timestamp, "keystrokes": keys, "mouse_clicks": clicks, "mouse_distance": distance

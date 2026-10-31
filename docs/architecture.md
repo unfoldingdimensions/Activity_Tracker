@@ -67,7 +67,7 @@ File: `%ProgramData%\ActivityTracker\activity.db` — machine-wide, shared acros
 | Table | Grain | Key columns | Measured rows |
 |---|---|---|---|
 | `activity_snapshots` | 1 row per second while running | `timestamp`, `is_idle`, `idle_seconds` | 3,054,487 |
-| `window_events` | 1 row per foreground-app period | `timestamp` (start, back-dated), `process_name`, `window_title`, `duration_seconds` | 61,969 |
+| `window_events` | 1 row per foreground-app period | `timestamp` (start, back-dated), `process_name`, `window_title`, `duration_seconds` (wall-clock span), `active_seconds` (non-idle seconds inside that span) | 61,969 |
 | `input_activity` | 1 row per second that had input | `timestamp`, `keystrokes`, `mouse_clicks`, `mouse_distance` | 645,747 |
 | `app_usage` | 1 row per (local date, process) | `date`, `process_name`, `total_seconds` · `UNIQUE(date, process_name)` | 1,533 |
 | `user_stats` | singleton row `id = 1` | `total_xp`, `current_level`, `current_streak`, `last_activity_date` | 1 |
@@ -75,6 +75,12 @@ File: `%ProgramData%\ActivityTracker\activity.db` — machine-wide, shared acros
 | `settings` | key/value JSON | `key`, `value` | 14 |
 
 Indexes: `timestamp` on the three event tables, `date` on `app_usage`.
+
+`window_events.active_seconds` was added 2026-10-31 (D-018). Rows written after that store it
+directly; rows recorded earlier are filled once at startup from `activity_snapshots` by
+`backfill_window_event_active_seconds` (`database.rs`), before the tracking loop starts. `NULL` means
+"not backfilled yet", and the frontend falls back to `duration_seconds` — so an un-backfilled row
+renders without crashing, only less precisely.
 
 **Time convention (the rule most likely to be broken by a change):**
 - Every `timestamp` is **UTC** ISO-8601 with milliseconds and a literal `Z` (`windows_api.rs:137-139`).

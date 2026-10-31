@@ -38,7 +38,7 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   able to read but not write the DB.
 
 ## D-005 · A window event is closed on process change, with wall-clock duration and a back-dated start
-**2026-08-13 · Under review · [code]** `tracker.rs:532-555`
+**2026-08-13 · Superseded by D-018 · [code]** `tracker.rs:532-555`
 - Why: one row per foreground period, written once, no per-second updates.
 - Consequence (measured 2026-10-31): `duration_seconds` includes idle time — 49.4% of all event time in the
   last 10 days sits inside tracked-idle snapshots. Every duration-based surface overstates by that share.
@@ -129,3 +129,22 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   Historical data needs no migration: the rows were always there.
 - Also: `refetchInterval` now polls only while the range still contains "now", since the payload is the whole
   range rather than one page.
+
+## D-018 · Time in app is measured in active seconds, not wall-clock span
+**2026-10-31 · Active · [code] · supersedes D-005**
+- `window_events` gains `active_seconds`: a counter incremented once per non-idle tick for the current
+  foreground window (`tracker.rs:346-590`). `duration_seconds` keeps the wall-clock span, so the difference
+  stays explicable instead of disappearing.
+- The frontend normalises at the read boundary (`src/utils/windowEvents.ts`): `duration_seconds` becomes
+  `active_seconds` when present, the original is kept as `wall_clock_seconds`, and `active_seconds = 0` is
+  treated as a real value rather than as missing.
+- Rows recorded before the column existed are backfilled once at startup from `activity_snapshots`
+  (`database.rs::backfill_window_event_active_seconds`, called from `lib.rs` before the loop starts). The SQL
+  counts non-idle snapshots inside each span with the timestamp index — measured ~9 s for 62k events, and it
+  reproduces the independently measured 49.5% idle share.
+- Why: the wall-clock span absorbed idle time — 49.4% of all event time in the last 10 days — which inflated
+  Focus Flow, deep-work sessions, the Timeline and the sub-day app split (P1-1 in the 2026-10-31 recon).
+- Consequence: historical and future durations are comparable for the first time, so past Focus Flow readings
+  will *drop* where an app sat focused through an idle stretch. Events inside a tracking gap backfill to 0
+  active seconds, which is correct: no second was ever observed. A failed backfill is non-fatal — readers fall
+  back to `duration_seconds` — but it is only logged, and release builds register no logger (D-008).

@@ -57,6 +57,21 @@ pub fn run() {
             let db = database::init_database(app_data_dir)
                 .expect("Failed to initialize database");
 
+            // One-time migration: derive active (non-idle) seconds for window events
+            // recorded before the column existed. Runs before the tracking loop starts
+            // so it cannot stall capture; a failure is non-fatal because readers fall
+            // back to duration_seconds (D-018).
+            let backfill_started = std::time::Instant::now();
+            match database::backfill_window_event_active_seconds(&db) {
+                Ok(0) => {}
+                Ok(filled) => log::info!(
+                    "Backfilled active_seconds for {} window events in {:?}",
+                    filled,
+                    backfill_started.elapsed()
+                ),
+                Err(e) => log::error!("Backfill of window-event active seconds failed: {}", e),
+            }
+
             // Create tracker and start it
             let tracker = tracker::Tracker::new(db);
 

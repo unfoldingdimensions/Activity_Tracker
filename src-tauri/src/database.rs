@@ -11,6 +11,18 @@ pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
     // Enable WAL mode for better concurrency
     conn.pragma_update(None, "journal_mode", "WAL")?;
 
+    init_schema(&conn)?;
+
+    log::info!("Database initialized at: {:?}", db_path);
+    Ok(conn)
+}
+
+/// Create every table, index and column on an open connection (idempotent).
+///
+/// Split out of [`init_database`] so tests can apply the real schema to an
+/// in-memory database instead of restating it — a restated schema is the copy that
+/// silently drifts.
+pub fn init_schema(conn: &Connection) -> Result<()> {
     // Create tables for activity tracking
     conn.execute_batch(
         "
@@ -23,12 +35,17 @@ pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
         );
 
         -- Active window tracking
+        -- duration_seconds: wall-clock span of the event (first tick -> last tick)
+        -- active_seconds:   seconds inside that span where the machine was NOT idle
+        --                   (NULL on rows recorded before the column existed; the
+        --                   startup backfill derives them from activity_snapshots)
         CREATE TABLE IF NOT EXISTS window_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT NOT NULL,
             process_name TEXT NOT NULL,
             window_title TEXT,
-            duration_seconds INTEGER NOT NULL DEFAULT 0
+            duration_seconds INTEGER NOT NULL DEFAULT 0,
+            active_seconds INTEGER
         );
 
         -- Input activity (keyboard/mouse counts, not content)
@@ -80,8 +97,63 @@ pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
         "
     )?;
 
-    log::info!("Database initialized at: {:?}", db_path);
-    Ok(conn)
+    // Migration (2026-10-31, D-018): `active_seconds` on window_events. Added
+    // separately from CREATE TABLE so existing databases pick it up; rows recorded
+    // before this point keep NULL and are filled by
+    // `backfill_window_event_active_seconds` once, at startup.
+    let has_active_seconds: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('window_events') WHERE name = 'active_seconds'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+    if has_active_seconds == 0 {
+        conn.execute("ALTER TABLE window_events ADD COLUMN active_seconds INTEGER", [])?;
+        log::info!("Migrated window_events: added active_seconds");
+    }
+
+    Ok(())
+}
+
+/// Fill `active_seconds` for window events recorded before the column existed.
+///
+/// `duration_seconds` is the wall-clock span between an event's first and last
+/// tick; `active_seconds` counts only the seconds inside that span where the
+/// machine was not idle. The per-second `activity_snapshots` table still holds that
+/// truth for every second since tracking began, so the correction is derived, not
+/// estimated — an event over a 4-hour idle stretch ends up with its few real
+/// minutes instead of 4 hours.
+///
+/// One statement: SQLite counts the non-idle snapshots inside each span using the
+/// timestamp index. Measured ~9 s for 62k events, run once at startup before the
+/// tracking loop starts, so it never stalls capture.
+pub fn backfill_window_event_active_seconds(conn: &Connection) -> Result<usize> {
+    let pending: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM window_events WHERE active_seconds IS NULL",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+    if pending == 0 {
+        return Ok(0);
+    }
+
+    log::info!("Backfilling active seconds for {} window events", pending);
+    conn.execute(
+        "UPDATE window_events
+            SET active_seconds = (
+                SELECT COUNT(*) FROM activity_snapshots s
+                 WHERE s.is_idle = 0
+                   AND s.timestamp >= window_events.timestamp
+                   AND s.timestamp < strftime('%Y-%m-%dT%H:%M:%fZ',
+                                              window_events.timestamp,
+                                              '+' || duration_seconds || ' seconds')
+            )
+          WHERE active_seconds IS NULL",
+        [],
+    )
 }
 
 /// Read every stored app-usage row (date, process_name, total_seconds)
@@ -95,10 +167,10 @@ pub fn get_all_app_usage(conn: &Connection) -> Result<Vec<(String, String, u32)>
     rows.collect()
 }
 
-/// Read every stored window event (timestamp, process_name, window_title, duration)
-pub fn get_all_window_events(conn: &Connection) -> Result<Vec<(String, String, Option<String>, u32)>> {
+/// Read every stored window event (timestamp, process_name, window_title, duration, active)
+pub fn get_all_window_events(conn: &Connection) -> Result<Vec<(String, String, Option<String>, u32, Option<u32>)>> {
     let mut stmt = conn.prepare(
-        "SELECT timestamp, process_name, window_title, duration_seconds FROM window_events ORDER BY timestamp"
+        "SELECT timestamp, process_name, window_title, duration_seconds, active_seconds FROM window_events ORDER BY timestamp"
     )?;
     let rows = stmt.query_map([], |row| {
         Ok((
@@ -106,6 +178,7 @@ pub fn get_all_window_events(conn: &Connection) -> Result<Vec<(String, String, O
             row.get::<_, String>(1)?,
             row.get::<_, Option<String>>(2)?,
             row.get::<_, u32>(3)?,
+            row.get::<_, Option<u32>>(4)?,
         ))
     })?;
     rows.collect()
@@ -165,11 +238,12 @@ pub fn insert_window_event(
     process_name: &str,
     window_title: &str,
     duration_seconds: u32,
+    active_seconds: u32,
 ) -> Result<()> {
     conn.execute(
-        "INSERT INTO window_events (timestamp, process_name, window_title, duration_seconds) 
-         VALUES (?1, ?2, ?3, ?4)",
-        (timestamp, process_name, window_title, duration_seconds),
+        "INSERT INTO window_events (timestamp, process_name, window_title, duration_seconds, active_seconds) 
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        (timestamp, process_name, window_title, duration_seconds, active_seconds),
     )?;
     Ok(())
 }
@@ -361,7 +435,7 @@ pub fn get_activity_timeline(
 /// Get recent window events (limit 500) - Deprecated-ish in favor of range
 pub fn get_recent_window_events(conn: &Connection) -> Result<Vec<WindowEvent>> {
     let mut stmt = conn.prepare(
-        "SELECT timestamp, process_name, window_title, duration_seconds 
+        "SELECT timestamp, process_name, window_title, duration_seconds, active_seconds 
          FROM window_events 
          ORDER BY id DESC LIMIT 500"
     )?;
@@ -372,6 +446,7 @@ pub fn get_recent_window_events(conn: &Connection) -> Result<Vec<WindowEvent>> {
             process_name: row.get(1)?,
             window_title: row.get(2)?,
             duration_seconds: row.get(3)?,
+            active_seconds: row.get(4)?,
         })
     })?;
     
@@ -387,7 +462,7 @@ pub fn get_window_events_in_range_paginated(
     offset: u32
 ) -> Result<Vec<WindowEvent>> {
     let mut stmt = conn.prepare(
-        "SELECT timestamp, process_name, window_title, duration_seconds 
+        "SELECT timestamp, process_name, window_title, duration_seconds, active_seconds 
          FROM window_events 
          WHERE timestamp >= ?1 AND timestamp <= ?2 
          ORDER BY timestamp DESC
@@ -400,6 +475,7 @@ pub fn get_window_events_in_range_paginated(
             process_name: row.get(1)?,
             window_title: row.get(2)?,
             duration_seconds: row.get(3)?,
+            active_seconds: row.get(4)?,
         })
     })?;
 
@@ -418,7 +494,7 @@ pub fn get_window_events_for_process_in_range(
     end_iso: &str
 ) -> Result<Vec<WindowEvent>> {
     let mut stmt = conn.prepare(
-        "SELECT timestamp, process_name, window_title, duration_seconds 
+        "SELECT timestamp, process_name, window_title, duration_seconds, active_seconds 
          FROM window_events 
          WHERE process_name = ?1 AND timestamp >= ?2 AND timestamp <= ?3
          ORDER BY timestamp DESC"
@@ -430,9 +506,10 @@ pub fn get_window_events_for_process_in_range(
             process_name: row.get(1)?,
             window_title: row.get(2)?,
             duration_seconds: row.get(3)?,
+            active_seconds: row.get(4)?,
         })
     })?;
-    
+
     rows.collect()
 }
 
@@ -636,7 +713,11 @@ pub struct WindowEvent {
     pub timestamp: String,
     pub process_name: String,
     pub window_title: Option<String>,
+    /// Wall-clock span of the event, first tick -> last tick. Includes idle time.
     pub duration_seconds: u32,
+    /// Seconds inside that span where the machine was not idle. `None` only on rows
+    /// recorded before the column existed and not yet backfilled.
+    pub active_seconds: Option<u32>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -652,4 +733,95 @@ pub struct UserStats {
     pub current_level: u32,
     pub current_streak: u32,
     pub last_activity_date: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A window event recorded before `active_seconds` existed: span set, column NULL.
+    fn insert_legacy_event(conn: &Connection, start: &str, duration: u32) {
+        conn.execute(
+            "INSERT INTO window_events (timestamp, process_name, window_title, duration_seconds, active_seconds)
+             VALUES (?1, 'Claude.exe', 'Claude', ?2, NULL)",
+            (start, duration),
+        )
+        .unwrap();
+    }
+
+    fn stored_active(conn: &Connection) -> Option<i64> {
+        conn.query_row("SELECT active_seconds FROM window_events LIMIT 1", [], |r| r.get(0))
+            .unwrap()
+    }
+
+    #[test]
+    fn backfill_counts_only_non_idle_seconds_inside_the_span() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+
+        // A 10-second event starting at 09:00:00.
+        insert_legacy_event(&conn, "2026-10-28T09:00:00.000Z", 10);
+
+        // Active at 00,01,02,03 -> 4. Idle at 05,06 -> excluded.
+        // 09:00:10 is the exclusive end boundary: it belongs to the next second and
+        // must not be counted, which is what pins the strftime arithmetic.
+        for (offset, idle) in [(0, false), (1, false), (2, false), (3, false), (5, true), (6, true), (10, false)] {
+            let ts = format!("2026-10-28T09:00:{:02}.000Z", offset);
+            insert_activity_snapshot(&conn, &ts, idle, if idle { 120 } else { 0 }).unwrap();
+        }
+
+        let filled = backfill_window_event_active_seconds(&conn).unwrap();
+
+        assert_eq!(filled, 1);
+        assert_eq!(
+            stored_active(&conn),
+            Some(4),
+            "idle seconds and the exclusive end boundary must both be excluded"
+        );
+    }
+
+    #[test]
+    fn backfill_runs_once_and_leaves_filled_rows_alone() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        insert_legacy_event(&conn, "2026-10-28T09:00:00.000Z", 3);
+        insert_activity_snapshot(&conn, "2026-10-28T09:00:01.000Z", false, 0).unwrap();
+
+        assert_eq!(backfill_window_event_active_seconds(&conn).unwrap(), 1);
+        assert_eq!(stored_active(&conn), Some(1));
+
+        // Nothing left with NULL -> the startup pass is a no-op on every later run.
+        assert_eq!(backfill_window_event_active_seconds(&conn).unwrap(), 0);
+        assert_eq!(stored_active(&conn), Some(1));
+    }
+
+    #[test]
+    fn an_event_with_no_snapshots_stays_at_zero_not_null() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        // Span inside a tracking gap: the machine was off, so no second was observed.
+        insert_legacy_event(&conn, "2026-09-24T10:00:00.000Z", 600);
+
+        backfill_window_event_active_seconds(&conn).unwrap();
+
+        assert_eq!(stored_active(&conn), Some(0));
+    }
+
+    #[test]
+    fn new_rows_store_the_active_seconds_they_were_given() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        insert_window_event(&conn, "2026-10-28T09:00:00.000Z", "chrome.exe", "Docs", 14832, 540).unwrap();
+
+        let (span, active): (u32, Option<u32>) = conn
+            .query_row(
+                "SELECT duration_seconds, active_seconds FROM window_events",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+
+        assert_eq!(span, 14832, "the wall-clock span is still stored");
+        assert_eq!(active, Some(540), "active seconds are stored alongside it");
+    }
 }

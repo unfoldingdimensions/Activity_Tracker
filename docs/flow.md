@@ -17,7 +17,7 @@ Order matters: each step below depends on state read earlier in the same tick (`
    - `activity_snapshots` — always, 1 row per tick.
    - `input_activity` — only when keystrokes or clicks > 0.
    - `app_usage` — `+1 s` for the foreground process, **only when not idle and not blacklisted**.
-   - `window_events` — written **only when the process changes**: the previous period is closed with `duration = app_start_time.elapsed()` and a back-dated start timestamp (`tracker.rs:532-555`).
+   - `window_events` — written **only when the process changes**: the previous period is closed with a back-dated start timestamp, `duration_seconds` = the wall-clock span, and `active_seconds` = a counter incremented only on non-idle ticks (`tracker.rs:532-560`). Readers use active seconds; the span is kept so the difference stays explicable.
    - Gamification (only when not idle): achievements, `+10 XP` per 60 active seconds, level, streak.
 8. **Distraction guard** — at most once a minute, compare today's `app_usage` against `app_limits`; one native notification per app per day, an in-app event, and an amber tray icon (`tracker.rs:57-132`, `686-691`).
 9. **Tray reset** — at local day change, restore the default tray icon.
@@ -81,9 +81,9 @@ retention) is therefore live within one second; nothing requires a restart excep
 | Keystrokes / clicks / distance | `input_activity` sums | `database.rs:242-250` |
 | Time per app (day or range) | `app_usage.total_seconds` | `database.rs:206-216`, `440-454` |
 | Focus score | `app_usage` seconds × `classifyApp` | `useDashboardData.ts:327-344` |
-| Focus Flow chart | window events × `classifyApp` | `useDashboardData.ts:204-287` |
-| Deep-work sessions | window events | `utils/focusSessions.ts` |
-| Timeline rows and durations | window events | `pages/Timeline.tsx` |
+| Focus Flow chart | window events, **`active_seconds`** × `classifyApp` | `useDashboardData.ts:204-287` |
+| Deep-work sessions | window events, **`active_seconds`** | `utils/focusSessions.ts` |
+| Timeline rows and durations | window events, **`active_seconds`** (falls back to `duration_seconds` when NULL) | `utils/windowEvents.ts`, `pages/Timeline.tsx` |
 | Focus calendar (52 weeks) | `get_all_app_usage` → per-day sums | `hooks/useFocusCalendar.ts` |
 | XP / level / streak | `user_stats` | `tracker.rs:622-681`, `formatters.ts:217-227` |
 
@@ -114,6 +114,6 @@ defect under `AGENTS.md` §3 (duplication) — pick one owner and delete the oth
 | # | Distortion | Reaches | Ref |
 |---|---|---|---|
 | ~~P0~~ **fixed** | Range events were capped at 5,000 newest, so the old part of any long range rendered empty. Now every page is collected; verified 20,990 rows over 30 days in 11 pages, none duplicated or skipped | was: Focus Flow, deep work, digest on This Month | D-017 |
-| P1 | Wall-clock duration includes idle → focus surfaces overstate by the idle share (measured 49.4% of event time) | Focus Flow, deep work, Timeline, sub-day app split | `tracker.rs:535` |
+| ~~P1~~ **fixed** | Wall-clock duration included idle, overstating focus surfaces by the idle share (49.4% of event time measured). New events store `active_seconds`; rows recorded before 2026-10-31 are backfilled from `activity_snapshots` at startup — the SQL reproduces the 49.5% idle share independently | was: Focus Flow, deep work, Timeline, sub-day app split | D-018 |
 | P1 | Unresolved process → `"Unknown"`, classified as distraction (45.2 h measured) | Focus score, top-app list | `windows_api.rs:69-101`, `appClassification.ts:46` |
 | P1 | `Claude.exe` vs `claude.exe` split; merged only in the dashboard sidebar | Activity page rows, Timeline drill-down | `AppUsageSide.tsx:30-42` vs `Activity.tsx:97` |

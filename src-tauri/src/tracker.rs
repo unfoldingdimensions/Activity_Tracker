@@ -347,7 +347,11 @@ impl Tracker {
             let mut current_process: Option<String> = None;
             let mut current_title: Option<String> = None;
             let mut app_start_time = std::time::Instant::now();
-            
+            // Active (non-idle) seconds accumulated for the current foreground window.
+            // `app_start_time.elapsed()` is the wall-clock span; this counter is what
+            // the UI means by "time in app" (D-018).
+            let mut window_active_seconds: u32 = 0;
+
             // Gamification accumulators
             let mut xp_seconds_accumulator = 0;
             let mut last_streak_check = String::new(); // Date string
@@ -547,7 +551,8 @@ impl Tracker {
                                                 &start_iso,
                                                 prev_process,
                                                 prev_title,
-                                                duration
+                                                duration,
+                                                window_active_seconds
                                             ) {
                                                 log::error!("Failed to insert window event: {}", e);
                                             }
@@ -563,6 +568,7 @@ impl Tracker {
                                     };
                                     current_title = Some(title);
                                     app_start_time = std::time::Instant::now();
+                                    window_active_seconds = 0;
                                 } else {
                                     // Update current title if changed
                                     let title = if track_titles.load(Ordering::Relaxed) {
@@ -578,6 +584,10 @@ impl Tracker {
                                         current_title = Some(title);
                                     }
                                 }
+                                // Count this non-idle tick toward the window that now has
+                                // focus, so a switch tick belongs to the incoming window
+                                // (same convention as the app_usage upsert above).
+                                window_active_seconds += 1;
                                 } // end: !is_blacklisted
                             }
                         
