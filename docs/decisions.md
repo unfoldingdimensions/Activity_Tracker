@@ -393,3 +393,20 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   - build-tree copy → `Autostart: running from a build tree; leaving the entry untouched`, registry unchanged.
 - The write also refreshes the `StartupApproved` value `auto-launch` keeps, so Windows' startup manager sees the
   same entry rather than a second one.
+
+## D-031 · An achievement id is a rowid, not an identity
+**2026-10-31 · Active · [code] · closes P2-6**
+- `achievements` was `id INTEGER PRIMARY KEY AUTOINCREMENT` with `code TEXT NOT NULL UNIQUE`. The achievement loop
+  retries `INSERT OR IGNORE` constantly, and `AUTOINCREMENT` advances its counter **before** SQLite discovers the
+  UNIQUE conflict — so every refusal burned an id. Measured on the live database: **289 attempts, 5 rows, ids
+  1, 4, 10, 60 and 117**. Reproduced in isolation: five refused duplicates pushed the next row from id 2 to id 6.
+- `code` was always the identity. The counter added nothing except gaps and a `sqlite_sequence` row pretending the
+  table had 289 achievements.
+- Fix: the keyword is gone (`id INTEGER PRIMARY KEY`), applied to existing databases by
+  `drop_achievement_autoincrement()`, a one-time table rebuild inside a transaction that copies rows **by explicit
+  id** — the five unlocked achievements keep 1, 4, 10, 60, 117 and nothing that references an id breaks.
+- Verified on the shipped build: `Rebuilt achievements without AUTOINCREMENT (ids preserved)`, rows unchanged, DDL
+  now `id INTEGER PRIMARY KEY`, and no `sqlite_sequence` row for the table. The migration is idempotent — the next
+  startup logged nothing.
+- Consequence: a refused unlock now costs a failed UNIQUE check and nothing else. The other tables keep
+  `AUTOINCREMENT` because they never use `INSERT OR IGNORE`; if one starts to, this is the same defect.

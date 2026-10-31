@@ -13,8 +13,54 @@ pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
 
     init_schema(&conn)?;
 
+    // `achievements` used AUTOINCREMENT, which burned an id on every duplicate that
+    // `INSERT OR IGNORE` refused — 289 attempts, 5 rows, ids 1/4/10/60/117 (P2-6, D-031).
+    match drop_achievement_autoincrement(&conn) {
+        Ok(true) => log::info!("Rebuilt achievements without AUTOINCREMENT (ids preserved)"),
+        Ok(false) => {}
+        Err(e) => log::error!("Rebuilding achievements failed: {}", e),
+    }
+
     log::info!("Database initialized at: {:?}", db_path);
     Ok(conn)
+}
+
+/// Rebuild `achievements` without `AUTOINCREMENT`, preserving the ids it already has.
+///
+/// An `id` here was never an identity — `code` is, and it is `UNIQUE`. The `AUTOINCREMENT`
+/// keyword only added a global counter that `INSERT OR IGNORE` advances *before* it discovers
+/// the duplicate, so refused achievements left gaps: measured 5 rows carrying ids 1, 4, 10,
+/// 60 and 117 after 289 attempts. Without the keyword the rowid is assigned only when a row
+/// is actually inserted, so a refused duplicate costs nothing (P2-6, D-031).
+///
+/// SQLite cannot drop the keyword in place, so the table is rebuilt; the rows are copied by
+/// explicit id, so any reference to an existing achievement still resolves.
+pub fn drop_achievement_autoincrement(conn: &Connection) -> Result<bool> {
+    let ddl: String = conn.query_row(
+        "SELECT COALESCE(sql, '') FROM sqlite_master WHERE type = 'table' AND name = 'achievements'",
+        [],
+        |row| row.get(0),
+    )?;
+    if !ddl.to_uppercase().contains("AUTOINCREMENT") {
+        return Ok(false);
+    }
+
+    {
+        let tx = conn.unchecked_transaction()?;
+        tx.execute_batch(
+            "CREATE TABLE achievements_rebuilt (
+                 id INTEGER PRIMARY KEY,
+                 code TEXT NOT NULL UNIQUE,
+                 unlocked_at TEXT NOT NULL
+             );
+             INSERT INTO achievements_rebuilt (id, code, unlocked_at)
+                 SELECT id, code, unlocked_at FROM achievements;
+             DROP TABLE achievements;
+             ALTER TABLE achievements_rebuilt RENAME TO achievements;",
+        )?;
+        tx.commit()?;
+    }
+    Ok(true)
 }
 
 /// Create every table, index and column on an open connection (idempotent).
@@ -84,7 +130,7 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
 
         -- Gamification: Achievements
         CREATE TABLE IF NOT EXISTS achievements (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY,
             code TEXT NOT NULL UNIQUE,
             unlocked_at TEXT NOT NULL
         );
@@ -1151,5 +1197,74 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         init_schema(&conn).unwrap();
         assert!(!vacuum_if_fragmented(&conn).unwrap());
+    }
+
+    /// The achievement loop retries the same unlock constantly; each refusal must not cost
+    /// an id. Measured before the fix: five refused duplicates pushed the next row from
+    /// id 2 to id 6.
+    #[test]
+    fn refused_achievements_do_not_burn_ids() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        for _ in 0..5 {
+            assert!(!unlock_achievement_with_reward(&conn, "early_bird", "2026-10-31T00:00:00.000Z", 0).unwrap());
+        }
+        assert!(unlock_achievement_with_reward(&conn, "night_owl", "2026-10-31T00:00:00.000Z", 0).unwrap());
+
+        let rows: Vec<(i64, String)> = {
+            let mut stmt = conn.prepare("SELECT id, code FROM achievements ORDER BY id").unwrap();
+            let mapped = stmt
+                .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+                .unwrap()
+                .collect::<std::result::Result<Vec<_>, _>>()
+                .unwrap();
+            mapped
+        };
+        assert_eq!(rows, vec![(1, "early_bird".to_string()), (2, "night_owl".to_string())]);
+    }
+
+    /// The migration has to keep every unlocked achievement and its id — a rebuilt table
+    /// that silently renumbered or emptied itself would look like "you lost your badges".
+    #[test]
+    fn rebuild_preserves_ids_and_stops_the_burn() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE achievements (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 code TEXT NOT NULL UNIQUE,
+                 unlocked_at TEXT NOT NULL
+             );",
+        )
+        .unwrap();
+        for (id, code) in [(1, "early_bird"), (4, "night_owl"), (10, "consistency_king")] {
+            conn.execute(
+                "INSERT INTO achievements (id, code, unlocked_at) VALUES (?1, ?2, '2026-08-13T18:09:54.142Z')",
+                (id, code),
+            )
+            .unwrap();
+        }
+
+        assert!(drop_achievement_autoincrement(&conn).unwrap(), "old schema must be rebuilt");
+        assert!(!drop_achievement_autoincrement(&conn).unwrap(), "a second run must be a no-op");
+
+        let ddl: String = conn
+            .query_row("SELECT sql FROM sqlite_master WHERE name = 'achievements'", [], |r| r.get(0))
+            .unwrap();
+        assert!(!ddl.to_uppercase().contains("AUTOINCREMENT"), "keyword must be gone: {ddl}");
+
+        let ids: Vec<i64> = {
+            let mut stmt = conn.prepare("SELECT id FROM achievements ORDER BY id").unwrap();
+            stmt.query_map([], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect()
+        };
+        assert_eq!(ids, vec![1, 4, 10], "ids must survive the rebuild");
+
+        // Two refused duplicates, then a real unlock: the new row takes max+1, not max+n.
+        unlock_achievement_with_reward(&conn, "early_bird", "2026-10-31T00:00:00.000Z", 0).unwrap();
+        unlock_achievement_with_reward(&conn, "early_bird", "2026-10-31T00:00:00.000Z", 0).unwrap();
+        unlock_achievement_with_reward(&conn, "streak_30", "2026-10-31T00:00:00.000Z", 0).unwrap();
+        let new_id: i64 = conn
+            .query_row("SELECT id FROM achievements WHERE code = 'streak_30'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(new_id, 11, "a refused duplicate must not advance the id");
     }
 }

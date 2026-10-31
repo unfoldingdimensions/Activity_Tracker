@@ -169,3 +169,11 @@ only asked whether the value existed. The app looked correctly configured and st
 the first symptom was a compiler error (`Access is denied`) when a rebuild tried to replace a running executable.
 **Rule:** when a config surface can hold a stale value, read the value and compare it to what it should be —
 otherwise the only way to discover the drift is by its downstream damage.
+
+### L-21 · A surrogate key is not an identity
+`achievements` was keyed twice: a natural key (`code`, UNIQUE) and a surrogate (`id INTEGER PRIMARY KEY
+AUTOINCREMENT`). The surrogate then leaked into evidence — 5 achievements carrying ids up to 117 made the table look
+like it had lost rows, when all it had lost was 284 integers. `INSERT OR IGNORE` advances an AUTOINCREMENT counter
+before it discovers the conflict, so the surrogate recorded every *attempt*.
+**Rule:** pick one identity. If a natural key exists and is UNIQUE, the surrogate adds nothing but gaps — and gaps
+in a counter that nothing uses are indistinguishable from data loss to whoever reads them next.
