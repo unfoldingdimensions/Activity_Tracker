@@ -80,8 +80,8 @@ retention) is therefore live within one second; nothing requires a restart excep
 | Idle time | `activity_snapshots` where `is_idle = 1` | same |
 | Keystrokes / clicks / distance | `input_activity` sums | `database.rs:242-250` |
 | Time per app (day or range) | `app_usage.total_seconds` | `database.rs:206-216`, `440-454` |
-| Focus score | `app_usage` seconds × `classifyApp` | `useDashboardData.ts:327-344` |
-| Focus Flow chart | window events, **`active_seconds`** × `classifyApp` | `useDashboardData.ts:204-287` |
+| Focus score | `app_usage` seconds × `classifyApp` — denominator is **classified app time**, with `ignore` apps removed from both sides | `utils/focusScore.ts` |
+| Focus Flow chart | window events `active_seconds` × `classifyApp` — denominator is **each interval's wall time**, so idle appears as its own segment | `useDashboardData.ts:204-287` |
 | Deep-work sessions | window events, **`active_seconds`** | `utils/focusSessions.ts` |
 | Timeline rows and durations | window events, **`active_seconds`** (falls back to `duration_seconds` when NULL) | `utils/windowEvents.ts`, `pages/Timeline.tsx` |
 | Focus calendar (52 weeks) | `get_all_app_usage` → per-day sums | `hooks/useFocusCalendar.ts` |
@@ -89,6 +89,12 @@ retention) is therefore live within one second; nothing requires a restart excep
 
 **Rule:** if a change makes two rows of this table compute the same number from different sources, that is a
 defect under `AGENTS.md` §3 (duplication) — pick one owner and delete the other derivation.
+
+**Two ratios, two denominators, both legitimate.** *Focus score* answers "of the active app time I classified,
+how much was focus work"; *Focus flow* answers "of this interval, how much was focus work". They are not
+expected to match and neither substitutes for the other. An active-vs-idle *clock* ratio is not a focus
+measure and must never be labelled one (D-019) — the same word with a different denominator is how one number
+quietly becomes two.
 
 ## 5. Gamification and limits
 
@@ -116,4 +122,5 @@ defect under `AGENTS.md` §3 (duplication) — pick one owner and delete the oth
 | ~~P0~~ **fixed** | Range events were capped at 5,000 newest, so the old part of any long range rendered empty. Now every page is collected; verified 20,990 rows over 30 days in 11 pages, none duplicated or skipped | was: Focus Flow, deep work, digest on This Month | D-017 |
 | ~~P1~~ **fixed** | Wall-clock duration included idle, overstating focus surfaces by the idle share (49.4% of event time measured). New events store `active_seconds`; rows recorded before 2026-10-31 are backfilled from `activity_snapshots` at startup — the SQL reproduces the 49.5% idle share independently | was: Focus Flow, deep work, Timeline, sub-day app split | D-018 |
 | P1 | Unresolved process → `"Unknown"`, classified as distraction (45.2 h measured) | Focus score, top-app list | `windows_api.rs:69-101`, `appClassification.ts:46` |
+| ~~P1~~ **fixed** | Two quantities shared the label "focus score": the card's focus-app share, and an active-vs-idle clock ratio that `formatStatsForCards` still computed (invisible only because the caller overwrote it). One owner now: `utils/focusScore.ts`, with the active/idle ratio removed | Dashboard card, tray popup | D-019 |
 | P1 | `Claude.exe` vs `claude.exe` split; merged only in the dashboard sidebar | Activity page rows, Timeline drill-down | `AppUsageSide.tsx:30-42` vs `Activity.tsx:97` |

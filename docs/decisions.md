@@ -148,3 +148,20 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   will *drop* where an app sat focused through an idle stretch. Events inside a tracking gap backfill to 0
   active seconds, which is correct: no second was ever observed. A failed backfill is non-fatal — readers fall
   back to `duration_seconds` — but it is only logged, and release builds register no logger (D-008).
+
+## D-019 · "Focus score" means exactly one thing, and it is not the active/idle ratio
+**2026-10-31 · Active · [code]**
+- **Focus score** = `focusSeconds / (focusSeconds + distractionSeconds)` over `app_usage`, where apps classified
+  `ignore` are removed from both sides of the ratio. One implementation: `src/utils/focusScore.ts`, with tests.
+- `formatStatsForCards` no longer produces a `focusScore`. It computed `active / (active + idle)` — an activity
+  ratio, not a focus measure — and only looked harmless because `useDashboardData` overwrote the field before
+  returning. Any new caller would have inherited the wrong number under the right name.
+- The Focus Flow chart keeps its own ratio on purpose: focus seconds over each interval's **wall time**, so idle
+  shows as a segment. It is labelled "share of each interval" at the call site, and the difference in
+  denominators is the reason the two numbers are not equal (documented in `docs/flow.md` §4).
+- `useAnalytics`' internal `focusScore` (100 − switching penalty) is renamed `stabilityScore`: it feeds the flow
+  composite and is a third quantity, so it may not borrow the name.
+- Why: three different quantities answered to "focus score" across the dashboard, the tray popup and the flow
+  metrics (recon finding P1-2). A user comparing two screens saw a contradiction that was really two metrics.
+- Consequence: the card and the tray popup now show the same number by construction, and the chart says what it
+  is a share *of*. If a future screen needs the active/idle ratio it must be named for the clock, not for focus.

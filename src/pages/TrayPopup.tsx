@@ -21,7 +21,7 @@ export function TrayPopup() {
     const selectedRange: TimeRange = 'today';
 
     // We use the setting's default range for the tray view
-    const { stats, appUsage, digest, isLoading } = useDashboardData(selectedRange);
+    const { stats, focusScore, appUsage, digest, isLoading } = useDashboardData(selectedRange);
     const { data: userStats } = useUserStats();
 
     const topApp = useMemo(() => appUsage && appUsage.length > 0 ? appUsage[0] : null, [appUsage]);
@@ -101,7 +101,7 @@ export function TrayPopup() {
                         <div className="flex items-center gap-2 mt-1.5">
                             <Zap size={13} className="text-[var(--accent-warning)]" />
                             <span className="font-display text-[22px] font-semibold tracking-[-0.04em] tabular-nums text-[var(--foreground)]">
-                                {isLoading ? '…' : stats?.focusScore || 0}%
+                                {isLoading ? '…' : focusScore}%
                             </span>
                         </div>
                     </div>
@@ -233,7 +233,7 @@ export function TrayPopup() {
                         <div className="flex items-center gap-2">
                             <Zap size={16} className="text-[var(--accent-warning)] fill-[var(--accent-warning)]/20" />
                             <span className="text-xl font-display font-black tracking-tight whitespace-nowrap">
-                                {isLoading ? '...' : stats?.focusScore || 0}%
+                                {isLoading ? '...' : focusScore}%
                             </span>
                         </div>
                     </div>

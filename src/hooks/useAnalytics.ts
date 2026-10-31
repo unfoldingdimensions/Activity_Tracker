@@ -50,9 +50,11 @@ export function useAnalytics() {
 
 
         // --- 2. Calculate Flow Score ---
-        // Formula: (Intensity Score + Focus Score) / 2
+        // Formula: (Intensity Score * 0.6) + (Stability Score * 0.4)
         // Intensity: Based on keystrokes/mouse clicks
-        // Focus: Inverse of context switching
+        // Stability: inverse of context switching. Named `stabilityScore` on purpose —
+        // it is NOT the dashboard's focus score (share of classified app time), and two
+        // different quantities must not share one name (D-019).
 
         let totalInputs = 0;
         let activeMinutes = 0;
@@ -73,9 +75,9 @@ export function useAnalytics() {
 
         // Normalize Switching: <6 switches/hour = 100% focus, >60 switches = 0%
         const switchingPenalty = Math.min(100, Math.max(0, (contextSwitchingRate - 5) * 2));
-        const focusScore = 100 - switchingPenalty;
+        const stabilityScore = 100 - switchingPenalty;
 
-        const flowScore = Math.round((intensityScore * 0.6) + (focusScore * 0.4)); // Weight intensity slightly more
+        const flowScore = Math.round((intensityScore * 0.6) + (stabilityScore * 0.4)); // Weight intensity slightly more
 
 
         // --- 3. Longest Flow Streak (Daily) ---

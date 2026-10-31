@@ -92,3 +92,13 @@ have thrown away the invariant.
 **Rule:** run a new gate once before trusting it. When it cannot run, say so in the commit, and pin the
 behaviour with something that *does* execute — here the same backfill SQL replayed over an in-memory database
 asserting the idle exclusion, the exclusive end boundary and idempotency.
+
+### L-12 · A ratio without its denominator written down will be redefined by someone else
+**2026-10-31 · `formatStatsForCards`, `utils/focusScore.ts`**
+Bitten: "focus score" meant three things — focus-app share of classified app time, active-vs-idle clock ratio,
+and 100 − context-switching penalty. The clock ratio survived only because a caller overwrote it, so it was
+invisible until someone measured it; the Dashboard and the tray popup could have disagreed the day the
+overwrite moved.
+**Rule:** write the numerator **and** the denominator wherever a ratio is named, in the same file that computes
+it. Two legitimate ratios may share a concept but never a label, and a name that has drifted across surfaces is
+a defect even when every individual value is correct.

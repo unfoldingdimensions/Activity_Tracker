@@ -49,7 +49,12 @@ export type { IdleStatus } from './queries/useSystem';
 // These formatters remain here as they're data transformation, not queries
 
 /**
- * Format stats for Dashboard cards
+ * Format stats for Dashboard cards.
+ *
+ * Describes the **clock** only — active time, keystrokes, clicks. It deliberately
+ * does not produce a focus score: that number has one owner, `utils/focusScore.ts`,
+ * because an active-vs-idle ratio is not a focus measure and used to be reported as
+ * one under the same label (D-019).
  */
 export function formatStatsForCards(stats: DailyStats | null | undefined) {
     if (!stats) {
@@ -57,24 +62,16 @@ export function formatStatsForCards(stats: DailyStats | null | undefined) {
             screenTime: '0m',
             mouseActivity: '0',
             keystrokes: '0',
-            focusScore: 0,
         };
     }
 
     const active = stats.total_active_seconds || 0;
-    const idle = stats.total_idle_seconds || 0;
     const clicks = stats.total_mouse_clicks || 0;
     const keys = stats.total_keystrokes || 0;
-
-    const total = active + idle;
-    const focusScore = total > 0
-        ? Math.round((active / total) * 100)
-        : 0;
 
     return {
         screenTime: formatDuration(active),
         mouseActivity: clicks.toLocaleString(),
         keystrokes: keys.toLocaleString(),
-        focusScore,
     };
 }

@@ -51,7 +51,7 @@ export function Dashboard() {
     const [showInputModal, setShowInputModal] = useState(false);
 
     // Fetch unified data
-    const { stats, rawStats, appUsage, timelineData, focusSessions, digest, bucketMinutes, isLoading } = useDashboardData(timeRange);
+    const { rawStats, focusScore, appUsage, timelineData, focusSessions, digest, bucketMinutes, isLoading } = useDashboardData(timeRange);
     const { data: inputHistory, isLoading: inputLoading } = useInputHistory(60, true);
 
     const headerActions = (
@@ -93,7 +93,7 @@ export function Dashboard() {
                         keystrokes={rawStats?.total_keystrokes ?? 0}
                         mouseClicks={rawStats?.total_mouse_clicks ?? 0}
                         mouseDistance={rawStats?.total_mouse_distance ?? 0}
-                        focusScore={stats.focusScore}
+                        focusScore={focusScore}
                         spark={timelineData.map((d) => d.focus ?? 0)}
                         isLoading={isLoading}
                     />
@@ -103,7 +103,7 @@ export function Dashboard() {
                     {/* Main split: focus flow + KPI row | app usage side */}
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 py-6 px-8 border-b border-[var(--border)]">
                         <div className="min-w-0 pr-0 lg:pr-7">
-                            <FocusFlowChart data={timelineData} isLoading={isLoading} minHeight={250} title="Focus flow" />
+                            <FocusFlowChart data={timelineData} isLoading={isLoading} minHeight={250} title="Focus flow · share of each interval" />
                             <FlowStateMetrics />
                         </div>
                         <AppUsageSide appUsage={appUsage} isLoading={isLoading} />
@@ -157,7 +157,7 @@ export function Dashboard() {
                     keystrokes={rawStats?.total_keystrokes ?? 0}
                     mouseClicks={rawStats?.total_mouse_clicks ?? 0}
                     mouseDistance={rawStats?.total_mouse_distance ?? 0}
-                    focusScore={stats.focusScore}
+                    focusScore={focusScore}
                     spark={timelineData.map((d) => d.focus ?? 0)}
                     isLoading={isLoading}
                 />

@@ -13,6 +13,7 @@ import { formatStatsForCards } from './useTrackerData';
 import { parseTimestamp, toLocalDateString } from '../utils/formatters';
 import { useAppClassifier } from './useAppClassifier';
 import { computeFocusSessions, buildDigest } from '../utils/focusSessions';
+import { computeFocusScore } from '../utils/focusScore';
 
 /** Re-exported for callers that only need the built-in default behavior */
 export { isProductiveAppDefault as isProductiveApp } from '../utils/appClassification';
@@ -322,26 +323,14 @@ export function useDashboardData(timeRange: TimeRange) {
     }, [timeRange, chartStart, end, bucketSizeMs, isToday, rangeEventsQuery.data, timelineQuery.data, classify]);
 
 
-    // 4. Calculate Unified Focus Score for the Stat Card
-    // We want the card to show (Focus / Active) ratio to reflect "Quality"
-    const reconciledFocusScore = useMemo(() => {
-        if (!unifiedAppUsage || unifiedAppUsage.length === 0) return 0;
-
-        let totalActive = 0;
-        let totalFocus = 0;
-
-        unifiedAppUsage.forEach(app => {
-            const cls = classify(app.name);
-            // 'ignore' removes the app from the focus equation entirely
-            if (cls === 'ignore') return;
-            totalActive += app.seconds;
-            if (cls === 'focus') {
-                totalFocus += app.seconds;
-            }
-        });
-
-        return totalActive > 0 ? Math.round((totalFocus / totalActive) * 100) : 0;
-    }, [unifiedAppUsage, classify]);
+    // 4. One focus score, one owner (utils/focusScore.ts).
+    // Focus = share of *classified app time* spent in focus apps. It is not the
+    // clock ratio, and it is not the Focus Flow chart's share of each interval
+    // (that one divides by wall time and shows idle separately).
+    const focusBreakdown = useMemo(
+        () => computeFocusScore(unifiedAppUsage, classify),
+        [unifiedAppUsage, classify]
+    );
 
     // 5. Return data
     const isLoading =
@@ -350,11 +339,6 @@ export function useDashboardData(timeRange: TimeRange) {
         (rangeEventsQuery.isLoading && !rangeEventsQuery.data);
 
     const stats = formatStatsForCards(unifiedStats);
-
-    // Override the focus score with our multi-source reconciled score
-    if (stats) {
-        stats.focusScore = reconciledFocusScore;
-    }
 
     // 6. Focus sessions (contiguous deep-work blocks) + daily digest
     const focusSessions = useMemo(() => {
@@ -377,18 +361,13 @@ export function useDashboardData(timeRange: TimeRange) {
     const yesterdayUsageQuery = useAppUsageRange(yesterdayWindow.start, yesterdayWindow.end, isToday);
 
     const digest = useMemo(() => {
-        let focusSeconds = 0;
-        (unifiedAppUsage ?? []).forEach((app) => {
-            if (classify(app.name) === 'focus') focusSeconds += app.seconds;
-        });
+        // Same owner as the card: focus seconds come from computeFocusScore, not a
+        // second hand-rolled loop over the app list.
+        const focusSeconds = focusBreakdown.focusSeconds;
 
         let yesterdayFocusSeconds: number | null = null;
         if (yesterdayUsageQuery.data) {
-            let seconds = 0;
-            yesterdayUsageQuery.data.forEach((app) => {
-                if (classify(app.name) === 'focus') seconds += app.seconds;
-            });
-            yesterdayFocusSeconds = seconds;
+            yesterdayFocusSeconds = computeFocusScore(yesterdayUsageQuery.data, classify).focusSeconds;
         }
 
         return buildDigest({
@@ -398,11 +377,14 @@ export function useDashboardData(timeRange: TimeRange) {
             appUsage: unifiedAppUsage ?? [],
             previousFocusSeconds: yesterdayFocusSeconds,
         });
-    }, [unifiedAppUsage, unifiedTimeline, focusSessions, classify, yesterdayUsageQuery.data]);
+    }, [unifiedAppUsage, unifiedTimeline, focusSessions, classify, yesterdayUsageQuery.data, focusBreakdown]);
 
     return {
         stats,
         rawStats: unifiedStats,
+        /** Share of classified app time spent in focus apps — one owner, see utils/focusScore.ts */
+        focusScore: focusBreakdown.score,
+        focusBreakdown,
         // Pass raw SECONDS to the sidebar. The chart-only formatter
         // (formatAppUsageForChart) converts to minutes and must NOT be used here.
         appUsage: (unifiedAppUsage ?? []).map(({ name, seconds }) => ({ name, value: seconds })),
