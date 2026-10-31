@@ -81,7 +81,7 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   Nothing in the UI signals that data was dropped.
 
 ## D-012 · Query errors degrade to zero instead of surfacing
-**2026-08-13 · Active · [code]** `database.rs:232-291`
+**2026-08-13 · Superseded by D-025 · [code]** `database.rs:232-291`
 - `unwrap_or(0)` on each aggregate, `unwrap_or_default()` on each read in `tracker.rs`.
 - Why: a failed widget should not blank a screen.
 - Consequence: a schema or lock problem looks exactly like "you did nothing today". Pairs with D-008 —
@@ -249,3 +249,24 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   the release log, and tracking resumed at full rate afterwards (52 snapshots in the following minute).
 - Consequence: a bug report can now carry one file from `logs/`. The log is machine-wide like the database, and
   `Info` is the floor — anything per-tick belongs at `debug!`.
+
+## D-025 · A degraded read names itself: keep the fallback, remove the silence
+**2026-10-31 · Active · [code] · supersedes D-012**
+- Every read that can fail now goes through one of two thin helpers: `database::degrade(what, result, fallback)`
+  for a single query, and `Tracker::read(what, fallback, |conn| …)` for a whole getter — the latter also catches a
+  poisoned mutex, which used to return an empty list. Both log `warn` with the failing query's name and the driver
+  message, then return the fallback unchanged.
+- The fallback stays. A failed widget must not blank a screen (D-012's original reason still holds); what changes
+  is that the failure now leaves a trace.
+- Reads that **gate work** no longer degrade at all: the `active_seconds` backfill and the process-name
+  normalisation count their pending rows with `?`, because a failed count would silently skip a migration.
+- `app_limits` no longer parses with `unwrap_or_default()` — a malformed setting used to disable the distraction
+  guard without a word. The per-tick parses (blacklist, redacted keywords) stay silent on purpose: a warn per
+  second would bury the signal, and they are re-parsed from the same cached value.
+- Verified against a genuine failed read in a release build: a stub database whose `activity_snapshots` has no
+  `is_idle` column produced
+  `[WARN] Query failed [daily active seconds]: no such column: is_idle … reporting a default so the surface stays readable`,
+  the dashboard still rendered (Screen Time 4 h 21 m, Focus Flow drawn, app bars populated), and the swap was
+  rolled back byte-for-byte — 3,070,676 snapshots / 62,408 events / 2,007,210 s verified identical before and
+  after, ~71 s of capture lost during the swap.
+- Consequence: a broken read costs one log line instead of a day of unexplained zeros.

@@ -39,6 +39,9 @@ from a different source, that is a defect — pick one owner and delete the othe
 - Win32 identification failures must not become data. "Unknown" is a boundary failure wearing a value
   (`windows_api.rs:69-101`) — surface it as unattributed, do not classify it silently.
 - Settings arrive as arbitrary JSON; validate keys rather than trusting the caller (`commands.rs:152`).
+- A read that can fail degrades **loudly**: `database::degrade(what, …)` for one query, `Tracker::read(what, …)`
+  for a whole getter — both keep the fallback and log `warn` naming the query. A bare `unwrap_or(0)` on a query
+  is a defect, and a count that gates work (a migration) must propagate instead (D-025).
 
 ## 1.4 Every cap carries a truncation signal
 

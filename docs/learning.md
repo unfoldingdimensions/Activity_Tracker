@@ -122,3 +122,10 @@ embedded assets. Nothing failed; the user found it.
 **Rule:** verify the surface the user actually sees — capture the window — before calling a UI-affecting change
 done. Database evidence covers the backend only, and the two can disagree for hours without a single failing
 assertion.
+
+### L-15 · A writer-only fault never exercises a read path
+Holding `BEGIN EXCLUSIVE` on the live database made every insert fail and logged `database is locked`, yet the
+read paths produced **zero** warnings — the database is in WAL mode, and readers do not block on writers. The
+probe looked like proof the new warning code did not work; it was proof the injection could not reach the code.
+**Rule:** to test a read path, break what the read depends on — a column, a table, the schema — not the lock. And
+name the failure a probe actually provoked before quoting it as evidence.

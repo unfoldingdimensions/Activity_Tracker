@@ -101,19 +101,36 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
     // separately from CREATE TABLE so existing databases pick it up; rows recorded
     // before this point keep NULL and are filled by
     // `backfill_window_event_active_seconds` once, at startup.
-    let has_active_seconds: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM pragma_table_info('window_events') WHERE name = 'active_seconds'",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap_or(0);
+    let has_active_seconds: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM pragma_table_info('window_events') WHERE name = 'active_seconds'",
+        [],
+        |row| row.get(0),
+    )?;
     if has_active_seconds == 0 {
         conn.execute("ALTER TABLE window_events ADD COLUMN active_seconds INTEGER", [])?;
         log::info!("Migrated window_events: added active_seconds");
     }
 
     Ok(())
+}
+
+/// Log a failed read and continue with a fallback value.
+///
+/// Reads deliberately degrade rather than blanking a surface (D-012), but a silent
+/// zero is indistinguishable from an idle day. Now that release builds log (D-024),
+/// every degraded read says so at `warn` — the behaviour stays, the silence does not.
+pub fn degrade<T>(what: &str, result: Result<T>, fallback: T) -> T {
+    match result {
+        Ok(value) => value,
+        Err(e) => {
+            log::warn!(
+                "Query failed [{}]: {} — reporting a default so the surface stays readable",
+                what,
+                e
+            );
+            fallback
+        }
+    }
 }
 
 /// Fill `active_seconds` for window events recorded before the column existed.
@@ -129,13 +146,12 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
 /// timestamp index. Measured ~9 s for 62k events, run once at startup before the
 /// tracking loop starts, so it never stalls capture.
 pub fn backfill_window_event_active_seconds(conn: &Connection) -> Result<usize> {
-    let pending: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM window_events WHERE active_seconds IS NULL",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap_or(0);
+    // A failed count would silently skip the whole backfill, so this one propagates.
+    let pending: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM window_events WHERE active_seconds IS NULL",
+        [],
+        |row| row.get(0),
+    )?;
     if pending == 0 {
         return Ok(0);
     }
@@ -167,21 +183,18 @@ pub fn backfill_window_event_active_seconds(conn: &Connection) -> Result<usize> 
 /// `process_name <> lower(process_name)` matches nothing. Returns
 /// `(app_usage rows folded away, window_events rows relabelled)`.
 pub fn normalise_process_names(conn: &Connection) -> Result<(usize, usize)> {
-    let pending: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM app_usage WHERE process_name <> lower(process_name)",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap_or(0);
+    // Counted reads that gate a migration propagate: a silent 0 would skip the work.
+    let pending: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM app_usage WHERE process_name <> lower(process_name)",
+        [],
+        |row| row.get(0),
+    )?;
 
-    let events_pending: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM window_events WHERE process_name <> lower(process_name)",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap_or(0);
+    let events_pending: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM window_events WHERE process_name <> lower(process_name)",
+        [],
+        |row| row.get(0),
+    )?;
 
     if pending == 0 && events_pending == 0 {
         return Ok((0, 0));
@@ -367,29 +380,38 @@ pub fn get_daily_stats(
     end_timestamp: &str    // UTC end (ISO 8601)
 ) -> Result<Option<DailyStats>> {
     // Active/Idle seconds from per-second activity snapshots
-    let total_active: u32 = conn.query_row(
-        "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 0",
-        [start_timestamp, end_timestamp],
-        |row| row.get(0),
-    ).unwrap_or(0);
+    let total_active: u32 = degrade(
+        "daily active seconds",
+        conn.query_row(
+            "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 0",
+            [start_timestamp, end_timestamp],
+            |row| row.get(0),
+        ),
+        0,
+    );
 
     // Get idle count from activity snapshots for the UTC range
-    let idle_count: u32 = conn.query_row(
-        "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 1",
-        [start_timestamp, end_timestamp],
-        |row| row.get(0),
-    ).unwrap_or(0);
+    let idle_count: u32 = degrade(
+        "daily idle seconds",
+        conn.query_row(
+            "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 1",
+            [start_timestamp, end_timestamp],
+            |row| row.get(0),
+        ),
+        0,
+    );
     
     // Get input totals for the UTC range
-    let (total_keystrokes, total_mouse_clicks, total_mouse_distance): (u32, u32, u32) = conn.query_row(
-        "SELECT COALESCE(SUM(keystrokes), 0), COALESCE(SUM(mouse_clicks), 0), COALESCE(SUM(mouse_distance), 0) 
-         FROM input_activity WHERE timestamp >= ?1 AND timestamp <= ?2",
-        [start_timestamp, end_timestamp],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))
-    ).map_err(|e| {
-        log::error!("Error getting input stats: {:?}", e);
-        e
-    }).unwrap_or((0, 0, 0));
+    let (total_keystrokes, total_mouse_clicks, total_mouse_distance): (u32, u32, u32) = degrade(
+        "daily input totals",
+        conn.query_row(
+            "SELECT COALESCE(SUM(keystrokes), 0), COALESCE(SUM(mouse_clicks), 0), COALESCE(SUM(mouse_distance), 0) 
+             FROM input_activity WHERE timestamp >= ?1 AND timestamp <= ?2",
+            [start_timestamp, end_timestamp],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        ),
+        (0, 0, 0),
+    );
 
     // If no data yet, return None
     if total_active == 0 && idle_count == 0 && total_keystrokes == 0 {
@@ -412,25 +434,37 @@ pub fn get_stats_range(
     end_timestamp: &str
 ) -> Result<DailyStats> {
     // Active/Idle from snapshots
-    let active_count: u32 = conn.query_row(
-        "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 0",
-        [start_timestamp, end_timestamp],
-        |row| row.get(0)
-    ).unwrap_or(0);
+    let active_count: u32 = degrade(
+        "range active seconds",
+        conn.query_row(
+            "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 0",
+            [start_timestamp, end_timestamp],
+            |row| row.get(0),
+        ),
+        0,
+    );
 
-    let idle_count: u32 = conn.query_row(
-        "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 1",
-        [start_timestamp, end_timestamp],
-        |row| row.get(0)
-    ).unwrap_or(0);
+    let idle_count: u32 = degrade(
+        "range idle seconds",
+        conn.query_row(
+            "SELECT COUNT(*) FROM activity_snapshots WHERE timestamp >= ?1 AND timestamp <= ?2 AND is_idle = 1",
+            [start_timestamp, end_timestamp],
+            |row| row.get(0),
+        ),
+        0,
+    );
 
     // Inputs from input_activity
-    let (total_keystrokes, total_mouse_clicks, total_mouse_distance): (u32, u32, u32) = conn.query_row(
-        "SELECT COALESCE(SUM(keystrokes), 0), COALESCE(SUM(mouse_clicks), 0), COALESCE(SUM(mouse_distance), 0) 
-         FROM input_activity WHERE timestamp >= ?1 AND timestamp <= ?2",
-        [start_timestamp, end_timestamp],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))
-    ).unwrap_or((0, 0, 0));
+    let (total_keystrokes, total_mouse_clicks, total_mouse_distance): (u32, u32, u32) = degrade(
+        "range input totals",
+        conn.query_row(
+            "SELECT COALESCE(SUM(keystrokes), 0), COALESCE(SUM(mouse_clicks), 0), COALESCE(SUM(mouse_distance), 0) 
+             FROM input_activity WHERE timestamp >= ?1 AND timestamp <= ?2",
+            [start_timestamp, end_timestamp],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        ),
+        (0, 0, 0),
+    );
 
     Ok(DailyStats {
         total_active_seconds: active_count,

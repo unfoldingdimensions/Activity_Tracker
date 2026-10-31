@@ -66,7 +66,14 @@ fn check_app_limits(
             return;
         };
         match guard.get("app_limits") {
-            Some(value) => serde_json::from_value(value.clone()).unwrap_or_default(),
+            Some(value) => match serde_json::from_value(value.clone()) {
+                Ok(limits) => limits,
+                Err(e) => {
+                    // A malformed setting used to disable the distraction guard silently.
+                    log::warn!("Settings [app_limits] could not be parsed: {}", e);
+                    return;
+                }
+            },
             None => return,
         }
     };
@@ -191,6 +198,22 @@ fn redact_title(title: &str, keywords: &[String]) -> String {
         }
     }
     out
+}
+
+/// UTC ISO bounds covering the current **local** day.
+///
+/// Every "today" read goes through this range; two getters used to compute it inline,
+/// which is the kind of copy that drifts when one of them is fixed (D-012 pass).
+fn local_day_bounds() -> (String, String) {
+    let today = chrono::Local::now().date_naive();
+    let start = today.and_hms_opt(0, 0, 0).unwrap();
+    let end = today.and_hms_opt(23, 59, 59).unwrap();
+    let start_utc = chrono::Local.from_local_datetime(&start).unwrap().with_timezone(&chrono::Utc);
+    let end_utc = chrono::Local.from_local_datetime(&end).unwrap().with_timezone(&chrono::Utc);
+    (
+        start_utc.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        end_utc.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+    )
 }
 
 /// The main tracker state
@@ -730,104 +753,92 @@ impl Tracker {
         self.current_window.lock().unwrap().clone()
     }
 
+    /// Run a read against the database, warning instead of failing silently.
+    ///
+    /// A failed query and a poisoned mutex (another thread panicked) both used to
+    /// collapse into an empty result with no trace, which is indistinguishable from an
+    /// idle day (D-012). The fallback still keeps the surface readable; it just says so
+    /// now that release builds log (D-024).
+    fn read<T>(
+        &self,
+        what: &str,
+        fallback: T,
+        query: impl FnOnce(&Connection) -> rusqlite::Result<T>,
+    ) -> T {
+        match self.db.lock() {
+            Ok(conn) => database::degrade(what, query(&conn), fallback),
+            Err(e) => {
+                log::warn!("Read failed [{}]: database mutex poisoned: {}", what, e);
+                fallback
+            }
+        }
+    }
+
     /// Get app usage for today
     pub fn get_today_app_usage(&self) -> Vec<(String, u32)> {
         let today = windows_api::get_today();
-        if let Ok(conn) = self.db.lock() {
-            database::get_app_usage(&conn, &today).unwrap_or_default()
-        } else {
-            Vec::new()
-        }
+        self.read("today's app usage", Vec::new(), |conn| {
+            database::get_app_usage(conn, &today)
+        })
     }
 
     /// Get daily stats for today (from local midnight to now)
     pub fn get_today_stats(&self) -> Option<database::DailyStats> {
-        // Calculate UTC boundaries for local "today"
-        let local_start = chrono::Local::now().date_naive().and_hms_opt(0, 0, 0).unwrap();
-        let local_end = chrono::Local::now().date_naive().and_hms_opt(23, 59, 59).unwrap();
-        
-        let start_utc = chrono::Local.from_local_datetime(&local_start).unwrap().with_timezone(&chrono::Utc);
-        let end_utc = chrono::Local.from_local_datetime(&local_end).unwrap().with_timezone(&chrono::Utc);
-
-        let start_iso = start_utc.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
-        let end_iso = end_utc.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
-
-        if let Ok(conn) = self.db.lock() {
-            database::get_daily_stats(&conn, &start_iso, &end_iso).unwrap_or(None)
-        } else {
-            None
-        }
+        let (start_iso, end_iso) = local_day_bounds();
+        self.read("today's stats", None, |conn| {
+            database::get_daily_stats(conn, &start_iso, &end_iso)
+        })
     }
-    
+
     /// Get activity timeline for today (from local midnight to now)
     pub fn get_today_timeline(&self) -> Vec<database::TimelineSegment> {
-        let local_start = chrono::Local::now().date_naive().and_hms_opt(0, 0, 0).unwrap();
-        let local_end = chrono::Local::now().date_naive().and_hms_opt(23, 59, 59).unwrap();
-        
-        let start_utc = chrono::Local.from_local_datetime(&local_start).unwrap().with_timezone(&chrono::Utc);
-        let end_utc = chrono::Local.from_local_datetime(&local_end).unwrap().with_timezone(&chrono::Utc);
-
-        let start_iso = start_utc.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
-        let end_iso = end_utc.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
-
-        if let Ok(conn) = self.db.lock() {
-            database::get_activity_timeline(&conn, &start_iso, &end_iso).unwrap_or_default()
-        } else {
-            Vec::new()
-        }
+        let (start_iso, end_iso) = local_day_bounds();
+        self.read("today's timeline", Vec::new(), |conn| {
+            database::get_activity_timeline(conn, &start_iso, &end_iso)
+        })
     }
-    
+
     /// Get recent window events
     pub fn get_recent_events(&self) -> Vec<database::WindowEvent> {
-        if let Ok(conn) = self.db.lock() {
-             database::get_recent_window_events(&conn).unwrap_or_default()
-        } else {
-            Vec::new()
-        }
+        self.read("recent events", Vec::new(), database::get_recent_window_events)
     }
 
     /// Get input history in range
     pub fn get_input_history_range(&self, start_iso: &str, end_iso: &str) -> Vec<database::InputHistoryEntry> {
-        if let Ok(conn) = self.db.lock() {
-             database::get_input_history_range(&conn, start_iso, end_iso).unwrap_or_default()
-        } else {
-            Vec::new()
-        }
+        self.read("input history", Vec::new(), |conn| {
+            database::get_input_history_range(conn, start_iso, end_iso)
+        })
     }
-    
+
     /// Get window events for process in range
     pub fn get_events_for_process_range(&self, process_name: &str, start: &str, end: &str) -> Vec<database::WindowEvent> {
-         if let Ok(conn) = self.db.lock() {
-             database::get_window_events_for_process_in_range(&conn, process_name, start, end).unwrap_or_default()
-         } else {
-             Vec::new()
-         }
+        self.read("events for app", Vec::new(), |conn| {
+            database::get_window_events_for_process_in_range(conn, process_name, start, end)
+        })
     }
 
     /// Get window events in range with pagination
     pub fn get_events_range_paginated(&self, start: &str, end: &str, limit: u32, offset: u32) -> Vec<database::WindowEvent> {
-         if let Ok(conn) = self.db.lock() {
-             database::get_window_events_in_range_paginated(&conn, start, end, limit, offset).unwrap_or_default()
-         } else {
-             Vec::new()
-         }
+        self.read("paginated events", Vec::new(), |conn| {
+            database::get_window_events_in_range_paginated(conn, start, end, limit, offset)
+        })
     }
 
     /// Get app usage in range
     pub fn get_app_usage_range(&self, start: &str, end: &str) -> Vec<(String, u32)> {
-         if let Ok(conn) = self.db.lock() {
-             database::get_app_usage_in_range(&conn, start, end).unwrap_or_default()
-         } else {
-             Vec::new()
-         }
+        self.read("app usage range", Vec::new(), |conn| {
+            database::get_app_usage_in_range(conn, start, end)
+        })
     }
 
     /// Clear all data
     pub fn clear_data(&self) -> Result<(), rusqlite::Error> {
-        if let Ok(conn) = self.db.lock() {
-            database::clear_database(&conn)
-        } else {
-            Ok(())
+        match self.db.lock() {
+            Ok(conn) => database::clear_database(&conn),
+            Err(e) => {
+                log::warn!("Clear failed: database mutex poisoned: {}", e);
+                Ok(())
+            }
         }
     }
 
@@ -837,20 +848,13 @@ impl Tracker {
     }
     /// Get user gamification stats
     pub fn get_user_stats(&self) -> Option<database::UserStats> {
-        if let Ok(conn) = self.db.lock() {
-            database::get_user_stats(&conn).ok()
-        } else {
-            None
-        }
+        // `get_user_stats` returning Err means "no stats row"; surface it as a warn.
+        self.read("user stats", None, |conn| database::get_user_stats(conn).map(Some))
     }
 
     /// Get unlocked achievements
     pub fn get_unlocked_achievements(&self) -> Vec<String> {
-        if let Ok(conn) = self.db.lock() {
-            database::get_unlocked_achievements(&conn).unwrap_or_default()
-        } else {
-            Vec::new()
-        }
+        self.read("achievements", Vec::new(), database::get_unlocked_achievements)
     }
 
 }
