@@ -520,3 +520,22 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   buy the memory back for nothing. Hover is not intent; click is.
 - **Unchanged:** GPU process (152–168 MB), browser, and utility processes exist for the main window; T1 does not
   touch them (T1b). Installer still bundles 8 files including `WebView2Loader.dll` (`7z l`).
+
+## D-036 · The tray popup showed every app duration 60× too long
+
+**2026-11-01 · Active · [ui] · found while verifying D-035**
+
+- **Symptom:** the popup's Top Application pill read **"26h 30m"** for `claude.exe` while Active Time for the same
+  view read "1h 21m". The database had 26 minutes for that app on that local day.
+- **Cause:** `appUsage[].value` is **seconds** at every producer (`app_usage.total_seconds` → query hooks →
+  `AppUsageSide` renders `formatDuration(app.value)`), and `formatDuration` takes seconds. `TrayPopup.tsx` rendered
+  `formatDuration(topApp.value * 60)` — as if the value were minutes — in **both** theme branches (glass and flat).
+- **Fix:** both call sites now pass the value unchanged. Nothing else reads that field.
+- **Test:** `src/pages/__tests__/trayPopupDuration.test.ts` — a `?raw` source guard, because a rendering test would
+  pass with `* 60` and no data attribute distinguishes "26m" from "26h". It fails if any `formatDuration(...)`
+  argument carrying an `appUsage` value is scaled, and it pins the pill to exactly two call sites so the duplicated
+  theme branches stay in step. Proven red by planting `* 60` back (message: *formatDuration received a scaled
+  appUsage value: topApp.value * 60*), then restored.
+- **Why it survived:** the popup is glance-only and its own totals (Active Time, Focus Score) come from the snapshot
+  path, so only the app list was wrong; nothing compares the two. Same class as the D-019 split — two surfaces
+  computing a duration from different assumptions about units.

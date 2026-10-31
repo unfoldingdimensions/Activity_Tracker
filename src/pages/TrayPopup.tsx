@@ -136,7 +136,7 @@ export function TrayPopup() {
                         <span className="label-mono">Top application</span>
                         {topApp && (
                             <span className="font-mono text-[10px] font-bold text-[var(--foreground)]">
-                                {formatDuration(topApp.value * 60)}
+                                {formatDuration(topApp.value)}
                             </span>
                         )}
                     </div>
@@ -268,7 +268,7 @@ export function TrayPopup() {
                         <h3 className="text-[10px] uppercase text-[var(--muted-foreground)] font-black tracking-widest opacity-60">Top Application</h3>
                         {topApp && (
                             <span className="text-[10px] font-display font-bold text-[var(--foreground)] px-2 py-0.5 bg-[var(--secondary)] rounded-full">
-                                {formatDuration(topApp.value * 60)}
+                                {formatDuration(topApp.value)}
                             </span>
                         )}
                     </div>
