@@ -25,15 +25,6 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            // Initialize logging in debug mode
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
-
             // Get app data directory for database
             // On Windows, use a shared directory across users
             #[cfg(target_os = "windows")]
@@ -51,6 +42,34 @@ pub fn run() {
 
             // Create directory if it doesn't exist
             std::fs::create_dir_all(&app_data_dir).expect("Failed to create data directory");
+
+            // Logging is configured in **every** build, not only debug (D-024).
+            // Without a logger, every `log::error!` on the write path is a no-op in the
+            // shipped app, which turns "the insert failed" into "you had an idle day" —
+            // that silence is how P2-1 stayed invisible. Logs sit next to the database
+            // so a bug report can carry one file.
+            let log_dir = app_data_dir.join("logs");
+            let mut log_targets = vec![tauri_plugin_log::Target::new(
+                tauri_plugin_log::TargetKind::Folder {
+                    path: log_dir.clone(),
+                    file_name: Some("activity-tracker".to_string()),
+                },
+            )];
+            if cfg!(debug_assertions) {
+                // Keep the console readable while developing.
+                log_targets.push(tauri_plugin_log::Target::new(
+                    tauri_plugin_log::TargetKind::Stdout,
+                ));
+            }
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .level(log::LevelFilter::Info)
+                    .targets(log_targets)
+                    // Bounded on disk: three files of at most 2 MB each.
+                    .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepSome(3))
+                    .max_file_size(2 * 1024 * 1024)
+                    .build(),
+            )?;
 
 
             // Initialize database

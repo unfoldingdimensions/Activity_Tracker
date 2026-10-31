@@ -498,9 +498,10 @@ impl Tracker {
                             log::error!("Failed to insert activity snapshot: {}", e);
                         }
 
-                        // Record input activity if any
+                        // Record input activity if any. Per-tick detail stays at debug so
+                        // the release log (D-024) carries events, not every second.
                         if input_counts.keystrokes > 0 || input_counts.mouse_clicks > 0 {
-                            log::info!("Tracker: Recording input - Keys: {}, Clicks: {}", input_counts.keystrokes, input_counts.mouse_clicks);
+                            log::debug!("Tracker: Recording input - Keys: {}, Clicks: {}", input_counts.keystrokes, input_counts.mouse_clicks);
                             if let Err(e) = database::insert_input_activity(
                                 &conn, 
                                 &timestamp, 

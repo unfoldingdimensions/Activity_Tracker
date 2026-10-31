@@ -63,8 +63,10 @@ not copy them; correct them when you are in the file.
 - `GetModuleBaseNameW` requires `PROCESS_VM_READ`, which elevated and packaged processes refuse — a
   `PROCESS_QUERY_LIMITED_INFORMATION` handle cannot resolve a name that way. `windows_api.rs` uses
   `QueryFullProcessImageNameW` with that same limited handle; keep it that way (D-020).
-- Release builds register no logger (`lib.rs:29-35`) — a write-path error is invisible in the shipped app.
-  Verify against a release build before declaring a failure path fixed (`docs/learning.md` L-09).
+- The logger is registered in **every** build (`lib.rs` setup, D-024): `Info` into
+  `%ProgramData%\ActivityTracker\logs\activity-tracker.log`, three files × 2 MB, stdout in debug builds only.
+  Anything per-tick belongs at `debug!` — an error path that appears only in debug builds is not an error path
+  (`docs/learning.md` L-09).
 - Gate commands: `npm run test:run`, `npm run lint`, `npm run build` (`tsc -b && vite build`). They are green
   as of 2026-10-31: 101 tests / 10 files, lint and build clean.
 - **Release artifacts come from `npm run tauri build`** (or `cargo build --release --features

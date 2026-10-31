@@ -125,5 +125,6 @@ binding: a second derivation of the same number is a defect, not an optimisation
 - **Two resident WebView2 windows** (main + hidden tray popup, `tauri.conf.json`), the dominant idle RAM floor.
 - **God files**: `pages/Settings.tsx` 910, `tracker.rs` 846, `pages/Timeline.tsx` 595, `pages/Tools.tsx` 570.
 - **No Rust test suite.** Zero `#[cfg(test)]` in `src-tauri/src`; all 88 tests are frontend.
-- **No logger in release builds** (`lib.rs:29-35` registers `tauri-plugin-log` only under
-  `cfg!(debug_assertions)`), so `log::error!` on the write path is a no-op in the shipped app.
+- **Logs** live at `%ProgramData%\ActivityTracker\logs\activity-tracker.log`, bounded at three files of 2 MB.
+  Logging is registered in **every** build (D-024); per-tick detail stays at `debug!`, so the file carries app
+  switches, cleanup runs, unlocks and errors rather than every second.

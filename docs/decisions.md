@@ -57,7 +57,7 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
 - Consequence: XP is a linear function of active minutes, so it is a second (redundant) copy of screen time.
 
 ## D-008 · Release builds register no logger
-**2026-08-13 · Under review · [code]** `lib.rs:29-35`
+**2026-08-13 · Superseded by D-024 · [code]** `lib.rs:29-35`
 - Why: keeps the shipped binary quiet and smaller; the memory review recorded it as "release-safe".
 - Consequence: every `log::error!` on the write path is a no-op in the shipped app, so a failed insert is
   invisible. Raising this is a decision to make before debugging any "my data is missing" report.
@@ -233,3 +233,19 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   Re-check after any Tauri upgrade — `7z l "<setup>.exe"` must still list `activity-tracker-v2.exe` **and**
   `WebView2Loader.dll` — and keep the vendored DLL in step with the `webview2-com`/`windows` versions in
   `Cargo.lock`.
+
+## D-024 · Logging is configured in every build, into a bounded file next to the database
+**2026-10-31 · Active · [code] · supersedes D-008**
+- `setup()` registers `tauri-plugin-log` unconditionally: level `Info`, target
+  `TargetKind::Folder { %ProgramData%\ActivityTracker\logs, "activity-tracker" }`, rotation `KeepSome(3)` at
+  2 MB per file, plus stdout in debug builds only.
+- The per-tick `Recording input` line is `debug!` now, so the release log carries events — app switches, cleanup
+  runs, streak/achievement unlocks, errors — instead of thousands of lines a minute.
+- Why: with no logger in release, every `log::error!` on the write path was a no-op, so a failed insert looked
+  exactly like an idle day. That silence is what let this session's faults (dev-mode binary, name migration,
+  idle-inflated durations) hide behind green database counts (P2-1, L-09).
+- Verified by injection rather than by the file existing: a `BEGIN EXCLUSIVE` lock held for 8 s produced
+  `[2026-10-31][08:38:15][app_lib::tracker][ERROR] Failed to insert activity snapshot: database is locked` in
+  the release log, and tracking resumed at full rate afterwards (52 snapshots in the following minute).
+- Consequence: a bug report can now carry one file from `logs/`. The log is machine-wide like the database, and
+  `Info` is the floor — anything per-tick belongs at `debug!`.
