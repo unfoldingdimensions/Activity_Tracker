@@ -63,6 +63,92 @@ fn reveal_main_window(app: &tauri::AppHandle) {
     }
 }
 
+/// The tray popup is created on first open, not at launch.
+///
+/// Declared in `tauri.conf.json` it was a second resident webview from startup: a renderer
+/// committing ~38 MB and holding a window most sessions never open (D-034 measured it). The
+/// builder is the only place the popup's window options live now — `tauri.conf.json` no longer
+/// describes it, so there is nothing left to drift from this function.
+const TRAY_WINDOW_LABEL: &str = "tray";
+const TRAY_WINDOW_PATH: &str = "/tray";
+
+/// The popup window, created on first call and reused after that.
+///
+/// Returns `None` only if Chromium refuses to create the window — logged, not panicked, because
+/// a missing popup must not take down the recorder.
+fn tray_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
+    if let Some(existing) = app.get_webview_window(TRAY_WINDOW_LABEL) {
+        return Some(existing);
+    }
+
+    let started = std::time::Instant::now();
+    let window = match tauri::WebviewWindowBuilder::new(
+        app,
+        TRAY_WINDOW_LABEL,
+        tauri::WebviewUrl::App(TRAY_WINDOW_PATH.into()),
+    )
+    .title("Activity Tracker")
+    .inner_size(380.0, 540.0)
+    .decorations(false)
+    .transparent(true)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .resizable(false)
+    .visible(false)
+    .background_color(tauri::window::Color(12, 10, 9, 255))
+    .build()
+    {
+        Ok(window) => window,
+        Err(err) => {
+            log::error!("Failed to create the tray window: {err}");
+            return None;
+        }
+    };
+
+    // Click-outside-to-close belongs to the window it applies to: attached here, it cannot be
+    // attached for one creation path and forgotten for another.
+    let hiding = window.clone();
+    window.on_window_event(move |event| {
+        if let tauri::WindowEvent::Focused(false) = event {
+            log::debug!("Tray window lost focus - hiding");
+            let _ = hiding.hide();
+        }
+    });
+
+    log::info!(
+        "Tray window created on first open in {} ms",
+        started.elapsed().as_millis()
+    );
+    Some(window)
+}
+
+/// Show the popup above the taskbar, or hide it if it is already visible.
+fn toggle_tray_window(app: &tauri::AppHandle) {
+    let Some(window) = tray_window(app) else {
+        return;
+    };
+
+    if window.is_visible().unwrap_or(false) {
+        let _ = window.hide();
+        return;
+    }
+
+    // Position bottom right
+    use tauri_plugin_positioner::{Position, WindowExt};
+    let _ = window.move_window(Position::BottomRight);
+
+    // Manually offset up by ~50-60 pixels to avoid taskbar overlap
+    if let Ok(pos) = window.outer_position() {
+        let _ = window.set_position(tauri::PhysicalPosition {
+            x: pos.x,
+            y: pos.y - 60,
+        });
+    }
+
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
 /// Point the autostart entry at the executable that is actually installed.
 ///
 /// `auto-launch` writes `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\<app name>` and
@@ -271,28 +357,7 @@ pub fn run() {
                         button_state: tauri::tray::MouseButtonState::Up, // Only trigger on release
                         .. 
                      } = event {
-                        let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("tray") {
-                             let is_visible = window.is_visible().unwrap_or(false);
-                             if is_visible {
-                                 let _ = window.hide();
-                             } else {
-                                // Position bottom right
-                                use tauri_plugin_positioner::{WindowExt, Position};
-                                let _ = window.move_window(Position::BottomRight);
-                                
-                                // Manually offset up by ~50-60 pixels to avoid taskbar overlap
-                                if let Ok(pos) = window.outer_position() {
-                                    let _ = window.set_position(tauri::PhysicalPosition {
-                                        x: pos.x,
-                                        y: pos.y - 60, // Lift it above standard taskbar
-                                    });
-                                }
-                                
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                             }
-                        }
+                        toggle_tray_window(tray.app_handle());
                      }
                  })
                  .build(&handle);
@@ -321,17 +386,6 @@ pub fn run() {
                             }
                         }
                         _ => {}
-                    }
-                });
-            }
-
-            // Configure tray window behavior - hide on blur (click outside)
-            if let Some(tray_window) = app.get_webview_window("tray") {
-                let tray_window_clone = tray_window.clone();
-                tray_window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::Focused(false) = event {
-                        log::info!("Tray window lost focus - hiding");
-                        let _ = tray_window_clone.hide();
                     }
                 });
             }

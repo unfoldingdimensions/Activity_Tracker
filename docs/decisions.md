@@ -485,3 +485,38 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   why T3/T4 are small and T2 is a stall-avoidance fix rather than a speed fix.
 - **Rule this establishes:** a memory plan item must name the process or object graph it expects to shrink. "It
   holds a cache" is not evidence; a per-process table is.
+
+## D-035 · The tray popup is created on first open
+
+**2026-11-01 · Active · [windows] · implements T1 of D-033/D-034**
+
+- **Before:** `tauri.conf.json` declared a second window (`label: tray`, `/tray`, 380×540, transparent,
+  always-on-top, hidden). Chromium started its renderer at launch and kept it for the session: measured 38.2 MB
+  of commit charge, 2.8 MB of JS and 140 DOM nodes for a popup most sessions never open.
+- **After:** only `main` is declared. `lib.rs::tray_window()` builds the popup on the first left-click with
+  `WebviewWindowBuilder` — same URL (`WebviewUrl::App("/tray")` resolves to `http://tauri.localhost/tray`, the
+  same document the config produced), same size, decorations, transparency, always-on-top, skip-taskbar,
+  background colour, the same positioner call and the same −60 px lift. The click-outside hide handler moved into
+  that factory, so the only path that creates the window is also the one that attaches it.
+- **Measured, private working set of the app plus its owned WebView2 tree:**
+
+  | state | webview children | owned PWS | total |
+  |---|---|---|---|
+  | before T1, idle-hidden | 7 | 215.9 MB | 233.3 MB |
+  | after T1, popup never opened | **6** | 181.1 MB | **196.9 MB** |
+  | after T1, popup opened once | 7 | 214.0 MB | 231.7 MB |
+
+  **−36.4 MB (−15.6 %)** for a session that never opens the popup. The third row is the attribution proof: opening
+  it once brings the seventh process and the 35 MB back, which is exactly the renderer D-034 said it was.
+- **Cost of the change:** the first open pays window + webview creation, measured **931 ms** ("Tray window created
+  on first open in 931 ms"). It was the one acceptance number this task missed — 800 ms was the guess in the plan;
+  the honest number is ~0.9 s, once per session. Every later toggle is instant: measured `before=False after=True`
+  then `before=True after=False` through the tray button.
+- **Retained deliberately:** once created the popup is hidden, never destroyed, so the 35 MB returns for the rest
+  of that session. Destroying on hide would recover it but charge ~0.9 s on *every* open, which is worse for the
+  popup's actual use (a glance). Recorded so the trade-off is not re-litigated.
+- **Rejected:** pre-creating on tray-icon `Enter` (hover). It would make the first click instant, but on this
+  machine's left-docked taskbar the icon sits directly in the mouse path to the clock, so an accidental hover would
+  buy the memory back for nothing. Hover is not intent; click is.
+- **Unchanged:** GPU process (152–168 MB), browser, and utility processes exist for the main window; T1 does not
+  touch them (T1b). Installer still bundles 8 files including `WebView2Loader.dll` (`7z l`).

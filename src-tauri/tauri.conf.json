@@ -20,19 +20,6 @@
         "fullscreen": false,
         "visible": true,
         "backgroundColor": "#0c0a09"
-      },
-      {
-        "label": "tray",
-        "url": "/tray",
-        "width": 380,
-        "height": 540,
-        "decorations": false,
-        "transparent": true,
-        "alwaysOnTop": true,
-        "visible": false,
-        "skipTaskbar": true,
-        "resizable": false,
-        "backgroundColor": "#0c0a09"
       }
     ],
     "security": {

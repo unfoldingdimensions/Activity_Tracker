@@ -49,7 +49,7 @@ what produced the `"Unknown"` bucket of 45 h (D-020).
 | Cleanup thread | checks 60 s, runs every 24 h | `tracker.rs:382-431` | retention deletes (skipped when `retention_days = 0`) |
 | Power sampler | 5 s | `tracker.rs:255-284` | top-15 CPU processes via `sysinfo` |
 | Icon extraction | per request | `commands.rs:500-523` | `spawn_blocking` so icon work never stalls the UI |
-| Tray builder | once | `lib.rs:80-134` | tray icon, menu (Open Dashboard / Quit), popup positioning |
+| Tray builder | once | `lib.rs:77-190` | tray icon, menu (Open Dashboard / Quit); the popup window is created on first click, not here (D-035) |
 | Single-instance guard | once, before anything else | `lib.rs:20-35` | decides whether this process is the instance at all (D-026) |
 
 Shared state is `AppState { tracker: Mutex<Tracker> }` (`commands.rs:15-17`). Inside `Tracker`:
@@ -131,7 +131,9 @@ binding: a second derivation of the same number is a defect, not an optimisation
   `clear_data` is bounded now — one transaction, `VACUUM`, `wal_checkpoint(TRUNCATE)`, measured 0.21 s total, so
   the loop loses at most one tick (D-027). `VACUUM` from anywhere else still holds the mutex for its duration;
   the startup vacuum in `lib.rs` runs before the loop starts for exactly that reason.
-- **Two resident WebView2 windows** (main + hidden tray popup, `tauri.conf.json`), the dominant idle RAM floor.
+- **One resident WebView2 window at startup** (main, `tauri.conf.json`); the tray popup is built on first click
+  (`lib.rs` `tray_window()`), so a session that never opens it never pays its renderer (D-035). After the popup has
+  been opened once it stays resident for the rest of the session — it is hidden, not destroyed.
 - **God files**: `pages/Settings.tsx` 910, `tracker.rs` 846, `pages/Timeline.tsx` 595, `pages/Tools.tsx` 570.
 - **No Rust test suite.** Zero `#[cfg(test)]` in `src-tauri/src`; all 88 tests are frontend.
 - **Logs** live at `%ProgramData%\ActivityTracker\logs\activity-tracker.log`, bounded at three files of 2 MB.
