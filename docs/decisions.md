@@ -105,7 +105,7 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
 - Recorded in `AGENTS.md` §1.8 as the binding form of this rule.
 
 ## D-016 · Memory/performance plan approved but not implemented
-**2026-08-17 · Open · [plan] `.hermes/plans/2026-08-17_133000-memory-leak-review-optimization.md`**
+**2026-08-17 · Superseded by D-033 · [plan] `.hermes/plans/2026-08-17_133000-memory-leak-review-optimization.md`**
 - Open Questions marked RESOLVED on 2026-08-17 (full plan, Phases 0-5, lazy tray window, load-more
   pagination, export streaming).
 - Verified 2026-10-31: none of the nine code items has landed — `limit_notified` still unpruned,
@@ -430,3 +430,27 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
     means changing that label in the same commit.
 - Consequence: the file grows ~1.2 GB/year and is never reclaimed. `clear all data` (D-027) remains the only bulk
   delete, and it is the answer for anyone who wants the space back.
+
+## D-033 · The memory plan is re-ranked against measurements, not inspection
+**2026-11-01 · Active · [plan] · supersedes D-016**
+- D-016's plan was re-measured on the shipped build and revised to
+  `.hermes/plans/2026-11-01_d016-revised-plan.md` (local, untracked like the other plans — this entry is the
+  durable record of why it changed).
+- **Baseline** from the repo's own harness (`scripts/mem-snapshot.ps1`, Private Working Set of the app plus its
+  owned WebView2 tree): 2026-08-17 **134.4 MB** → 2026-11-01 **232.4 MB** with the same 7 processes —
+  **+98 MB / +73 % in 2.5 months**, and unattributed. Idle working set is 528 MB (46 MB process, 482 MB webviews);
+  idle CPU 0.86 % of one core.
+- **Re-ranked by measurement.** The only items that move three-digit megabytes or lose recordings are the two
+  webview/export ones. Three items the Aug-17 plan called *High* measure at noise: the focus calendar's
+  whole-table fetch is **1 ms / 58 KB** per refetch, the per-app drill-down **91 ms / 1.18 MB** (its rendering was
+  already batched by D-017), and the pragma work moves **reads by nothing**.
+- **Kept because it was measured and would otherwise be re-derived:** `synchronous=NORMAL` takes a commit from
+  **1.61 ms to 0.46 ms (−71 %)**, while `cache_size`/`mmap` gain **0 %** because the hot set already fits in 2 MB.
+  The profile tuning is a **binary-size** win (36.3 MB), not a CPU win — the loop is 0.86 % of a core.
+- **Work list** (three structural, four cheap, three hygiene, in that order): T0.1–T0.3 attribution and probes;
+  T1 lazy tray window; T2 stream the export; T3 bound the drill-down; T4 pragmas; T5 release profile; T6 icon cap;
+  T7a–c the small leaks; T8 settings whitelist; T9 dead path; T10 input-history churn.
+- **Why attribution comes first:** four of the remaining tasks are cache-size claims. A DevTools heap snapshot
+  either shows them in the retained set or kills them, and it is the only way to explain +98 MB.
+- Consequence: no task in the list is accepted on a code diff — each carries a before/after number from
+  `mem-snapshot.ps1` or the query probes.
