@@ -75,6 +75,11 @@ not copy them; correct them when you are in the file.
 - **The database is not the app.** A green `activity_snapshots` stream proves the capture loop, not the UI.
   Capture the window itself (`PrintWindow` with `PW_RENDERFULLCONTENT`, after `ShowWindow(SW_RESTORE)` since
   the app starts minimised) before claiming a user-visible change works.
+- **Inspect the bundle, do not assume it.** The NSIS setup must contain `WebView2Loader.dll`
+  (`7z l "<setup>.exe"` → 8 files). tauri-bundler ships only the app binary, so the DLL is vendored at
+  `src-tauri/WebView2Loader.dll` and declared in `bundle.resources`; without it every install launches with
+  "cannot proceed because WebView2Loader.dll was not found" (D-023). `bundle.targets` is `["nsis"]` because the
+  MSI step needs WiX, which is not available offline here.
 - **Rust tests exist but cannot run on this machine yet.** `database.rs` carries the first Rust tests
   (`#[cfg(test)]`, backfill + schema). `cargo check --all-targets` is clean, but `cargo test --lib` fails at
   **process load** with `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139) before any test output — a GNU-toolchain
