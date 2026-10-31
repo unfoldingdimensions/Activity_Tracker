@@ -177,3 +177,13 @@ like it had lost rows, when all it had lost was 284 integers. `INSERT OR IGNORE`
 before it discovers the conflict, so the surrogate recorded every *attempt*.
 **Rule:** pick one identity. If a natural key exists and is UNIQUE, the surrogate adds nothing but gaps — and gaps
 in a counter that nothing uses are indistinguishable from data loss to whoever reads them next.
+
+### L-22 · Take a copy before driving a UI that holds data you cannot regenerate
+Automating the export path meant clicking a button by coordinate. The click landed on **"Delete everything"**,
+80 px away in the same Settings section, and cleared three months of the live database. It was recoverable only
+because a benchmark copy of the same file had been taken three minutes earlier: the damage was a 3 min 43 s hole
+in the snapshot stream instead of a lost history. Nothing about the click looked wrong — the script printed the
+coordinates and they were on screen.
+**Rule:** before automating a click in an app whose data you cannot regenerate, copy the data first, and print the
+target element's rect and text before firing, not just the point you clicked. A confirm dialog is not a safety net
+when the input that triggers it is synthetic.
