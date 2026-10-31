@@ -118,8 +118,11 @@ quietly becomes two.
 - **Retention**: cleanup thread runs every 24 h and deletes snapshots, input rows and window events older than
   `retention_days` (`tracker.rs:396-427`). `0` means keep forever — the current setting — so nothing is ever
   deleted and the file grows monotonically (~3.6 MB/day measured). `app_usage` is never pruned.
-- **Export**: `export_data` reads all three event tables into memory and writes CSV (three sections) or JSON
-  to a path chosen by the native dialog (`commands.rs:61-114`). Unbounded by design.
+- **Export**: `export_data` streams all three event tables out row by row on a **read-only connection of its
+  own** (`src/export.rs`, `commands.rs:49-95`), writing CSV (three sections) or JSON to a path chosen by the
+  native dialog. The tracker's mutex is held only to read the database path, so the 1 Hz recorder keeps running;
+  memory is flat regardless of history size (D-037). Output format is pinned by
+  `tests/fixtures/export-golden.*` and checked by `cargo run --example export_parity`.
 - **Clear**: `clear_data` deletes all activity rows, resets `user_stats`, runs `VACUUM`, and removes the icon
   cache directory (`commands.rs:441-461`, `database.rs:604-616`).
 

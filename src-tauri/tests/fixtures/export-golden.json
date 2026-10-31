@@ -1,0 +1,69 @@
+{
+  "app_usage": [
+    {
+      "date": "2026-10-30",
+      "process_name": "weird,\"name\".exe",
+      "total_seconds": 60
+    },
+    {
+      "date": "2026-10-30",
+      "process_name": "ünïcode-app.exe",
+      "total_seconds": 30
+    },
+    {
+      "date": "2026-10-31",
+      "process_name": "chrome.exe",
+      "total_seconds": 3600
+    },
+    {
+      "date": "2026-10-31",
+      "process_name": "claude.exe",
+      "total_seconds": 1200
+    }
+  ],
+  "exported_at": "FIXED",
+  "input_activity": [
+    {
+      "keystrokes": 10,
+      "mouse_clicks": 2,
+      "mouse_distance": 1500,
+      "timestamp": "2026-10-31T01:02:03.000Z"
+    },
+    {
+      "keystrokes": 0,
+      "mouse_clicks": 0,
+      "mouse_distance": 0,
+      "timestamp": "2026-10-31T01:03:03.000Z"
+    }
+  ],
+  "window_events": [
+    {
+      "active_seconds": 55,
+      "duration_seconds": 60,
+      "process_name": "chrome.exe",
+      "timestamp": "2026-10-31T01:02:03.000Z",
+      "window_title": "Title with, comma"
+    },
+    {
+      "active_seconds": null,
+      "duration_seconds": 120,
+      "process_name": "claude.exe",
+      "timestamp": "2026-10-31T01:03:03.000Z",
+      "window_title": null
+    },
+    {
+      "active_seconds": 200,
+      "duration_seconds": 240,
+      "process_name": "opera.exe",
+      "timestamp": "2026-10-31T01:05:03.000Z",
+      "window_title": "Line one\nLine two \"quoted\""
+    },
+    {
+      "active_seconds": 9,
+      "duration_seconds": 10,
+      "process_name": "ünïcode.exe",
+      "timestamp": "2026-10-31T01:09:03.000Z",
+      "window_title": "日本語のタイトル"
+    }
+  ]
+}

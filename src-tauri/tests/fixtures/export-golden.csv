@@ -1,0 +1,18 @@
+date,process_name,total_seconds
+2026-10-30,"weird,""name"".exe",60
+2026-10-30,ünïcode-app.exe,30
+2026-10-31,chrome.exe,3600
+2026-10-31,claude.exe,1200
+
+window_events
+timestamp,process_name,window_title,duration_seconds,active_seconds
+2026-10-31T01:02:03.000Z,chrome.exe,"Title with, comma",60,55
+2026-10-31T01:03:03.000Z,claude.exe,,120,
+2026-10-31T01:05:03.000Z,opera.exe,"Line one
+Line two ""quoted""",240,200
+2026-10-31T01:09:03.000Z,ünïcode.exe,日本語のタイトル,10,9
+
+input_activity
+timestamp,keystrokes,mouse_clicks,mouse_distance
+2026-10-31T01:02:03.000Z,10,2,1500
+2026-10-31T01:03:03.000Z,0,0,0

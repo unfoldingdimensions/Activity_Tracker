@@ -285,47 +285,14 @@ pub fn normalise_process_names(conn: &Connection) -> Result<(usize, usize)> {
 
 /// Read every stored app-usage row (date, process_name, total_seconds)
 pub fn get_all_app_usage(conn: &Connection) -> Result<Vec<(String, String, u32)>> {
-    let mut stmt = conn.prepare(
-        "SELECT date, process_name, total_seconds FROM app_usage ORDER BY date, total_seconds DESC"
-    )?;
+    let mut stmt = conn.prepare(crate::export::ALL_APP_USAGE_SQL)?;
     let rows = stmt.query_map([], |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, u32>(2)?))
     })?;
     rows.collect()
 }
 
-/// Read every stored window event (timestamp, process_name, window_title, duration, active)
-pub fn get_all_window_events(conn: &Connection) -> Result<Vec<(String, String, Option<String>, u32, Option<u32>)>> {
-    let mut stmt = conn.prepare(
-        "SELECT timestamp, process_name, window_title, duration_seconds, active_seconds FROM window_events ORDER BY timestamp"
-    )?;
-    let rows = stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, String>(0)?,
-            row.get::<_, String>(1)?,
-            row.get::<_, Option<String>>(2)?,
-            row.get::<_, u32>(3)?,
-            row.get::<_, Option<u32>>(4)?,
-        ))
-    })?;
-    rows.collect()
-}
 
-/// Read every stored input-activity row (timestamp, keystrokes, clicks, distance)
-pub fn get_all_input_activity(conn: &Connection) -> Result<Vec<(String, u32, u32, u32)>> {
-    let mut stmt = conn.prepare(
-        "SELECT timestamp, keystrokes, mouse_clicks, mouse_distance FROM input_activity ORDER BY timestamp"
-    )?;
-    let rows = stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, String>(0)?,
-            row.get::<_, u32>(1)?,
-            row.get::<_, u32>(2)?,
-            row.get::<_, u32>(3)?,
-        ))
-    })?;
-    rows.collect()
-}
 
 /// Write a single setting value (JSON text)
 pub fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<()> {

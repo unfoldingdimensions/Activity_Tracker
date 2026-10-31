@@ -1,0 +1,6 @@
+# Line endings are LF in this repo (see AGENTS.md §1.6); do not let a Windows checkout rewrite
+# files wholesale.
+
+# The export parity harness compares bytes, so these fixtures must be checked out exactly as
+# committed: no EOL conversion in either direction.
+src-tauri/tests/fixtures/* -text

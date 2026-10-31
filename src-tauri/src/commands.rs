@@ -46,18 +46,14 @@ pub fn hide_tray_window(app_handle: tauri::AppHandle) {
     }
 }
 
-/// Escape a field for CSV (quote + double inner quotes)
-fn csv_field(value: &str) -> String {
-    if value.contains(',') || value.contains('"') || value.contains('\n') {
-        format!("\"{}\"", value.replace('"', "\"\""))
-    } else {
-        value.to_string()
-    }
-}
-
 /// Export all tracking data as CSV or JSON to the given path.
 /// CSV contains three sheets joined by blank lines: app_usage, window_events,
 /// input_activity. JSON is a single snapshot object.
+///
+/// Streams the tables out on a read-only connection of its own. The shared connection used to be
+/// held for the whole job — 1.2 s of reading plus a 30 MB `String` — and the 1 Hz recorder waits on
+/// that mutex, so an export silently cost recorded seconds (D-037). The tracker is locked here only
+/// long enough to read the database path.
 #[tauri::command]
 pub fn export_data(state: State<AppState>, path: String, format: String) -> Result<(), String> {
     let db = {
@@ -66,52 +62,49 @@ pub fn export_data(state: State<AppState>, path: String, format: String) -> Resu
         };
         tracker.db.clone()
     };
-    let conn = db.lock().map_err(|e| e.to_string())?;
-
-    let app_usage = crate::database::get_all_app_usage(&conn).map_err(|e| e.to_string())?;
-    let window_events = crate::database::get_all_window_events(&conn).map_err(|e| e.to_string())?;
-    let input_activity = crate::database::get_all_input_activity(&conn).map_err(|e| e.to_string())?;
-
-    let contents = if format.eq_ignore_ascii_case("csv") {
-        let mut csv = String::from("date,process_name,total_seconds\n");
-        for (date, name, seconds) in &app_usage {
-            csv.push_str(&format!("{},{},{}\n", csv_field(date), csv_field(name), seconds));
-        }
-        csv.push_str("\nwindow_events\ntimestamp,process_name,window_title,duration_seconds,active_seconds\n");
-        for (timestamp, name, title, duration, active) in &window_events {
-            csv.push_str(&format!(
-                "{},{},{},{},{}\n",
-                csv_field(timestamp),
-                csv_field(name),
-                csv_field(title.as_deref().unwrap_or("")),
-                duration,
-                active.map(|s| s.to_string()).unwrap_or_default()
-            ));
-        }
-        csv.push_str("\ninput_activity\ntimestamp,keystrokes,mouse_clicks,mouse_distance\n");
-        for (timestamp, keys, clicks, distance) in &input_activity {
-            csv.push_str(&format!("{},{},{},{}\n", csv_field(timestamp), keys, clicks, distance));
-        }
-        csv
-    } else {
-        let snapshot = serde_json::json!({
-            "exported_at": chrono::Utc::now().to_rfc3339(),
-            "app_usage": app_usage.iter().map(|(date, name, seconds)| serde_json::json!({
-                "date": date, "process_name": name, "total_seconds": seconds
-            })).collect::<Vec<_>>(),
-            "window_events": window_events.iter().map(|(timestamp, name, title, duration, active)| serde_json::json!({
-                "timestamp": timestamp, "process_name": name, "window_title": title,
-                "duration_seconds": duration, "active_seconds": active
-            })).collect::<Vec<_>>(),
-            "input_activity": input_activity.iter().map(|(timestamp, keys, clicks, distance)| serde_json::json!({
-                "timestamp": timestamp, "keystrokes": keys, "mouse_clicks": clicks, "mouse_distance": distance
-            })).collect::<Vec<_>>(),
-        });
-        serde_json::to_string_pretty(&snapshot).map_err(|e| e.to_string())?
+    let db_path = {
+        let conn = db.lock().map_err(|e| e.to_string())?;
+        conn.path()
+            .map(str::to_owned)
+            .ok_or_else(|| "The database is not file-backed, so it cannot be exported.".to_string())?
     };
 
-    std::fs::write(&path, &contents).map_err(|e| format!("Failed to write {}: {}", path, e))?;
-    log::info!("Exported {} bytes of data to {}", contents.len(), path);
+    let conn = rusqlite::Connection::open_with_flags(
+        &db_path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|e| format!("Failed to read {db_path}: {e}"))?;
+
+    let file = std::fs::File::create(&path).map_err(|e| format!("Failed to write {path}: {e}"))?;
+    let mut writer = std::io::BufWriter::new(file);
+
+    let started = std::time::Instant::now();
+    let written = if format.eq_ignore_ascii_case("csv") {
+        crate::export::write_csv(&conn, &mut writer)
+    } else {
+        crate::export::write_json(&conn, &mut writer, &chrono::Utc::now().to_rfc3339())
+    };
+    let flushed = std::io::Write::flush(&mut writer);
+    drop(writer);
+
+    // A half-written export is worse than none: it looks like a backup. Remove it on any failure.
+    let outcome = match (written, flushed) {
+        (Err(e), _) => Err(format!("{e}")),
+        (Ok(()), Err(e)) => Err(format!("flush failed: {e}")),
+        (Ok(()), Ok(())) => Ok(()),
+    };
+    if let Err(e) = outcome {
+        let _ = std::fs::remove_file(&path);
+        log::error!("Export to {path} failed, partial file removed: {e}");
+        return Err(format!("Export failed: {e}"));
+    }
+
+    let bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    log::info!(
+        "Exported {bytes} bytes as {} to {path} in {} ms, on a read-only connection",
+        format.to_uppercase(),
+        started.elapsed().as_millis()
+    );
     Ok(())
 }
 

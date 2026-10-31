@@ -5,6 +5,7 @@
 
 mod commands;
 mod database;
+mod export;
 mod tracker;
 mod windows_api;
 mod icons;
