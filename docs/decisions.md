@@ -200,3 +200,20 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   risk — `sysinfo::processes_by_name` is a **case-sensitive substring match**, and the on-disk icon cache held
   mixed-case filenames, so an app that was not currently running would have lost its icon entirely. Both
   lookups are case-insensitive now and existing cache files are reused (`icons.rs::cached_icon_path`).
+
+## D-022 · Release builds come from the Tauri CLI, and the database is not evidence the UI works
+**2026-10-31 · Active · [code]**
+- `tauri::is_dev()` is `!cfg!(feature = "custom-protocol")` (`tauri-2.9.5/src/lib.rs:314`). Only
+  `npm run tauri build` — which enables `tauri/custom-protocol` — embeds `../dist`. A bare
+  `cargo build --release` produces a binary that boots `devUrl` (`http://localhost:5173`) and renders
+  `ERR_CONNECTION_REFUSED` inside its own window.
+- Why this is recorded as a decision and not a footnote: for ~90 minutes every "verified" claim in this session
+  was a *database* claim — snapshots advancing, `active_seconds` populating, migrations idempotent — while the
+  app window showed a connection error. The capture loop does not care which URL the webview loaded, so nothing
+  failed. The user found it, twice.
+- Consequence: UI-affecting changes are now evidenced by a captured window (`PrintWindow` +
+  `PW_RENDERFULLCONTENT`, after `ShowWindow(SW_RESTORE)` because the app starts minimised), not by row counts.
+- Related: the Aug-14 NSIS install in `%LOCALAPPDATA%\Activity Tracker v2` shipped without
+  `WebView2Loader.dll`, so its desktop/Start-menu shortcut had never worked; the folder now carries a
+  CLI-built exe plus the DLL copied from the build output. A fresh `npm run tauri build` bundle should replace
+  those hand-copied files (the bundler is the only thing that also fixes `uninstall.exe`).

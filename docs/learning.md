@@ -112,3 +112,13 @@ nothing left to look at.
 **Rule:** after changing the form of an identifier, grep for every place it is used as a **key** — filenames,
 caches, maps, query parameters — and make those lookups agree with the new form or migrate the keys. A data
 migration is only half a migration.
+
+### L-14 · A working write path is not a working app
+**2026-10-31 · build method + verification**
+Bitten: after rebuilding, `activity_snapshots` kept advancing, `active_seconds` filled, the name migration ran —
+every database assertion passed — while the app window displayed `ERR_CONNECTION_REFUSED`, because
+`cargo build --release` leaves `custom-protocol` disabled and the webview loads the dev server instead of the
+embedded assets. Nothing failed; the user found it.
+**Rule:** verify the surface the user actually sees — capture the window — before calling a UI-affecting change
+done. Database evidence covers the backend only, and the two can disagree for hours without a single failing
+assertion.

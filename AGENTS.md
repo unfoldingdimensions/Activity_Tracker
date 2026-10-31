@@ -67,6 +67,14 @@ not copy them; correct them when you are in the file.
   Verify against a release build before declaring a failure path fixed (`docs/learning.md` L-09).
 - Gate commands: `npm run test:run`, `npm run lint`, `npm run build` (`tsc -b && vite build`). They are green
   as of 2026-10-31: 101 tests / 10 files, lint and build clean.
+- **Release artifacts come from `npm run tauri build`** (or `cargo build --release --features
+  tauri/custom-protocol`). A bare `cargo build --release` produces a **dev-mode** binary —
+  `tauri::is_dev()` is `!cfg!(feature = "custom-protocol")` — which boots `devUrl`
+  (`http://localhost:5173`) instead of the embedded assets: the window shows ERR_CONNECTION_REFUSED while the
+  tracker happily keeps writing rows, so every database check still passes.
+- **The database is not the app.** A green `activity_snapshots` stream proves the capture loop, not the UI.
+  Capture the window itself (`PrintWindow` with `PW_RENDERFULLCONTENT`, after `ShowWindow(SW_RESTORE)` since
+  the app starts minimised) before claiming a user-visible change works.
 - **Rust tests exist but cannot run on this machine yet.** `database.rs` carries the first Rust tests
   (`#[cfg(test)]`, backfill + schema). `cargo check --all-targets` is clean, but `cargo test --lib` fails at
   **process load** with `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139) before any test output — a GNU-toolchain
