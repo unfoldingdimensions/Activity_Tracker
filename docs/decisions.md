@@ -217,3 +217,19 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   `WebView2Loader.dll`, so its desktop/Start-menu shortcut had never worked; the folder now carries a
   CLI-built exe plus the DLL copied from the build output. A fresh `npm run tauri build` bundle should replace
   those hand-copied files (the bundler is the only thing that also fixes `uninstall.exe`).
+
+## D-023 · The bundle ships WebView2Loader.dll itself, and only builds NSIS
+**2026-10-31 · Active · [code]** `src-tauri/tauri.conf.json`, `src-tauri/WebView2Loader.dll`
+- The exe imports `WebView2Loader.dll` dynamically, but tauri-bundler's NSIS payload contains **only** the app
+  binary — verified with `7z l` on both installers: the Aug-14 one listed 7 files and no DLL, the new one lists
+  8 including it. Every install from a bundle therefore died at launch with "The code execution cannot proceed
+  because WebView2Loader.dll was not found", which is exactly what the desktop shortcut did.
+- So the DLL is vendored at `src-tauri/WebView2Loader.dll` and declared in `bundle.resources`, landing next to
+  the installed exe. It is Microsoft's redistributable loader shim, version-agnostic, 160 KB.
+- `bundle.targets` changed from `"all"` to `["nsis"]`: `"all"` also asks for an MSI, and that step needs WiX,
+  which is not cached here and could not be downloaded (`failed to bundle project: timeout: global`). This
+  project has only ever produced NSIS installers.
+- Consequence: `npm run tauri build` now succeeds offline and produces an installer that can actually run.
+  Re-check after any Tauri upgrade — `7z l "<setup>.exe"` must still list `activity-tracker-v2.exe` **and**
+  `WebView2Loader.dll` — and keep the vendored DLL in step with the `webview2-com`/`windows` versions in
+  `Cargo.lock`.
