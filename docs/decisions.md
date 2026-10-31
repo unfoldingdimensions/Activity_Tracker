@@ -181,3 +181,22 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   excluded. A process that refuses even `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)` still lands in
   `"Unknown"` and is now excluded rather than judged. History shows an `"Unknown"` bucket until it ages out;
   the Timeline still lists those rows, they simply no longer colour the score.
+
+## D-021 · Process identity is case-insensitive: one lowercase form is stored
+**2026-10-31 · Active · [code]**
+- `windows_api::get_active_window` lowercases the resolved executable name, so every write is already
+  normalised. `formatAppName` produces the display name; storage no longer carries capitalisation.
+- The startup migration `normalise_process_names` folds history: `app_usage` rows differing only by case are
+  summed onto one row (mindful of `UNIQUE(date, process_name)`), and `window_events` rows are relabelled in
+  place. Idempotent by construction — afterwards `process_name <> lower(process_name)` matches nothing.
+- Why: Windows reports the casing baked into the executable, so one app arrived as both `Claude.exe` and
+  `claude.exe`. 31 of 69 days carried both, 35.9 h of Claude time was divided between them, the Activity page
+  rendered two rows for one app, and the per-app drill-down matched only whichever casing it was given
+  (recon finding P1-4).
+- Ran on this machine after verifying on a copy: 39 `app_usage` rows folded, 39,980 events relabelled,
+  total seconds identical before and after (2,003,295 s), merge spot-checked (2026-08-14 Claude 261 s +
+  3,269 s → 3,530 s), second pass a no-op.
+- Consequence: every consumer keyed by process name had to be re-checked, and the icon system was the real
+  risk — `sysinfo::processes_by_name` is a **case-sensitive substring match**, and the on-disk icon cache held
+  mixed-case filenames, so an app that was not currently running would have lost its icon entirely. Both
+  lookups are case-insensitive now and existing cache files are reused (`icons.rs::cached_icon_path`).

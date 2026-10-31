@@ -45,9 +45,15 @@ pub fn get_active_window() -> Option<ActiveWindow> {
         let mut process_id: u32 = 0;
         GetWindowThreadProcessId(hwnd, Some(&mut process_id));
 
-        // Get process name
+        // Get process name.
+        //
+        // Identity is case-insensitive: Windows reports the casing baked into the
+        // executable, so the same app arrived as both "Claude.exe" and "claude.exe"
+        // and its time split across two rows (D-021). One form is stored; the UI
+        // restores a display name with formatAppName.
         let process_name = get_process_name(process_id)
-            .unwrap_or_else(|| "Unknown".to_string());
+            .unwrap_or_else(|| "Unknown".to_string())
+            .to_lowercase();
 
         Some(ActiveWindow {
             process_name,

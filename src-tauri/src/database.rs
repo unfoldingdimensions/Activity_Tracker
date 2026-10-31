@@ -156,6 +156,74 @@ pub fn backfill_window_event_active_seconds(conn: &Connection) -> Result<usize> 
     )
 }
 
+/// Collapse process names that differ only by case (D-021).
+///
+/// Windows reports the casing baked into the executable, so one app arrives as both
+/// `Claude.exe` and `claude.exe` and its time splits across two rows — 36 of the 72
+/// tracked days carried both, splitting 35.9 h. Identity is case-insensitive: rows
+/// are stored lowercase and the UI restores a display name with `formatAppName`.
+///
+/// Three statements in one transaction, idempotent by construction: afterwards
+/// `process_name <> lower(process_name)` matches nothing. Returns
+/// `(app_usage rows folded away, window_events rows relabelled)`.
+pub fn normalise_process_names(conn: &Connection) -> Result<(usize, usize)> {
+    let pending: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM app_usage WHERE process_name <> lower(process_name)",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    let events_pending: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM window_events WHERE process_name <> lower(process_name)",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    if pending == 0 && events_pending == 0 {
+        return Ok((0, 0));
+    }
+
+    log::info!(
+        "Normalising process names: {} app_usage rows, {} window events",
+        pending,
+        events_pending
+    );
+
+    let tx = conn.unchecked_transaction()?;
+
+    // Fold a differently-cased row into its lowercase twin (or create that twin),
+    // then delete the original. `app_usage` has UNIQUE(date, process_name), so the
+    // seconds have to be summed before the duplicate name disappears.
+    tx.execute(
+        "INSERT INTO app_usage (date, process_name, total_seconds)
+         SELECT date, lower(process_name), SUM(total_seconds)
+           FROM app_usage
+          WHERE process_name <> lower(process_name)
+          GROUP BY date, lower(process_name)
+         ON CONFLICT(date, process_name) DO UPDATE
+            SET total_seconds = total_seconds + excluded.total_seconds",
+        [],
+    )?;
+    let folded = tx.execute(
+        "DELETE FROM app_usage WHERE process_name <> lower(process_name)",
+        [],
+    )?;
+
+    // Event rows carry no unique key, so they can simply be relabelled in place.
+    let relabelled = tx.execute(
+        "UPDATE window_events SET process_name = lower(process_name)
+          WHERE process_name <> lower(process_name)",
+        [],
+    )?;
+
+    tx.commit()?;
+    Ok((folded, relabelled))
+}
+
 /// Read every stored app-usage row (date, process_name, total_seconds)
 pub fn get_all_app_usage(conn: &Connection) -> Result<Vec<(String, String, u32)>> {
     let mut stmt = conn.prepare(
@@ -823,5 +891,64 @@ mod tests {
 
         assert_eq!(span, 14832, "the wall-clock span is still stored");
         assert_eq!(active, Some(540), "active seconds are stored alongside it");
+    }
+
+    #[test]
+    fn normalising_folds_case_variants_without_losing_seconds() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        // The same app on one day, reported with two casings.
+        upsert_app_usage(&conn, "2026-10-28", "Claude.exe", 261).unwrap();
+        upsert_app_usage(&conn, "2026-10-28", "claude.exe", 3269).unwrap();
+
+        let (folded, _) = normalise_process_names(&conn).unwrap();
+
+        assert_eq!(folded, 1, "the duplicate-cased row is folded away");
+        let rows: Vec<(String, u32)> = conn
+            .prepare("SELECT process_name, total_seconds FROM app_usage")
+            .unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap()
+            .collect::<Result<_>>()
+            .unwrap();
+        assert_eq!(
+            rows,
+            vec![("claude.exe".to_string(), 3530)],
+            "seconds are summed onto the surviving row, not dropped"
+        );
+    }
+
+    #[test]
+    fn normalising_relabels_events_and_keeps_every_row() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        insert_window_event(&conn, "2026-10-28T09:00:00.000Z", "Claude.exe", "Claude", 60, 60).unwrap();
+        insert_window_event(&conn, "2026-10-28T09:01:00.000Z", "claude.exe", "Claude", 60, 60).unwrap();
+
+        let (_, relabelled) = normalise_process_names(&conn).unwrap();
+
+        assert_eq!(relabelled, 1);
+        let unnamed: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM window_events WHERE process_name <> lower(process_name)",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let total: i64 = conn
+            .query_row("SELECT COUNT(*) FROM window_events", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(unnamed, 0);
+        assert_eq!(total, 2, "relabelling must never delete events");
+    }
+
+    #[test]
+    fn normalising_is_idempotent() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        upsert_app_usage(&conn, "2026-10-28", "Hermes.exe", 10).unwrap();
+
+        assert_eq!(normalise_process_names(&conn).unwrap(), (1, 0));
+        assert_eq!(normalise_process_names(&conn).unwrap(), (0, 0));
     }
 }

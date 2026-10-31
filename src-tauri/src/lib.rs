@@ -72,6 +72,17 @@ pub fn run() {
                 Err(e) => log::error!("Backfill of window-event active seconds failed: {}", e),
             }
 
+            // One-time migration: fold process names that differ only by case (D-021).
+            match database::normalise_process_names(&db) {
+                Ok((0, 0)) => {}
+                Ok((folded, relabelled)) => log::info!(
+                    "Normalised process names: {} app_usage rows folded, {} events relabelled",
+                    folded,
+                    relabelled
+                ),
+                Err(e) => log::error!("Process-name normalisation failed: {}", e),
+            }
+
             // Create tracker and start it
             let tracker = tracker::Tracker::new(db);
 

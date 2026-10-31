@@ -102,3 +102,13 @@ overwrite moved.
 **Rule:** write the numerator **and** the denominator wherever a ratio is named, in the same file that computes
 it. Two legitimate ratios may share a concept but never a label, and a name that has drifted across surfaces is
 a defect even when every individual value is correct.
+
+### L-13 · Changing an identifier's form breaks every cache keyed by it
+**2026-10-31 · `windows_api.rs`, `icons.rs`**
+Bitten: storing `process_name` lowercase fixed the split rows and would have silently deleted the icon of every
+app that was not running — the icon cache is a directory of PNGs named after the process, and
+`sysinfo::processes_by_name` is a case-sensitive substring match, so the fallback for a non-running app had
+nothing left to look at.
+**Rule:** after changing the form of an identifier, grep for every place it is used as a **key** — filenames,
+caches, maps, query parameters — and make those lookups agree with the new form or migrate the keys. A data
+migration is only half a migration.

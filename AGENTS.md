@@ -33,8 +33,9 @@ from a different source, that is a defect — pick one owner and delete the othe
 
 ## 1.3 Normalise at the boundary, never downstream
 
-- Process names are stored as Windows reports them, which is not stable: fold case at **ingest**
-  (`claude.exe` / `Claude.exe` already split 35.9 h of history).
+- Process names are stored **lowercase** (D-021): Windows reports the casing baked into the binary, which
+  split 35.9 h of history across `claude.exe` and `Claude.exe`. Identity is case-insensitive at every lookup
+  — database, icon cache, classification — and display names come from `formatAppName`.
 - Win32 identification failures must not become data. "Unknown" is a boundary failure wearing a value
   (`windows_api.rs:69-101`) — surface it as unattributed, do not classify it silently.
 - Settings arrive as arbitrary JSON; validate keys rather than trusting the caller (`commands.rs:152`).
