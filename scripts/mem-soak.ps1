@@ -19,6 +19,10 @@
     CSV path. Default "scripts\mem-samples.csv", resolved relative to the repo
     root (parent of the scripts dir) so the default works from any cwd.
 
+.PARAMETER State
+    Label recorded for every sample in this run (default "soak"). Soak rows must be
+    distinguishable from one-shot checkpoint rows in the same CSV.
+
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts\mem-soak.ps1
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts\mem-soak.ps1 -IntervalSeconds 10 -DurationMinutes 5
@@ -26,7 +30,8 @@
 param(
     [int]$IntervalSeconds = 30,
     [int]$DurationMinutes = 60,
-    [string]$OutFile = "scripts\mem-samples.csv"
+    [string]$OutFile = "scripts\mem-samples.csv",
+    [string]$State = "soak"
 )
 
 $ErrorActionPreference = "Stop"
@@ -50,7 +55,7 @@ Write-Host ("mem-soak: interval={0}s duration={1}min (~{2} samples) -> {3}" -f $
 while ((Get-Date) -lt $endTime) {
     $sample++
     Write-Host ("[soak {0}/{1} @ {2}]" -f $sample, $totalSamples, (Get-Date -Format "HH:mm:ss"))
-    & $snapshotScript -OutFile $OutFile
+    & $snapshotScript -OutFile $OutFile -State $State
     if ((Get-Date) -ge $endTime) { break }
     Start-Sleep -Seconds $IntervalSeconds
 }

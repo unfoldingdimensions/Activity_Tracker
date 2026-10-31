@@ -34,13 +34,24 @@
 .PARAMETER OutFile
     CSV file to append to. Defaults to "<this script dir>\mem-samples.csv".
     The header is auto-created on first use:
-    timestamp,app_exe_name,app_pws_mb,owned_webview2_count,owned_webview2_pws_mb,total_pws_mb,other_webview2_count,other_webview2_pws_mb
+    timestamp,state,app_exe_name,app_pws_mb,owned_webview2_count,owned_webview2_pws_mb,total_pws_mb,other_webview2_count,other_webview2_pws_mb
+    A file written before the `state` column existed is migrated in place, old rows labelled
+    `unlabelled`.
+
+.PARAMETER State
+    What the UI was doing for this sample: `idle-hidden`, `dashboard-visible`,
+    `timeline-visible`, `tray-open`, … Free-form; lowercased, spaces become dashes.
 
 .EXAMPLE
-    powershell -NoProfile -ExecutionPolicy Bypass -File scripts\mem-snapshot.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts\mem-snapshot.ps1 -State idle-hidden
 #>
 param(
-    [string]$OutFile = (Join-Path $PSScriptRoot "mem-samples.csv")
+    [string]$OutFile = (Join-Path $PSScriptRoot "mem-samples.csv"),
+    # What the UI was doing when this sample was taken. Three states are the baseline
+    # protocol: idle-hidden, dashboard-visible, timeline-visible (see README). Without a
+    # label the rows are indistinguishable, which is how the 2026-08-17 baseline could only
+    # ever be one unlabelled number.
+    [string]$State = "unlabelled"
 )
 
 $ErrorActionPreference = "Stop"
@@ -186,15 +197,35 @@ function Write-MemSnapshot {
     }
     $totalMb = $appMb + $ownedMb
 
-    $header = "timestamp,app_exe_name,app_pws_mb,owned_webview2_count,owned_webview2_pws_mb,total_pws_mb,other_webview2_count,other_webview2_pws_mb"
+    $header    = "timestamp,state,app_exe_name,app_pws_mb,owned_webview2_count,owned_webview2_pws_mb,total_pws_mb,other_webview2_count,other_webview2_pws_mb"
+    $oldHeader = "timestamp,app_exe_name,app_pws_mb,owned_webview2_count,owned_webview2_pws_mb,total_pws_mb,other_webview2_count,other_webview2_pws_mb"
+    $label     = ($State.Trim().ToLowerInvariant() -replace '\s+', '-')
+    if ([string]::IsNullOrWhiteSpace($label)) { $label = "unlabelled" }
+
     if (-not (Test-Path -LiteralPath $Path)) {
         Add-Content -LiteralPath $Path -Value $header -Encoding UTF8
+    } else {
+        # Migrate a file written before the state column existed: one `unlabelled` value per
+        # row, in place, so old samples stay comparable instead of being thrown away.
+        $lines = @(Get-Content -LiteralPath $Path -Encoding UTF8)
+        if ($lines.Count -gt 0 -and $lines[0].TrimStart([char]0xFEFF) -eq $oldHeader) {
+            $migrated = @($header)
+            if ($lines.Count -gt 1) {
+                foreach ($line in $lines[1..($lines.Count - 1)]) {
+                    if ([string]::IsNullOrWhiteSpace($line)) { continue }
+                    $comma = $line.IndexOf(',')
+                    if ($comma -lt 0) { continue }
+                    $migrated += $line.Substring(0, $comma) + ",unlabelled" + $line.Substring($comma)
+                }
+            }
+            Set-Content -LiteralPath $Path -Value $migrated -Encoding UTF8
+        }
     }
-    $row = "{0},{1},{2},{3},{4},{5},{6},{7}" -f $timestamp, $appName, (& $fmt $appMb), $ownedCount, (& $fmt $ownedMb), (& $fmt $totalMb), $otherCount, (& $fmt $otherMb)
+    $row = "{0},{1},{2},{3},{4},{5},{6},{7},{8}" -f $timestamp, $label, $appName, (& $fmt $appMb), $ownedCount, (& $fmt $ownedMb), (& $fmt $totalMb), $otherCount, (& $fmt $otherMb)
     Add-Content -LiteralPath $Path -Value $row -Encoding UTF8
 
-    Write-Host ("mem-snapshot: {0} app={1} app_pws_mb={2} owned_webview2_count={3} owned_webview2_pws_mb={4} total_pws_mb={5} other_webview2_count={6} other_webview2_pws_mb={7} -> {8}" -f `
-        $timestamp, $appName, (& $fmt $appMb), $ownedCount, (& $fmt $ownedMb), (& $fmt $totalMb), $otherCount, (& $fmt $otherMb), $Path)
+    Write-Host ("mem-snapshot: {0} state={1} app={2} app_pws_mb={3} owned_webview2_count={4} owned_webview2_pws_mb={5} total_pws_mb={6} other_webview2_count={7} other_webview2_pws_mb={8} -> {9}" -f `
+        $timestamp, $label, $appName, (& $fmt $appMb), $ownedCount, (& $fmt $ownedMb), (& $fmt $totalMb), $otherCount, (& $fmt $otherMb), $Path)
 }
 
 # Auto-run on direct execution (also when invoked via & from mem-soak.ps1).
