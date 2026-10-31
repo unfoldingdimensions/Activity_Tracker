@@ -512,6 +512,9 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   on first open in 931 ms"). It was the one acceptance number this task missed — 800 ms was the guess in the plan;
   the honest number is ~0.9 s, once per session. Every later toggle is instant: measured `before=False after=True`
   then `before=True after=False` through the tray button.
+  *Correction, same build, two more samples:* **122 ms** and **94 ms** — the 931 ms was the first creation after a
+  long-running session. The honest range is **0.1–0.9 s, once per session**; the first figure stays quoted rather
+  than replaced because it is the worst case a user can meet.
 - **Retained deliberately:** once created the popup is hidden, never destroyed, so the 35 MB returns for the rest
   of that session. Destroying on hide would recover it but charge ~0.9 s on *every* open, which is worse for the
   popup's actual use (a glance). Recorded so the trade-off is not re-litigated.
