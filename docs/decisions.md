@@ -354,3 +354,23 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   reported, and an export must carry the fact rather than the presentation.
 - Consequence: no row can render an empty cell. What it does not do is invent information: a titleless Chrome
   window shows "Chrome", which names the app and nothing more.
+
+## D-029 · A segment in flight is closed, not discarded
+**2026-10-31 · Active · [code] · closes P2-3**
+- The tracking loop breaks on pause, and it broke *before* writing the segment it was accumulating: the current
+  app period lived in stack variables that died with the thread.
+- **Measured before** (shipped build, 2026-10-31): `hermes.exe` foreground from 13:05:05, pause at 13:05:49 —
+  the database gained **nothing**. The last row ended at 13:04:41 + 24 s, so **44 s vanished**; on a long session
+  it is the entire run (median focus run 5.4 min), which is why every session's timeline ended early.
+- **Measured after**, same operation: `Closed the in-flight window event on stop: claude.exe for 146s`, and one
+  row — `timestamp 13:07:35.164Z, claude.exe, "Claude", 146 s, 145 active`.
+- How: the segment (`process`, `title`, `start`, `active_seconds`) is published on the Tracker once per tick, so
+  it is no longer owned by a stack frame. `close_segment()` writes it with the same arithmetic as the switch path
+  (stored timestamp = event start; the row covers `[timestamp, +duration]`). It is called from the loop's stop
+  branch and from a `RunEvent::ExitRequested` hook in `lib.rs`, for a quit that lands mid-tick.
+- The published copy can be one second stale; the loop stays the only writer of the live values, so there is one
+  owner and an export, not two copies that can disagree.
+- **Not exercised end-to-end: the quit path** (it needs the tray menu). It calls the same `close_segment()` with
+  reason `quit`; the pause run above is the evidence that the helper writes correctly.
+- "Resume" was verified too: after Resume at 13:10:44 the loop restarted and snapshots flowed (23 in the
+  following minute), so the flush left nothing in a state that blocks a restart.

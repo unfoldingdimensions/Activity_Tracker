@@ -154,3 +154,11 @@ blank cell was a rendering decision in two places, spelled two different ways.
 **Rule:** before fixing a "missing" value, ask whether the absence is the data or the display. If it is the
 display, put the decision in one function and make the page call it — then guard the call site, because the next
 skin will retype the old fallback otherwise.
+
+### L-19 · A stack frame is not a storage location
+The loop held the current app segment — process, title, start time, active seconds — in local variables. Pausing
+broke out of the loop and those variables died with it: the last period of every session was never written, and
+nothing errored, because the row simply never existed. Measured loss: 44 s on a 44 s session tail, up to an entire
+focus run on a long one.
+**Rule:** if a loop can be stopped from outside, anything it must write when it stops has to live outside the loop.
+Publish it on the owner object as it goes, then the stop path and the exit path call one function that closes it.

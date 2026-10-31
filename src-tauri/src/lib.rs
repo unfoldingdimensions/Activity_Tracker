@@ -308,6 +308,18 @@ pub fn run() {
             commands::get_app_icon,
         ])
 
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Close the window segment that is still open before the process dies: a quit
+            // kills the tracking thread mid-tick, and that segment is a real app period
+            // (D-029). `try_state` keeps this harmless during an early-exit failure.
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                if let Some(state) = app.try_state::<AppState>() {
+                    if let Ok(tracker) = state.tracker.lock() {
+                        tracker.flush_in_flight();
+                    }
+                }
+            }
+        });
 }

@@ -47,6 +47,9 @@ query returns rows, which takes priority for the chart.
   rather than returning a partial range. The log *list* renders 250 rows per batch behind a visible
   "newest N of M" row with a "Show more" control (`Timeline.tsx`).
 - `get_timeline_range_for_app` → drill-down, exact `process_name` match, no limit.
+- The current app segment is closed — not discarded — when tracking stops: `close_segment()` writes it from the
+  copy the loop publishes on the `Tracker` every tick, called by the loop's stop branch and by
+  `RunEvent::ExitRequested` for a quit (D-029).
 - The title cell is rendered through `displayWindowTitle()` (`src/utils/windowTitle.ts`), never from the raw
   column: 10.8 % of events carry no title and 88 % of those are `explorer.exe`, which has none to give, so the
   desktop is named and every other empty title falls back to its app (D-028). The stored value is untouched —

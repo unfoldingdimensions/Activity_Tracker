@@ -216,12 +216,72 @@ fn local_day_bounds() -> (String, String) {
     )
 }
 
+/// The window segment that is accumulating right now.
+///
+/// It is published on the Tracker every tick so a pause or a quit can close it. The loop is
+/// killed on pause, and it used to die with the current segment un-written: every session's
+/// timeline therefore ended at the previous window switch, losing up to a whole app period
+/// (median focus run 5.4 min, D-029).
+#[derive(Clone)]
+pub struct InFlightEvent {
+    pub process: String,
+    pub title: String,
+    pub start: std::time::Instant,
+    pub active_seconds: u32,
+}
+
+/// Write a segment as a `window_events` row, using the same arithmetic as the switch path:
+/// the stored timestamp is the event's START, and the row covers [timestamp, +duration].
+fn close_segment(
+    db: &Arc<Mutex<Connection>>,
+    segment: InFlightEvent,
+    reason: &str,
+) -> Option<u32> {
+    let duration = segment.start.elapsed().as_secs() as u32;
+    if duration == 0 {
+        return None;
+    }
+    let start_iso = (chrono::Utc::now() - chrono::Duration::seconds(duration as i64))
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+
+    match db.lock() {
+        Ok(conn) => match database::insert_window_event(
+            &conn,
+            &start_iso,
+            &segment.process,
+            &segment.title,
+            duration,
+            segment.active_seconds,
+        ) {
+            Ok(()) => {
+                log::info!(
+                    "Closed the in-flight window event on {}: {} for {}s",
+                    reason,
+                    segment.process,
+                    duration
+                );
+                Some(duration)
+            }
+            Err(e) => {
+                log::error!("Failed to close the in-flight window event on {}: {}", reason, e);
+                None
+            }
+        },
+        Err(e) => {
+            log::warn!("Failed to close the in-flight window event on {}: mutex poisoned: {}", reason, e);
+            None
+        }
+    }
+}
+
 /// The main tracker state
 pub struct Tracker {
     pub db: Arc<Mutex<Connection>>,
     is_running: Arc<Mutex<bool>>,
     loop_active: Arc<Mutex<bool>>,
     current_window: Arc<Mutex<Option<windows_api::ActiveWindow>>>,
+    /// The segment the loop is accumulating, mirrored here so it survives a stop (D-029).
+    in_flight: Arc<Mutex<Option<InFlightEvent>>>,
     input_monitor: Arc<InputMonitor>,
     track_titles: Arc<AtomicBool>,
     /// Cached settings (JSON values) read at runtime by the loop, cleanup
@@ -259,6 +319,7 @@ impl Tracker {
             is_running: Arc::new(Mutex::new(false)),
             loop_active: Arc::new(Mutex::new(false)),
             current_window: Arc::new(Mutex::new(None)),
+            in_flight: Arc::new(Mutex::new(None)),
             input_monitor: Arc::new(InputMonitor::new()),
             track_titles: Arc::new(AtomicBool::new(true)),
             settings,
@@ -329,11 +390,26 @@ impl Tracker {
         *self.is_running.lock().unwrap()
     }
 
+    /// Write the window segment that is still accumulating, if any.
+    ///
+    /// The loop closes its own segment when it is stopped; this covers the other exit — the
+    /// app quitting while the loop is mid-tick, where the thread is killed with the segment
+    /// still open (D-029). Safe to call twice: the segment is taken out of the slot first.
+    pub fn flush_in_flight(&self) -> Option<u32> {
+        let segment = self
+            .in_flight
+            .lock()
+            .ok()
+            .and_then(|mut slot| slot.take())?;
+        close_segment(&self.db, segment, "quit")
+    }
+
     /// Start the tracking loop (called once on app start)
     pub fn start(&self, app: tauri::AppHandle) {
         let db = self.db.clone();
         let is_running = self.is_running.clone();
         let current_window = self.current_window.clone();
+        let in_flight = self.in_flight.clone();
         let input_monitor = self.input_monitor.clone();
         let track_titles = self.track_titles.clone();
         let loop_active = self.loop_active.clone();
@@ -464,6 +540,24 @@ impl Tracker {
                 {
                     let running = is_running.lock().unwrap();
                     if !*running {
+                        // Close the segment that is still accumulating before this thread
+                        // dies with it. Without this, the last app period of every session
+                        // was never written (D-029).
+                        if let (Some(process), Some(title)) = (current_process.take(), current_title.take()) {
+                            let _ = close_segment(
+                                &db,
+                                InFlightEvent {
+                                    process,
+                                    title,
+                                    start: app_start_time,
+                                    active_seconds: window_active_seconds,
+                                },
+                                "stop",
+                            );
+                        }
+                        if let Ok(mut slot) = in_flight.lock() {
+                            *slot = None;
+                        }
                         log::info!("Tracker stopped");
                         break;
                     }
@@ -713,6 +807,24 @@ impl Tracker {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // Publish the live segment so a stop or an app exit can close it (D-029).
+                    // The loop stays the only owner of these values — this is an export taken
+                    // once a tick, so a flush can be at most one second stale.
+                    {
+                        let snapshot = match (&current_process, &current_title) {
+                            (Some(process), Some(title)) => Some(InFlightEvent {
+                                process: process.clone(),
+                                title: title.clone(),
+                                start: app_start_time,
+                                active_seconds: window_active_seconds,
+                            }),
+                            _ => None,
+                        };
+                        if let Ok(mut slot) = in_flight.lock() {
+                            *slot = snapshot;
                         }
                     }
 
