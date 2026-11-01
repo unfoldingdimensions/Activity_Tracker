@@ -1081,3 +1081,20 @@ fail (the value exists, the path is right, the command launches) are each checke
   the Win32 helpers resolve by (id, type) and report the same resource twice. Its first version reported `dpiAware` for
   a manifest that has none, because the word appears in the file's own comment; it now matches `<dpiAware`, i.e. the
   element. A text scan that reads documentation will match it.
+
+## D-054 · The Timeline's app icons are verified on screen
+
+**2026-11-01 · Active · [ui] · closes T18 (was: unverified)**
+
+- **The gap:** the icon work in D-045/D-046 was verified through the PNGs on disk and the sidebar's `AppIcon`, never on
+  the Timeline's app-wise list. Two UIA attempts to open the page did not land — the tray app hides on focus loss, so a
+  synthetic OS click and the window disagree about being on screen (L-23).
+- **The check, driven over CDP this time:** open Timeline → **184 `img[src^="data:image/png"]` elements**, ten distinct
+  apps with real icons (`deepseek harness.exe`, `hermes.exe`, `activity-tracker-v2.exe`, `opera.exe`, `explorer.exe`,
+  `snippingtool.exe`, `chrome.exe`, `photos.exe`, `gcc.exe`, `flux.exe`), and **exactly one letter tile**, whose row is
+  `credentialuibroker.exe` — one of the ten shell brokers D-046 lists as having no icon resource at all.
+- **One near-miss to record:** the first read of the screenshot called Hermes' 40×40 icon a "black square with a white
+  H", which would have meant a fallback tile slipping through. Enlarging `hermes.png` shows a monochrome portrait
+  illustration — a real icon, just illegible at 16 px. The DOM settled it independently: an `<img>` with
+  `alt="hermes.exe"` exists in that row, and the fallback is a `<div>` with a letter.
+- **Conclusion:** nothing to fix. The letter tile that does appear is correct behaviour, not a miss.
