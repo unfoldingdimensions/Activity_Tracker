@@ -767,3 +767,33 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
 - **How to re-check:** `node scripts/t16-probe.mjs` with the app started under
   `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222` prints `visibilityState`, rAF count over
   2 s, and running animations for each page; the CPU side needs a per-process sample over ≥ 60 s.
+
+## D-043 · The quit and autostart paths are verified; neither needs a task
+
+**2026-11-01 · Active · [ops] · closes the two open verification gaps**
+
+Both were carried as "not exercised end-to-end" since P2-3/P2-8 landed. They were exercised on the installed build.
+
+**P2-3 · Quit.** The app was quit through its real tray menu (right-click the tray icon, `Down Down Enter`) — the
+Windows 11 tray menu is owner-drawn and exposes no menu items to UI Automation, so the menu's own process ID was
+confirmed first and the keys were sent to it, never a blind coordinate click (L-22).
+
+- log: `Closed the in-flight window event on quit: activity-tracker-v2.exe for 91s`
+- `window_events` 63,028 → 63,029, the new row being that 91 s segment starting at the segment's real start —
+  the in-flight period is recorded, not discarded (D-029)
+- last snapshot 06:30:52.920, quit at 06:30:53 — **no lost second**
+- `PRAGMA integrity_check` → `ok`; the 4 MB WAL is recovered by the next process (SQLite does not run `Drop` on
+  `app.exit(0)`, and the next open replays it — that is why the WAL file survives a quit)
+- no orphaned processes: the six `msedgewebview2.exe` left on the machine belong to `SearchHost`
+
+**P2-8 · Autostart.** The `HKCU\...\Run` value was poisoned to the old cargo build path, then the installed app was
+started:
+
+- log: `Autostart entry points at "E:\DevTools\activity-tracker\target\release\activity-tracker-v2.exe"; rewriting
+  it to C:\Users\ADMIN\AppData\Local\Activity Tracker v2\activity-tracker-v2.exe`
+- the registry value now holds the installed path, and the registered command resolves to an existing executable
+- running that exact command while the app is up starts no second instance — the single-instance guard reveals the
+  running one (D-026)
+
+A reboot is still the only way to see a *real* logon, and it is not worth automating: the three things that can
+fail (the value exists, the path is right, the command launches) are each checked above.
