@@ -149,6 +149,18 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Tray popup surface: the window is a fixed 380×540 and the layout inside is already `h-full`, so the page itself
+   has to be exactly the window. Without this, html/body/#root size to their content (measured 593 px in a 540 px
+   window) and the popup shows a scrollbar with the last row cut off. `min-height: 0` cancels body's global
+   `min-height: 100vh`, which would otherwise keep the page at least a viewport tall regardless. */
+html[data-surface='tray'],
+html[data-surface='tray'] body,
+html[data-surface='tray'] #root {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 body {
   font-family: var(--font-body);
   background-color: var(--background);

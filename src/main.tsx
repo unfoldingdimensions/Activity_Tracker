@@ -19,6 +19,14 @@ import '@fontsource-variable/source-serif-4'
 import './index.css'
 import App from './App.tsx'
 
+// The tray popup is its own fixed-size window and its layout fills the window edge to edge; without a height
+// constraint on html/body/#root, `h-full` inside the app resolves against an auto height and the content makes the
+// page taller than the window — a scrollbar and ~53 px of clipped footer (D-048). Set before React mounts, so the
+// first painted frame is already the right shape.
+if (window.location.pathname.replace(/\/$/, '') === '/tray') {
+  document.documentElement.dataset.surface = 'tray';
+}
+
 // Seamless crossfade: Keep HTML splash visible until React LoadingScreen is rendered
 // The React screen will be behind the HTML splash, then we fade out the HTML splash
 // revealing the identical-looking React screen (with only the loading animation added)

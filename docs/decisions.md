@@ -925,3 +925,36 @@ fail (the value exists, the path is right, the command launches) are each checke
   click call the handler: **6 of 6 fail**.
 - **Accepted cost:** friction on a rare, irreversible action. Two clicks and a word is the right price for deleting
   everything you have ever recorded; if it ever feels heavy, the answer is a nicer explanation, not a shorter ritual.
+
+## D-048 · The tray popup's page is exactly the window
+
+**2026-11-01 · Active · [ui] · implements T12 of D-033/D-034**
+
+- **The defect:** the popup is a fixed 380×540 window; its page was 20 px taller than that and 15 px narrower. Measured
+  over CDP on the open popup: `clientHeight 540`, **`scrollHeight 593`** — 53 px of overflow, a scrollbar eating 15 px of
+  width (`clientWidth 365`), and the last row cut off at the bottom edge. Pre-existing: the same size and the same
+  scrollbar were visible before T1.
+- **The cause:** nothing constrained the page to the window. `body` carries `min-height: 100vh` and neither `html`,
+  `body` nor `#root` had a height, so they sized to their content — which made `h-full` inside the app resolve against
+  an *auto* height, so the layout grew instead of fitting. The component was already written for a filled window
+  (`w-full h-full flex flex-col`, with `flex-1 min-h-0` on the top-app block), which is why the fix is three rules and
+  no component change.
+- **The fix:** `main.tsx` sets `document.documentElement.dataset.surface = 'tray'` before React mounts when the path is
+  `/tray`, and `index.css` pins that surface:
+
+  ```css
+  html[data-surface='tray'], html[data-surface='tray'] body, html[data-surface='tray'] #root {
+    height: 100%; min-height: 0; overflow: hidden;
+  }
+  ```
+
+  `min-height: 0` is the part that matters: without it body's global `min-height: 100vh` keeps the page at least a
+  viewport tall and the overflow returns. It is scoped to the popup — the main window scrolls and must not be pinned.
+- **Measured after:** `scrollHeight 540 == clientHeight 540`, **overflow 0**, `clientWidth 380` (scrollbar gone), in
+  **both branches** — glass and flat — with the LVL/streak line present. Screenshots of both show the footer button and
+  that line fully visible with real spacing below, and no scrollbar.
+- **Window geometry unchanged**, so the positioner still puts the popup flush right and 60 px above the taskbar edge:
+  the window is still 380×540, only the page inside it stopped growing.
+- **Not exercised:** 100 % display scaling. This machine runs at 125 % and the sizing is now viewport-relative — the
+  content no longer has an absolute height that could disagree with the window — so the mechanism that failed is gone
+  rather than merely retuned. Worth a glance on a 100 % machine if one appears.
