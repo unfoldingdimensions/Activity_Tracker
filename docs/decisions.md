@@ -585,3 +585,39 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   / streak 8 — and 2 min 40 s of recording was lost. So the command wiring is compile-verified and its reader is
   proven against the live file, but the button path is not. The two controls sit ~80 px apart in one section;
   whoever is in `Settings.tsx` next should separate them.
+
+## D-038 · No WebView2 launch flag makes the GPU process cheaper
+
+**2026-11-01 · Active · [memory] · closes T1b of D-033/D-034**
+
+- The GPU process commits **160–190 MB** — more than both renderers together — while the window is hidden
+  (D-034). It is Chromium, not app code, so the only lever without reworking the UI is a launch switch. Each
+  variant was started with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` set, given 13 s to settle, minimised, then
+  sampled (commit = `PrivateMemorySize64`, PWS = the harness's private working set, which is the series the plan
+  quotes — never added together):
+
+  | flag | children | commit total | total PWS | vs baseline |
+  |---|---|---|---|---|
+  | *(none)* | 6 | 334.6 MB | **187.9 MB** | — |
+  | `--disable-features=CalculateNativeWinOcclusion` | 6 | 331.8 MB | 189.2 MB | +1.3 MB |
+  | `--disable-gpu` | 6 | 334.3 MB | 284.0 MB | **+96.1 MB** |
+  | `--disable-gpu-compositing` | 6 | 374.9 MB | 301.4 MB | **+113.5 MB** |
+  | `--in-process-gpu` | 5 | 336.4 MB | 592.1 MB | **+404.2 MB** |
+
+  Per-process detail for the two worst: `--disable-gpu` takes the GPU process from 168.9 → 23.6 MB commit and the
+  renderer from 81.7 → 226.6 MB; `--in-process-gpu` moves GPU work into the app process (17.5 → 40.4 MB) while the
+  webview total triples to 551.7 MB.
+- **Adopted: nothing.** Turning compositing off does not remove the surfaces, it moves them into system memory and
+  makes the renderer pay. Every candidate failed the plan's "≥ 40 MB" bar; three of them were worse.
+- **The CPU column is not used to rank them.** On this machine the same build measured **59 %** and **75 %** of one
+  core in two consecutive samples of the *same* state, so a 5 s sample cannot separate variants. The memory
+  columns repeat to ~2 MB, which is why the decision rests on them — recorded rather than hidden, because the plan
+  asked for the CPU column and this is what it was worth.
+- **Consequence:** the GPU process is the floor for this UI on hardware compositing. With T1 having removed the
+  spare renderer, the only remaining paths are fewer surfaces inside the web UI or a different runtime — not flags.
+  Recorded so nobody re-runs these five switches expecting a different answer.
+- **Found while measuring (T16):** the webviews hold tens of percent of a core *per process* with the window hidden
+  — two independent 30 s samples: gpu **54.2 %** / renderer **39.6 %**, and gpu **39.1 %** / renderer **26.6 %**
+  after a restart, with the window minimised in both. Visible and hidden states measure the same, so nothing is
+  throttling the hidden page. That is a separate defect with its own task, and it means no CPU figure from this
+  repository should be quoted until it is understood.
