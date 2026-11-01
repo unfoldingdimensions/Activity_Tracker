@@ -338,75 +338,71 @@ pub fn get_app_usage_range(state: State<AppState>, start_date: String, end_date:
         .collect()
 }
 
+/// Ceiling on how many buckets one request may allocate.
+///
+/// The only caller asks for a fixed 24 h window — 1,440 buckets at one-minute resolution — so this only bites a caller
+/// asking for something the UI never asks for (a month at one-minute resolution would be 43,200 buckets, and every one
+/// of them is a struct with an ISO timestamp). Raising the *interval* rather than dropping buckets keeps the answer
+/// complete: coarser than asked, never truncated (D-051).
+const MAX_INPUT_BUCKETS: i64 = 2_000;
+
 /// Get input history bucketed by interval (last 24h)
 #[tauri::command]
 pub fn get_input_history(state: State<AppState>, interval_minutes: u32) -> Vec<InputHistoryBucket> {
     let now = chrono::Utc::now();
     let start_time = now - Duration::hours(24);
-    let end_time = now;
-    
-    // Millis precision to match how rows are stored, so the final bucket's
-    // rows aren't excluded by a coarser end bound.
-    get_input_history_range(
-        state,
-        start_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-        end_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-        interval_minutes,
-    )
+    bucket_input_history(state, start_time, now, interval_minutes)
 }
 
-/// Get input history bucketed by interval in range
-#[tauri::command]
-pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_iso: String, interval_minutes: u32) -> Vec<InputHistoryBucket> {
-    let interval = if interval_minutes == 0 { 60 } else { interval_minutes };
-
-    
-    let mut start_time = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&start_iso) {
-        dt.with_timezone(&chrono::Utc)
-    } else {
-        return Vec::new();
-    };
-
-    // Align start_time down to the interval boundary
-    let ts = start_time.timestamp();
-    let alignment_seconds = interval as i64 * 60;
-    let aligned_ts = (ts / alignment_seconds) * alignment_seconds;
-    start_time = chrono::DateTime::from_timestamp(aligned_ts, 0)
+/// Bucket keystrokes and clicks into `interval_minutes` slices across `[start_time, end_time)`.
+///
+/// Not a command: the range-taking variant that used to be one had no caller left once the UI moved to the fixed 24 h
+/// window, and a public command nobody calls is a surface the next reader has to keep working (D-051).
+fn bucket_input_history(
+    state: State<AppState>,
+    start_time: chrono::DateTime<chrono::Utc>,
+    end_time: chrono::DateTime<chrono::Utc>,
+    interval_minutes: u32,
+) -> Vec<InputHistoryBucket> {
+    // Align the start down to the interval boundary, so a bucket always begins where the caller expects.
+    let requested_interval = if interval_minutes == 0 { 60 } else { interval_minutes as i64 };
+    let alignment_seconds = requested_interval * 60;
+    let aligned_ts = (start_time.timestamp() / alignment_seconds) * alignment_seconds;
+    let start_time = chrono::DateTime::from_timestamp(aligned_ts, 0)
         .map(|dt| dt.with_timezone(&chrono::Utc))
         .unwrap_or(start_time);
 
-    let end_time = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&end_iso) {
-        dt.with_timezone(&chrono::Utc)
-    } else {
-        chrono::Utc::now()
-    };
+    let total_minutes = end_time.signed_duration_since(start_time).num_minutes().max(0);
+    let mut interval = requested_interval;
+    if total_minutes > MAX_INPUT_BUCKETS {
+        let minimum_interval = (total_minutes + MAX_INPUT_BUCKETS - 1) / MAX_INPUT_BUCKETS;
+        if minimum_interval > interval {
+            log::warn!(
+                "Input history asked for {} min buckets over {} min; using {} min to stay under {}",
+                requested_interval,
+                total_minutes,
+                minimum_interval,
+                MAX_INPUT_BUCKETS
+            );
+            interval = minimum_interval;
+        }
+    }
 
     let raw_data = match state.tracker.lock() {
         Ok(tracker) => tracker.get_input_history_range(
             &start_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-            // Query with the SAME normalized end used for bucketing (it falls
-            // back to Utc::now() when end_iso is unparseable) rather than the
-            // raw input string, which could disagree with the buckets.
             &end_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
         ),
         Err(_) => {
-            log::error!("Failed to lock tracker for get_input_history_range");
+            log::error!("Failed to lock tracker for get_input_history");
             Vec::new()
         }
     };
-    
-    let mut buckets = Vec::new();
-    
-    let diff_total = end_time.signed_duration_since(start_time);
-    let total_minutes = diff_total.num_minutes().max(0);
-    // Exact bucket count: ceil(minutes / interval), so no empty trailing bucket.
-    // Manual ceil division: `div_ceil` is still gated behind the unstable
-    // `int_roundings` feature on this toolchain.
-    let num_buckets = ((total_minutes + (interval as i64) - 1) / (interval as i64)).max(1) as u32;
-    
-    // Initialize buckets
+
+    let num_buckets = ((total_minutes + interval - 1) / interval).max(1);
+    let mut buckets: Vec<InputHistoryBucket> = Vec::with_capacity(num_buckets.min(MAX_INPUT_BUCKETS) as usize);
     for i in 0..num_buckets {
-        let bucket_time = start_time + Duration::minutes((i * interval) as i64);
+        let bucket_time = start_time + Duration::minutes(i * interval);
         buckets.push(InputHistoryBucket {
             time: bucket_time.to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
             keystrokes: 0,
@@ -414,8 +410,6 @@ pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_is
         });
     }
 
-
-    // Fill buckets
     for entry in raw_data {
         let timestamp = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&entry.timestamp) {
             dt.with_timezone(&chrono::Utc)
@@ -425,18 +419,16 @@ pub fn get_input_history_range(state: State<AppState>, start_iso: String, end_is
             continue;
         };
 
-        let diff = timestamp.signed_duration_since(start_time);
-        let minutes = diff.num_minutes();
-             
+        let minutes = timestamp.signed_duration_since(start_time).num_minutes();
         if minutes >= 0 {
-            let bucket_idx = (minutes / interval as i64) as usize;
-            if bucket_idx < buckets.len() {
-                buckets[bucket_idx].keystrokes += entry.keystrokes;
-                buckets[bucket_idx].mouse_clicks += entry.mouse_clicks;
+            let bucket_idx = (minutes / interval) as usize;
+            if let Some(bucket) = buckets.get_mut(bucket_idx) {
+                bucket.keystrokes += entry.keystrokes;
+                bucket.mouse_clicks += entry.mouse_clicks;
             }
         }
     }
-    
+
     buckets
 }
 

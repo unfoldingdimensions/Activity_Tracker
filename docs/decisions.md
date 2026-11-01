@@ -1005,3 +1005,24 @@ fail (the value exists, the path is right, the command launches) are each checke
   the popup's close button adds a `hide_tray_window command invoked` line to the log, and *Open full app* brings the
   main window up (`Reveal: visible=Ok(true)`) with the popup hidden.
 - **Not changed:** the command names, their payloads or their behaviour. This is a call-site and binding change.
+
+## D-051 · The input-history range command is gone, and buckets have a ceiling
+
+**2026-11-01 · Active · [data] · implements T9 of D-033/D-034**
+
+- **Dead surface removed.** `get_input_history_range` was a registered command with a typed binding in `api/tauri.ts`
+  and a wrapper hook, and **nothing called it**: `useInputHistoryRange` had zero call sites — the popup asks for the
+  fixed 24 h window through `get_input_history`, which called the range function internally. Three layers of surface
+  existed for one internal call. The command, its `lib.rs` registration, its binding and its hook are deleted; the
+  bucketing is now a private `bucket_input_history()` that `get_input_history` calls directly. AGENTS.md §1.5 treats
+  removing a command as a deliberate change — this entry is that decision, and the check was `grep` for every caller
+  before deleting.
+- **Bucket allocator clamped.** The bucket count was derived from whatever range arrived: a month at one-minute
+  resolution would have allocated 43,200 structs, each carrying an ISO timestamp string, and `Vec::with_capacity` sized
+  itself from that number. Now `MAX_INPUT_BUCKETS = 2_000` and the *interval is widened* to stay under it rather than
+  buckets being dropped — a coarser answer is usable, a truncated one silently lies (§1.4). The widen logs a `warn`
+  naming the requested interval, the range and the interval actually used.
+- **The live path is untouched:** 24 h at one-minute resolution is 1,440 buckets, so nothing the UI does today hits the
+  cap or changes shape. That is also why this was safe to do in one commit.
+- **Verified:** `cargo check --all-targets` clean, 133 frontend tests green, and in the installed app
+  `get_input_history` still returns a populated bucket array while the input-history modal renders as before.

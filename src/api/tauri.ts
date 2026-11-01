@@ -163,13 +163,6 @@ export async function getInputHistory(intervalMinutes: number): Promise<InputHis
 }
 
 /**
- * Get input history in range
- */
-export async function getInputHistoryRange(startIso: string, endIso: string, intervalMinutes: number): Promise<InputHistoryBucket[]> {
-    return invoke<InputHistoryBucket[]>('get_input_history_range', { startIso, endIso, intervalMinutes });
-}
-
-/**
  * Get idle time in seconds
  */
 export async function getIdleSeconds(): Promise<number> {

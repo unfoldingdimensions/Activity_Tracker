@@ -11,7 +11,6 @@ import {
     getActiveWindow,
     getIdleSeconds,
     getInputHistory,
-    getInputHistoryRange,
     type ActiveWindow,
     type InputHistoryBucket,
 } from '../../api/tauri';
@@ -110,18 +109,3 @@ export function useInputHistory(interval: number, enabled = true) {
     });
 }
 
-/**
- * Get input history in range
- */
-export function useInputHistoryRange(startIso: string, endIso: string, interval: number, enabled = true) {
-    return useQuery({
-        queryKey: ['inputHistoryRange', startIso, endIso, interval],
-        queryFn: async (): Promise<InputHistoryBucket[]> => {
-            if (isTauri()) {
-                return await getInputHistoryRange(startIso, endIso, interval);
-            }
-            return MOCK_INPUT_HISTORY;
-        },
-        enabled: enabled && !!startIso && !!endIso,
-    });
-}

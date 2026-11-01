@@ -6,6 +6,7 @@
 mod commands;
 mod database;
 mod export;
+mod settings_keys;
 mod tracker;
 mod visibility;
 mod windows_api;
@@ -495,7 +496,6 @@ pub fn run() {
             commands::get_timeline_range_for_app_paginated,
             commands::get_app_usage_range,
             commands::get_input_history,
-            commands::get_input_history_range,
             commands::get_idle_seconds,
             commands::start_tracking,
             commands::stop_tracking,
