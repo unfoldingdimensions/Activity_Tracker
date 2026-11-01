@@ -17,8 +17,6 @@ mod export;
 #[allow(dead_code)]
 mod database;
 
-use rusqlite::Connection;
-
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let dir = std::env::temp_dir().join("at-pragma-check");
     let _ = std::fs::remove_dir_all(&dir);
