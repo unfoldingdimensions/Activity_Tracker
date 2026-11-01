@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- The application manifest, as merged by hand (D-053).
+
+     GNU ld 2.47 injects its *own* default manifest into every PE it links and offers no flag to suppress it, so an exe
+     here always carries two RT_MANIFEST entries with id 1 and ld prints ".rsrc merge failure: multiple non-default
+     manifests". Windows reads the first one, which is the one embedded from this file — so this file has to carry
+     everything the app needs, because whatever ld generated is dead weight:
+
+       * Common-Controls 6 — Tauri's dialog APIs and any future native widget need the v6 side-by-side assembly.
+         Without it the process silently falls back to the comctl32 v5 controls.
+       * longPathAware — without it every Win32 path call stops at MAX_PATH (260), and this app writes exports and a
+         database under %ProgramData%\ActivityTracker.
+       * requestedExecutionLevel asInvoker — states that the app never asks for elevation, instead of leaving Windows to
+         guess from the file name or the version resource.
+
+     Deliberately absent: dpiAware / dpiAwareness. The window's DPI behaviour is set programmatically by tao at startup,
+     and declaring it in two places risks them disagreeing; the app renders correctly at 125% without this entry. -->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity
+        type="win32"
+        name="Microsoft.Windows.Common-Controls"
+        version="6.0.0.0"
+        processorArchitecture="*"
+        publicKeyToken="6595b64144ccf1df"
+        language="*"
+      />
+    </dependentAssembly>
+  </dependency>
+  <asmv3:application>
+    <asmv3:windowsSettings xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
+      <longPathAware>true</longPathAware>
+    </asmv3:windowsSettings>
+  </asmv3:application>
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>

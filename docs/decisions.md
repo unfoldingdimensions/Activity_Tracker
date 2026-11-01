@@ -1051,3 +1051,33 @@ fail (the value exists, the path is right, the command launches) are each checke
   mapping the object's own entries again), and no value is `undefined`. The Rust unit tests in `settings_keys.rs` pin the
   accepted count and the unknown-key report, but `cargo test` cannot run on this machine (L-11), so the executing evidence
   is the invocation above.
+
+## D-053 · The `.rsrc merge failure` warning was pointing at a real loss
+
+**2026-11-01 · Active · [build] · implements T15 of D-033/D-034**
+
+- **The warning:** every release link of the app binary prints
+  `ld.exe: .rsrc merge failure: multiple non-default manifests` (surfaced by cargo as a `linker_messages` warning).
+- **What is actually in the file:** measured with `python scripts/manifest-resources.py <exe>` — **two `RT_MANIFEST`
+  resources, both `id=1`, `lang=1033`**:
+  1. 334 bytes, `Microsoft.Windows.Common-Controls` only — the manifest `tauri-build` embeds;
+  2. 599 bytes, `longPathAware` + `requestedExecutionLevel asInvoker` — **GNU ld's own default manifest**, which
+     binutils 2.47 injects into every PE it links. `ld --help` and the binary's strings contain no option to suppress
+     it, so the duplicate cannot be removed on this toolchain.
+- **Why it mattered:** for an exe, Windows loads the *first* `id=1` manifest. That was tauri-build's Common-Controls
+  one, so **`longPathAware` and `asInvoker` were dead weight in the binary** — the app was not long-path aware (every
+  Win32 path call stops at 260 characters) and did not declare that it never elevates. The warning was not noise.
+- **The fix:** `src-tauri/app.manifest` replaces tauri-build's default with the union — Common-Controls v6,
+  `longPathAware`, `requestedExecutionLevel asInvoker` — supplied through `WindowsAttributes::app_manifest` in
+  `build.rs`. DPI entries are deliberately **absent**: tao sets DPI awareness programmatically at startup, and declaring
+  it in two places is how window scaling starts disagreeing with itself.
+- **Measured after:** first manifest 2057 bytes `[common-controls, longPathAware, asInvoker]`, ld's 599-byte manifest
+  still second, **and the warning still printed**. That is the honest end state: the content is now right, the warning
+  is a property of the toolchain, and it will keep appearing until binutils gives ld a way to skip its default.
+- **Checked that a manifest change did not break startup**, which is the reason this item was "investigation only":
+  the installed build launches, the window renders at the same 1618×1047 with no side-by-side error and no scaling
+  change, and capture works.
+- **Tooling:** `scripts/manifest-resources.py` parses the PE resource directory rather than calling `FindResource` —
+  the Win32 helpers resolve by (id, type) and report the same resource twice. Its first version reported `dpiAware` for
+  a manifest that has none, because the word appears in the file's own comment; it now matches `<dpiAware`, i.e. the
+  element. A text scan that reads documentation will match it.
