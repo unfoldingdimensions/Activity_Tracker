@@ -101,7 +101,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                         <div className="text-[12px] text-[var(--muted-foreground)]">Loading…</div>
                     ) : hasData ? (
                         <ResponsiveContainer width="100%" height="100%" minHeight={minHeight ?? 250}>
-                            <LineChart data={data} margin={{ top: 10, right: 8, bottom: 0, left: -18 }}>
+                            <LineChart data={data} margin={{ top: 10, right: 24, bottom: 0, left: -18 }}>
                                 <CartesianGrid vertical={false} stroke="var(--border)" strokeWidth={1} />
                                 <XAxis
                                     dataKey="time"
@@ -209,7 +209,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                     <LoadingState message="Loading timeline..." />
                 ) : hasData ? (
                     <ResponsiveContainer width="100%" height="100%" minHeight={minHeight ?? 260}>
-                        <AreaChart data={data}>
+                        <AreaChart data={data} margin={{ top: 5, right: 24, bottom: 5, left: 5 }}>
                             <CartesianGrid
                                 strokeDasharray="3 3"
                                 vertical={false}

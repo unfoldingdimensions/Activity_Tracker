@@ -1122,3 +1122,24 @@ fail (the value exists, the path is right, the command launches) are each checke
 - **Coverage:** `icon_audit` goes from **62/124 to 64/124**, and the "real apps still missing" count from 26 to 24. The
   remaining 24 are the ones D-046 lists: installers whose binary is gone, apps no longer installed, and MSIX packages
   whose executable is not named in any manifest this user's repository exposes.
+
+## D-056 · The chart's last x-axis label has room for its own width
+
+**2026-11-01 · Active · [ui] · implements T20**
+
+- **The defect:** on the dashboard the rightmost time label was cut — "3:00 AM" rendered as "3:00". Measured over CDP
+  against the SVG's own box: the label's right edge sat **17 px past** the chart's right edge, and the card clips its
+  overflow, so the AM/PM simply disappeared.
+- **The cause:** both variants anchor tick labels at their middle, so the last one needs half a label's width beyond the
+  plot. The flat `LineChart` had `margin.right: 8`; the glass `AreaChart` had **no margin prop at all**, i.e. recharts'
+  5 px default. A middle-anchored 43 px label hangs ~21 px past its tick, so neither had room.
+- **The fix:** `margin.right: 24` on both charts in `FocusFlowChart.tsx`. Nothing else moved: the plot area gives up
+  16 px of width that the labels were already overhanging, and the y-axis, legend and colours are untouched.
+- **Measured after, both themes:** glass — last label `3:00 AM` right edge 874 against a chart edge of 877 (**2 px
+  inside**); flat — `3:00` at **13 px inside**. Before the change the same measurement read **+17 px outside**.
+- **Not verified by screenshot:** the axis row now sits below the fold at 125 % once the session banner is present, and
+  the attempts to crop it kept landing on the secondary chart (the one with 20/40/60/80 % ticks). The numbers above are
+  the same measurement that showed the clipping, taken from the live DOM, both themes.
+- **Tooling note:** a `--clip-shot` mode for `scripts/ui-dom.mjs` (CDP `Page.captureScreenshot` clipped to one element)
+  was written for this and **reverted** — `Page.enable` never answered on this WebView2 target and an untested mode is
+  worse than none.
