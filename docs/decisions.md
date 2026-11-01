@@ -1191,3 +1191,21 @@ fail (the value exists, the path is right, the command launches) are each checke
   Rust tests run in `core` and that a `#[test]` left in `src-tauri` does not run at all, and the gate line carries the
   current counts plus `npm run test:rust`. `docs/architecture.md` and `docs/flow.md` moved with the code in the commit
   before it.
+
+## D-058 · The focus chart's height comes from itself, not from the app list
+
+**2026-11-02 · Active · [ui] · first item of the hierarchy pass**
+
+- **The defect, measured:** the flat dashboard's main split had no `items-start`, so both grid columns stretched to
+  the height of `AppUsageSide`. At 1280×800 CSS (125 % scale, 1618×1047 window) the chart's recharts surface measured
+  **646×569** — not the 250 px it declared — and its x-axis ticks sat at **y = 1032**, i.e. **232 px below the fold**.
+  The chart was therefore sized by how many apps happened to be in the side list: one more app, a taller chart.
+- **The fix:** `items-start` on the split, and the chart's own height set to **300 px** — the component's existing
+  default, enough for five 25 %-stepped gridlines plus the axis row.
+- **Measured after (same window, same range):** surface **646×300**, x-axis at **y = 763** — **37 px inside** the
+  800 px viewport, so the chart including its axis is on the first screen. History, ticks, legend and data unchanged.
+- **Glass was already correct** — its split has carried `items-start` since it was written, and its chart measures 360.
+  This commit restores the flat skin to the same rule, so the two skins agree on what sets chart height.
+- **What this commit deliberately does not fix:** the row is still **658 px** tall because the app column is 609, so
+  there is dead space under the chart. The cause is the side panel listing every app twice (next finding), and the fix
+  belongs there rather than in a second chart height.

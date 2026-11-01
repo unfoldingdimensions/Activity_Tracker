@@ -101,9 +101,9 @@ export function Dashboard() {
                     <DailyDigest digest={digest} isLoading={isLoading} />
 
                     {/* Main split: focus flow + KPI row | app usage side */}
-                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 py-6 px-8 border-b border-[var(--border)]">
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] items-start gap-4 py-6 px-8 border-b border-[var(--border)]">
                         <div className="min-w-0 pr-0 lg:pr-7">
-                            <FocusFlowChart data={timelineData} isLoading={isLoading} minHeight={250} title="Focus flow · share of each interval" />
+                            <FocusFlowChart data={timelineData} isLoading={isLoading} minHeight={300} title="Focus flow · share of each interval" />
                             <FlowStateMetrics />
                         </div>
                         <AppUsageSide appUsage={appUsage} isLoading={isLoading} />
