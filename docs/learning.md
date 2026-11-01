@@ -187,3 +187,19 @@ coordinates and they were on screen.
 **Rule:** before automating a click in an app whose data you cannot regenerate, copy the data first, and print the
 target element's rect and text before firing, not just the point you clicked. A confirm dialog is not a safety net
 when the input that triggers it is synthetic.
+
+### L-23 · Click a webview through its DOM, not through the screen
+Clicking this app's Settings link with a real mouse event silently did nothing, twice, while the page stayed on the
+dashboard — the app hides itself on focus loss, so the synthetic click and the window could disagree about whether it
+was on screen. The same navigation over CDP (`Runtime.evaluate` → `anchor.click()`) worked first time and also let the
+page be *read* back: which section rendered, whether a button was disabled, what a caption said. UIA can invoke
+elements, but it cannot tell you the control is in the right state afterwards.
+**Rule:** verify webview UI by driving its DOM over the debug port and reading the result back. Reach for OS-level
+clicks only when the thing you are testing is the OS interaction itself, and print the element you are about to press.
+
+### L-24 · A deploy that copies over a running executable fails, and `2>/dev/null` hides it
+`cp` onto `Activity Tracker v2\activity-tracker-v2.exe` failed because the process was running — and the error went to
+`/dev/null`, so the next launch started the *previous* build. The screenshots looked plausible; the layout under test
+was simply not the code that had been written. Nothing in the output said "old binary".
+**Rule:** stop the process, then copy, then start — and never swallow the copy's stderr. When a UI change does not show
+up, compare the installed binary's mtime against the build output before doubting the change.
