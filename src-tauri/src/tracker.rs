@@ -929,6 +929,27 @@ impl Tracker {
         })
     }
 
+    /// One page of an app's events plus the total for the range, so a screen can say "N of M".
+    pub fn get_events_for_process_range_paginated(
+        &self,
+        process_name: &str,
+        start: &str,
+        end: &str,
+        limit: u32,
+        offset: u32,
+    ) -> (Vec<database::WindowEvent>, u32) {
+        self.read("paginated events for app", (Vec::new(), 0), |conn| {
+            database::get_window_events_for_process_in_range_paginated(
+                conn,
+                process_name,
+                start,
+                end,
+                limit,
+                offset,
+            )
+        })
+    }
+
     /// Get window events in range with pagination
     pub fn get_events_range_paginated(&self, start: &str, end: &str, limit: u32, offset: u32) -> Vec<database::WindowEvent> {
         self.read("paginated events", Vec::new(), |conn| {

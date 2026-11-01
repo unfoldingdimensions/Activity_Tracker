@@ -122,6 +122,17 @@ export function Timeline() {
 
     }, [range]);
 
+    // How much of the log the screen currently shows. The range query returns everything in the
+    // range and renders it in batches; the per-app drill-down is paged on the server with this same
+    // number as its limit, so the two views share one control. Keyed state, so the limit resets when
+    // the range, the view or the selected app changes without an effect or an extra render.
+    const windowKey = `${range}|${viewMode}|${selectedApp ?? 'all'}`;
+    const [eventWindow, setEventWindow] = useState<{ key: string; limit: number }>({
+        key: windowKey,
+        limit: EVENT_BATCH,
+    });
+    const eventLimit = eventWindow.key === windowKey ? eventWindow.limit : EVENT_BATCH;
+
     // Fetch Data
     const { data: events, isLoading: eventsLoading } = useTimelineEventsRange(
         startIso,
@@ -133,27 +144,23 @@ export function Timeline() {
         endDate,
         viewMode === 'apps' && !selectedApp
     );
-    const { data: appEvents, isLoading: appEventsLoading } = useTimelineRangeForApp(
+    const { data: appPage, isLoading: appEventsLoading } = useTimelineRangeForApp(
         selectedApp,
         startIso,
         endIso,
+        eventLimit,
         !!selectedApp
     );
 
     // Group events logic
-    const displayEvents = selectedApp ? appEvents : events;
+    const displayEvents = selectedApp ? appPage?.events : events;
     const allEvents = useMemo(() => displayEvents ?? [], [displayEvents]);
 
-    // The range query now returns every event in the range, so the log renders in
-    // explicit batches rather than being silently capped at the query. The limit
-    // resets whenever the range, the view or the selected app changes (keyed state,
-    // so no effect and no extra render).
-    const windowKey = `${range}|${viewMode}|${selectedApp ?? 'all'}`;
-    const [eventWindow, setEventWindow] = useState<{ key: string; limit: number }>({
-        key: windowKey,
-        limit: EVENT_BATCH,
-    });
-    const eventLimit = eventWindow.key === windowKey ? eventWindow.limit : EVENT_BATCH;
+    // What "M" is in "newest N of M": the range view holds every event it fetched, the drill-down
+    // knows its own total from the server (D-039). Without this the app view would describe its
+    // first page as if it were the whole range.
+    const totalForView = selectedApp ? (appPage?.total ?? allEvents.length) : allEvents.length;
+
     const shownEvents = useMemo(
         () => (allEvents.length > eventLimit ? allEvents.slice(0, eventLimit) : allEvents),
         [allEvents, eventLimit]
@@ -324,19 +331,20 @@ export function Timeline() {
     ) : undefined;
 
     // Visible bound for the rendered log, shown in both skins so the count can never
-    // be hidden: the query returns the whole range, the list reveals it in batches.
-    const eventWindowControl = allEvents.length > EVENT_BATCH ? (
+    // be hidden: the range view reveals a fetched range in batches, the app drill-down
+    // asks the server for the next batch (D-039).
+    const eventWindowControl = totalForView > EVENT_BATCH ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted-foreground)]">
-                Showing the newest {Math.min(eventLimit, allEvents.length).toLocaleString()} of{' '}
-                {allEvents.length.toLocaleString()} events
+                Showing the newest {Math.min(eventLimit, totalForView).toLocaleString()} of{' '}
+                {totalForView.toLocaleString()} events
             </span>
-            {eventLimit < allEvents.length ? (
+            {eventLimit < totalForView ? (
                 <button
                     onClick={() => setEventWindow({ key: windowKey, limit: eventLimit + EVENT_BATCH })}
                     className="font-mono text-[10px] uppercase tracking-[0.08em] px-3 py-1.5 border border-[var(--border)] text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors"
                 >
-                    Show {Math.min(EVENT_BATCH, allEvents.length - eventLimit)} more
+                    Show {Math.min(EVENT_BATCH, totalForView - eventLimit)} more
                 </button>
             ) : null}
         </div>

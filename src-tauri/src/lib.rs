@@ -411,6 +411,7 @@ pub fn run() {
             commands::get_recent_events,
             commands::get_timeline_range_paginated,
             commands::get_timeline_range_for_app,
+            commands::get_timeline_range_for_app_paginated,
             commands::get_app_usage_range,
             commands::get_input_history,
             commands::get_input_history_range,

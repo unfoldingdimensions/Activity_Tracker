@@ -115,6 +115,9 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
         -- Create indexes for faster queries
         CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_snapshots(timestamp);
         CREATE INDEX IF NOT EXISTS idx_window_timestamp ON window_events(timestamp);
+        -- The per-app drill-down filters by process_name and orders by timestamp; without this it
+        -- either scans the range or sorts every row the app ever produced (D-039).
+        CREATE INDEX IF NOT EXISTS idx_window_process_timestamp ON window_events(process_name, timestamp);
         CREATE INDEX IF NOT EXISTS idx_input_timestamp ON input_activity(timestamp);
         CREATE INDEX IF NOT EXISTS idx_app_usage_date ON app_usage(date);
 
@@ -614,7 +617,7 @@ pub fn get_window_events_for_process_in_range(
          WHERE process_name = ?1 AND timestamp >= ?2 AND timestamp <= ?3
          ORDER BY timestamp DESC"
     )?;
-    
+
     let rows = stmt.query_map([process_name, start_iso, end_iso], |row| {
         Ok(WindowEvent {
             timestamp: row.get(0)?,
@@ -626,6 +629,50 @@ pub fn get_window_events_for_process_in_range(
     })?;
 
     rows.collect()
+}
+
+/// One page of an app's window events (newest first) plus the total the page is drawn from.
+///
+/// The drill-down used to read every row for the selected app: 11,466 rows / 967 KB for the worst
+/// app on 2026-11-01, and that grows with history (~1.5 MB a year for `chrome.exe`). A page carries
+/// its total so the UI can say "newest N of M" instead of silently truncating (AGENTS.md §1.4).
+pub fn get_window_events_for_process_in_range_paginated(
+    conn: &Connection,
+    process_name: &str,
+    start_iso: &str,
+    end_iso: &str,
+    limit: u32,
+    offset: u32,
+) -> Result<(Vec<WindowEvent>, u32)> {
+    let total: u32 = conn.query_row(
+        "SELECT COUNT(*) FROM window_events
+         WHERE process_name = ?1 AND timestamp >= ?2 AND timestamp <= ?3",
+        rusqlite::params![process_name, start_iso, end_iso],
+        |row| row.get(0),
+    )?;
+
+    let mut stmt = conn.prepare(
+        "SELECT timestamp, process_name, window_title, duration_seconds, active_seconds
+         FROM window_events
+         WHERE process_name = ?1 AND timestamp >= ?2 AND timestamp <= ?3
+         ORDER BY timestamp DESC
+         LIMIT ?4 OFFSET ?5",
+    )?;
+
+    let rows = stmt.query_map(
+        rusqlite::params![process_name, start_iso, end_iso, limit, offset],
+        |row| {
+            Ok(WindowEvent {
+                timestamp: row.get(0)?,
+                process_name: row.get(1)?,
+                window_title: row.get(2)?,
+                duration_seconds: row.get(3)?,
+                active_seconds: row.get(4)?,
+            })
+        },
+    )?;
+
+    Ok((rows.collect::<Result<Vec<_>>>()?, total))
 }
 
 /// Get app usage aggregated in range

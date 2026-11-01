@@ -3,14 +3,14 @@
  * Queries for timeline, events, and activity history
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { isTauri } from '../../utils/isTauri';
 import { useVisibility } from '../../context/VisibilityContext';
 import {
     getTimeline,
     getRecentEvents,
     getTimelineRangePaginated,
-    getTimelineRangeForApp,
+    getTimelineRangeForAppPaginated,
     type TimelineSegment,
     type WindowEvent,
 } from '../../api/tauri';
@@ -116,27 +116,36 @@ export function useTimelineEventsRange(
 }
 
 /**
- * Get window events for a specific app in a date range
- * 
+ * One page of window events for a specific app in a date range
+ *
+ * The drill-down is server-paged: `limit` is how much of the range the screen currently shows, and
+ * the response carries `total` so the screen can say "newest N of M" rather than presenting a page
+ * as the whole range (D-039).
+ *
  * @param processName - Process name to filter by
  * @param startIso - Start date in ISO format
  * @param endIso - End date in ISO format
+ * @param limit - Rows to fetch from the newest end of the range
  * @param enabled - Whether the query is enabled
  */
 export function useTimelineRangeForApp(
     processName: string | null,
     startIso: string,
     endIso: string,
+    limit: number,
     enabled = true
 ) {
     return useQuery({
-        queryKey: ['timelineRangeForApp', processName, startIso, endIso],
-        queryFn: async (): Promise<NormalisedWindowEvent[]> => {
-            if (isTauri() && processName) {
-                return withActiveDurations(await getTimelineRangeForApp(processName, startIso, endIso));
+        queryKey: ['timelineRangeForApp', processName, startIso, endIso, limit],
+        queryFn: async (): Promise<{ events: NormalisedWindowEvent[]; total: number }> => {
+            if (!isTauri() || !processName) {
+                return { events: [], total: 0 };
             }
-            return [];
+            const page = await getTimelineRangeForAppPaginated(processName, startIso, endIso, limit, 0);
+            return { events: withActiveDurations(page.events), total: page.total };
         },
         enabled: enabled && !!processName,
+        // Growing the limit refetches; keep the rows already on screen instead of blanking them.
+        placeholderData: keepPreviousData,
     });
 }

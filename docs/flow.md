@@ -46,7 +46,9 @@ query returns rows, which takes priority for the chart.
   covers it completely. The 200,000-event guard is a runaway limit, not a display cap, and it trips loudly
   rather than returning a partial range. The log *list* renders 250 rows per batch behind a visible
   "newest N of M" row with a "Show more" control (`Timeline.tsx`).
-- `get_timeline_range_for_app` → drill-down, exact `process_name` match, no limit.
+- `get_timeline_range_for_app` → drill-down, exact `process_name` match, no limit. Superseded in the UI by
+  `get_timeline_range_for_app_paginated`, which returns one page plus the range's total and is indexed by
+  `idx_window_process_timestamp(process_name, timestamp)` (D-039). Both commands stay registered (§1.5).
 - The current app segment is closed — not discarded — when tracking stops: `close_segment()` writes it from the
   copy the loop publishes on the `Tracker` every tick, called by the loop's stop branch and by
   `RunEvent::ExitRequested` for a quit (D-029).

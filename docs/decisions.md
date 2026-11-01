@@ -621,3 +621,40 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   after a restart, with the window minimised in both. Visible and hidden states measure the same, so nothing is
   throttling the hidden page. That is a separate defect with its own task, and it means no CPU figure from this
   repository should be quoted until it is understood.
+
+## D-039 · The per-app drill-down is paged by the server, and says how much it is not showing
+
+**2026-11-01 · Active · [data] · implements T3 of D-033/D-034**
+
+- **Before:** `get_timeline_range_for_app` returned every event for the selected app in the range —
+  **11,466 rows / 967 KB** for `chrome.exe` across all history, and 4,750 rows / 396 KB over the last 30 days
+  alone. The screen fetched all of it to render 250.
+- **After:** `get_timeline_range_for_app_paginated(process_name, start_iso, end_iso, limit, offset)` returns one
+  page plus `total`, and the drill-down asks for exactly as many rows as the log is showing. The old command stays
+  registered and its binding is marked deprecated (AGENTS.md §1.5); nothing calls it.
+- **New index:** `idx_window_process_timestamp (process_name, timestamp)`. The query filters by app and orders by
+  timestamp, and neither `idx_window_timestamp` nor anything else covered that pair.
+- **Measured on the live database**, 30-day window, worst app (`chrome.exe`), median of 5:
+
+  | path | rows | payload | time |
+  |---|---|---|---|
+  | before — whole app range | 4,750 | 396 KB | 4.58 ms |
+  | after — `COUNT(*)` | 1 | 4 B | 0.10 ms |
+  | after — first page | 250 | 19.7 KB | 0.22 ms |
+  | after — page at offset 10,000 | 0 | 0 B | 0.13 ms |
+
+  **First paint goes from 396 KB to 19.7 KB and from ~4.6 ms to ~0.32 ms** (count + page). The deep-offset case
+  cost 4.04 ms before the index existed and 0.13 ms after — that is what the composite index buys.
+- **The cap carries its total** (§1.4): the page response includes the range's real count, so the log reads
+  "Showing the newest 250 of 1,253 events" with a "Show 250 more" control instead of presenting a page as if it
+  were the range. Verified in the built app: `chrome` → This Week opened at **250 of 1,253**, and one click on
+  *Show 250 more* gave **500 of 1,253** with no blank frame (the hook keeps the previous page while the bigger one
+  loads).
+- **Proof that executes:** `cargo run --example drilldown_paging` — 1,000 events for one app, 100 for another,
+  then it checks that the total is the app's own, that pages tile the range with no gap or duplicate, that ordering
+  stays newest-first across page boundaries, that an offset past the end is empty rather than an error, and that a
+  narrower range narrows the total. Proven red by flipping `ORDER BY` to `ASC`: *FAIL rows are strictly
+  newest-first across page boundaries*.
+- **Not changed:** the range view keeps D-017's fetch-the-range-and-batch-it behaviour, because its 200,000-event
+  guard already refuses to render a partial range. Both views now share the same limit control, so the label means
+  the same thing in both.

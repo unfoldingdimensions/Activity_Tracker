@@ -111,9 +111,40 @@ export async function getTimelineRangePaginated(
 
 /**
  * Get window events for specific app in range
+ *
+ * @deprecated unbounded: the worst app returns 11,466 rows today and grows with history. Use
+ * `getTimelineRangeForAppPaginated`, which returns one page plus the total (D-039).
  */
 export async function getTimelineRangeForApp(processName: string, startIso: string, endIso: string): Promise<WindowEvent[]> {
     return invoke<WindowEvent[]>('get_timeline_range_for_app', { processName, startIso, endIso });
+}
+
+/** One page of an app's events plus the total the page was drawn from. */
+export interface AppEventsPage {
+    events: WindowEvent[];
+    total: number;
+}
+
+/**
+ * One page of window events for a specific app in range, newest first.
+ *
+ * The total is what lets a screen say "newest N of M" instead of showing a page as if it were the
+ * whole range (AGENTS.md §1.4).
+ */
+export async function getTimelineRangeForAppPaginated(
+    processName: string,
+    startIso: string,
+    endIso: string,
+    limit: number,
+    offset: number
+): Promise<AppEventsPage> {
+    return invoke<AppEventsPage>('get_timeline_range_for_app_paginated', {
+        processName,
+        startIso,
+        endIso,
+        limit,
+        offset,
+    });
 }
 
 /**

@@ -288,6 +288,42 @@ pub fn get_timeline_range_for_app(state: State<AppState>, process_name: String, 
     tracker.get_events_for_process_range(&process_name, &start_iso, &end_iso)
 }
 
+/// A page of one app's window events plus the total it is drawn from.
+#[derive(serde::Serialize)]
+pub struct AppEventsPage {
+    pub events: Vec<WindowEvent>,
+    pub total: u32,
+}
+
+/// One page of the per-app drill-down.
+///
+/// The un-paginated command above stays for compatibility (AGENTS.md §1.5); new callers use this
+/// one. A missing `limit` becomes the page size rather than "everything", so no caller can pull the
+/// whole table by accident, and the response carries the total so the screen can say "newest N of M"
+/// instead of truncating silently (§1.4).
+#[tauri::command]
+pub fn get_timeline_range_for_app_paginated(
+    state: State<AppState>,
+    process_name: String,
+    start_iso: String,
+    end_iso: String,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> AppEventsPage {
+    let limit = limit.unwrap_or(250).clamp(1, 1_000);
+    let offset = offset.unwrap_or(0);
+    let Ok(tracker) = state.tracker.lock() else {
+        log::error!("Failed to lock tracker for get_timeline_range_for_app_paginated");
+        return AppEventsPage {
+            events: Vec::new(),
+            total: 0,
+        };
+    };
+    let (events, total) =
+        tracker.get_events_for_process_range_paginated(&process_name, &start_iso, &end_iso, limit, offset);
+    AppEventsPage { events, total }
+}
+
 /// Get app usage in range
 #[tauri::command]
 pub fn get_app_usage_range(state: State<AppState>, start_date: String, end_date: String) -> Vec<AppUsageEntry> {
