@@ -34,6 +34,11 @@ const INSTALL_SCAN_DEPTH: usize = 2;
 /// `C:\Program Files` on this machine holds ~1,600 directories at that depth.
 const SCAN_DIRECTORY_BUDGET: usize = 3000;
 
+/// Depth and budget for the registry's install locations. Deeper than the general sweep because these folders are one
+/// application each — `Program Files\Git` is where Git's own `usr\bin` and `mingw64\bin` live.
+const INSTALL_DIR_SCAN_DEPTH: usize = 2;
+const INSTALL_DIR_SCAN_BUDGET: usize = 1_500;
+
 struct LruCache {
     order: VecDeque<String>,
     data: HashMap<String, PathBuf>,
@@ -83,6 +88,8 @@ struct InstalledPrograms {
     start_menu: HashMap<String, PathBuf>,
     /// lowercased executable file name -> path, from one bounded sweep of the install roots
     program_exes: HashMap<String, PathBuf>,
+    /// lowercased executable file name -> path, from a deeper sweep of each registry install location
+    install_dir_exes: HashMap<String, PathBuf>,
     /// lowercased executable file name -> the packaged app's own logo PNG
     appx_logos: HashMap<String, PathBuf>,
 }
@@ -141,11 +148,13 @@ impl InstalledPrograms {
             }
         }
 
+        let install_dir_exes = install_location_exes(&install_dirs);
         Self {
             by_exe_name,
             install_dirs,
             start_menu: start_menu_exes(),
             program_exes: program_dir_exes(),
+            install_dir_exes,
             appx_logos: appx_logos(),
         }
     }
@@ -157,6 +166,7 @@ impl InstalledPrograms {
             install_dirs: Vec::new(),
             start_menu: HashMap::new(),
             program_exes: HashMap::new(),
+            install_dir_exes: HashMap::new(),
             appx_logos: HashMap::new(),
         }
     }
@@ -252,9 +262,10 @@ fn from_install_dirs(file_name: &str) -> Option<PathBuf> {
         }
     }
     INSTALLED
-        .start_menu
+        .install_dir_exes
         .get(file_name)
         .cloned()
+        .or_else(|| INSTALLED.start_menu.get(file_name).cloned())
         .or_else(|| INSTALLED.program_exes.get(file_name).cloned())
         .or_else(|| INSTALLED.appx_logos.get(file_name).cloned())
 }
@@ -513,6 +524,28 @@ fn resolve_assets(root: &Path, logo: &str) -> Option<PathBuf> {
         }
     });
     candidates.into_iter().next()
+}
+
+/// Sweep the registry's install locations a level or two deeper than the general pass.
+///
+/// This is what finds the executables that live inside an application's own tree rather than beside its uninstaller:
+/// `…\Git\mingw64\bin\git-credential-manager.exe` and `…\Git\usr\bin\mintty.exe` are three levels below the folder Git
+/// registers, and the two-level sweep of `Program Files` never reaches them. The tree is small and known — that is the
+/// point of using the registry's own answer instead of walking `Program Files` further.
+///
+/// Bounded by a shared directory budget, like every other sweep: a pathological install location must not turn a miss
+/// into a disk walk.
+fn install_location_exes(dirs: &[PathBuf]) -> HashMap<String, PathBuf> {
+    let mut map = HashMap::new();
+    let mut budget = INSTALL_DIR_SCAN_BUDGET;
+    for dir in dirs {
+        collect_exes(dir, INSTALL_DIR_SCAN_DEPTH, &mut budget, &mut map);
+        if budget == 0 {
+            log::debug!("Install-location sweep stopped at its directory budget");
+            break;
+        }
+    }
+    map
 }
 
 /// One bounded sweep of the directories programs actually install into, mapping every executable found.

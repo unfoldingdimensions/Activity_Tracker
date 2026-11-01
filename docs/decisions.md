@@ -1098,3 +1098,27 @@ fail (the value exists, the path is right, the command launches) are each checke
   illustration — a real icon, just illegible at 16 px. The DOM settled it independently: an `<img>` with
   `alt="hermes.exe"` exists in that row, and the fallback is a `<div>` with a letter.
 - **Conclusion:** nothing to fix. The letter tile that does appear is correct behaviour, not a miss.
+
+## D-055 · The icon sweep also looks inside each app's own install folder
+
+**2026-11-01 · Active · [data] · implements T19**
+
+- **The gap:** `mintty.exe` and `git-credential-manager.exe` live three levels below the folder Git registers —
+  `C:\Program Files\Git\usr\bin\mintty.exe`, `…\Git\mingw64\bin\git-credential-manager.exe` — and the two-level sweep of
+  the install roots never reached them. Their icons existed only because both happened to be running while the UI asked
+  for them, which is exactly the accidental-dependency D-045 set out to remove.
+- **The fix:** the registry's own `InstallLocation` entries are swept at **depth 2 with a shared 1500-directory budget**,
+  into a `basename → path` map next to the other maps. Those folders are one application each, so a deeper walk there is
+  cheap in a way that a deeper walk of `Program Files` is not: it finds both executables in **1.6 s**.
+  A 4000-directory budget was tried first and cost **51 s** for the same coverage — the budget is where the time goes,
+  not the depth.
+- **`RESOLVER_VERSION` 2 → 3**, so every `.missing` marker written by the previous resolver is retried instead of
+  outliving the strategy that fixes it. That mechanism earned its keep here: without the bump these two would have
+  stayed marked unresolvable forever.
+- **Proven end to end, with the apps closed:** `Get-Process mintty, git-credential-manager` returns nothing, both PNGs
+  were deleted, the app restarted, and the backfill logged
+  `124 apps in history — 52 already cached, 2 added, 70 unresolved, in 1.6 s` with both files re-created from their
+  paths.
+- **Coverage:** `icon_audit` goes from **62/124 to 64/124**, and the "real apps still missing" count from 26 to 24. The
+  remaining 24 are the ones D-046 lists: installers whose binary is gone, apps no longer installed, and MSIX packages
+  whose executable is not named in any manifest this user's repository exposes.

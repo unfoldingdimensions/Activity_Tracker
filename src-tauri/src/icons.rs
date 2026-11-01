@@ -219,7 +219,7 @@ unsafe fn hicon_to_png(hicon: HICON) -> Option<Vec<u8>> {
 /// Bumped whenever the resolver gains a strategy. A `.missing` marker written by an older resolver is then ignored and
 /// the name is retried — otherwise adding a strategy would never reach the names it was added for, and the cache would
 /// quietly keep a wrong answer.
-const RESOLVER_VERSION: &str = "2";
+const RESOLVER_VERSION: &str = "3";
 
 /// Write the icon of every app that does not have one yet, so the UI never shows a letter tile for an app it has
 /// history for.
