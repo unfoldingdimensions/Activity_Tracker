@@ -145,6 +145,15 @@ pub fn get_settings(state: State<AppState>) -> HashMap<String, serde_json::Value
 /// Persist settings to the database and apply them to the runtime tracker.
 #[tauri::command]
 pub fn set_settings(state: State<AppState>, settings: HashMap<String, serde_json::Value>) -> Result<(), String> {
+    // Reject before persisting anything: a partial write leaves the database holding keys the app will never read,
+    // and the caller has no way to tell which half landed (D-052).
+    let unknown = crate::settings_keys::unknown_keys(&settings);
+    if !unknown.is_empty() {
+        let message = crate::settings_keys::rejection(&unknown);
+        log::warn!("set_settings rejected: {message}");
+        return Err(message);
+    }
+
     // Persist to the database first
     let db = {
         let Ok(tracker) = state.tracker.lock() else {

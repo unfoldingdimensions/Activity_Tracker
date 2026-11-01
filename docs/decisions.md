@@ -1026,3 +1026,28 @@ fail (the value exists, the path is right, the command launches) are each checke
   cap or changes shape. That is also why this was safe to do in one commit.
 - **Verified:** `cargo check --all-targets` clean, 133 frontend tests green, and in the installed app
   `get_input_history` still returns a populated bucket array while the input-history modal renders as before.
+
+## D-052 · Settings are validated at the command boundary
+
+**2026-11-01 · Active · [data] · implements T8 of D-033/D-034**
+
+- **Before:** `set_settings` persisted whatever keys arrived. A mistyped or removed key was written into the database,
+  logged at most, and never read again — and a caller could write keys the app has no idea about. AGENTS.md §1.3 says to
+  validate keys rather than trust the caller; this is that fix.
+- **The contract, in one place per side:** `src-tauri/src/settings_keys.rs` holds the **14 accepted keys** and the
+  rejection message; `src/context/settingsMapping.ts` holds the same list from the frontend's side. `set_settings`
+  validates **before** it writes anything — a partial write would leave the database holding keys the app never reads,
+  with no way for the caller to tell which half landed.
+- **The error is readable and names the offender:**
+  `Unknown setting key(s): focus_goal_hours. Accepted keys: dashboard_default_range, track_window_titles, …`
+  and the rejection is logged at `warn` alongside it.
+- **The frontend stopped producing strays too.** `settingsToBackend` now iterates the known key map instead of the
+  object's own properties: `settings` is seeded from `localStorage`, so an older payload could carry a key this version
+  removed — with a validating backend that would fail the *entire* save, leaving the UI showing values it never stored.
+- **Measured in the installed build:** invoking `set_settings` with `{idle_threshold: 60, focus_goal_hours: 4}` returns
+  the rejection above and writes nothing; invoking it with `{idle_threshold: 60}` succeeds; the settings table still
+  holds exactly **14 rows**, matching the whitelist.
+- **Tests:** `settingsMapping.test.ts` — every setting maps to its backend key, stale keys are dropped (proven red by
+  mapping the object's own entries again), and no value is `undefined`. The Rust unit tests in `settings_keys.rs` pin the
+  accepted count and the unknown-key report, but `cargo test` cannot run on this machine (L-11), so the executing evidence
+  is the invocation above.

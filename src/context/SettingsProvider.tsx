@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { SettingsContext, type UserSettings } from './SettingsContext';
 import { isTauri } from '../utils/isTauri';
 import { getSettings as fetchBackendSettings, setSettings as persistBackendSettings } from '../api/tauri';
+import { backendToSettings, settingsToBackend } from './settingsMapping';
 
 const DEFAULT_SETTINGS: UserSettings = {
     dashboardDefaultRange: 'past_hour',
@@ -19,43 +20,6 @@ const DEFAULT_SETTINGS: UserSettings = {
     visualTheme: 'flat',
     fontPair: 'swiss',
 };
-
-// Backend setting keys (snake_case, shared with the Rust tracker)
-const BACKEND_KEYS: Record<keyof UserSettings, string> = {
-    dashboardDefaultRange: 'dashboard_default_range',
-    trackWindowTitles: 'track_window_titles',
-    idleThreshold: 'idle_threshold',
-    blacklistedApps: 'blacklisted_apps',
-    retentionDays: 'retention_days',
-    launchOnStartup: 'launch_on_startup',
-    startMinimized: 'start_minimized',
-    redactedKeywords: 'redacted_keywords',
-    appLimits: 'app_limits',
-    appClassification: 'app_classification',
-    readingMode: 'reading_mode',
-    writeSummarySentence: 'write_summary_sentence',
-    visualTheme: 'visual_theme',
-    fontPair: 'font_pair',
-};
-
-function settingsToBackend(settings: UserSettings): Record<string, unknown> {
-    const map: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(settings) as [keyof UserSettings, unknown][]) {
-        map[BACKEND_KEYS[key]] = value;
-    }
-    return map;
-}
-
-function backendToSettings(map: Record<string, unknown> | null | undefined): Partial<UserSettings> {
-    const partial: Record<string, unknown> = {};
-    if (!map) return partial;
-    for (const [key, keyName] of Object.entries(BACKEND_KEYS)) {
-        const raw = map[keyName];
-        if (raw === undefined) continue;
-        partial[key] = raw;
-    }
-    return partial as Partial<UserSettings>;
-}
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
     const [settings, setSettings] = useState<UserSettings>(() => {
