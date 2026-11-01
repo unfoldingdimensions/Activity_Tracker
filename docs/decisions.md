@@ -896,3 +896,32 @@ fail (the value exists, the path is right, the command launches) are each checke
   two-level sweep; the rest (`recordly`, `shotkit`, `openmotion`, `svgenie`, `video2x`, `qemu`, `warm`, `openshot`,
   `aloha`, `amdbugreportform`, `freebuff`, `mo rec`, `link2ea`, `ealaunchhelper`, `riveearlyaccess`, `workbuddyai`)
   have no binary on this machine any more.
+
+## D-047 · Deleting the history asks for a word, and lives in its own group
+
+**2026-11-01 · Active · [ui] · implements T13 of D-033/D-034; closes L-22**
+
+- **What happened:** while automating the export button, a synthetic click landed on **"Delete everything"** 80 px away in
+  the same control group and cleared three months of live data (L-22). A `confirm()` dialog was in the way and did not
+  help: a scripted Enter answers it, and a human answers it from muscle memory.
+- **Two changes, because either alone is insufficient:**
+  1. **Separated.** Export stays in *Privacy & data*; deleting moved to its own **Danger zone** card below it. Measured
+     in the running app: **80 px inside one card → separate cards, ~190–205 px apart**, so a mis-aimed click now has to
+     cross a card boundary to reach it.
+  2. **Armed by a typed word.** `DeleteDataControl` (`src/components/settings/`) shows one destructive button; pressing
+     it reveals a field that must contain **`delete`** before the final button enables. `confirm()` is gone — it is a
+     dialog a synthetic input can satisfy, which is exactly how L-22 happened.
+- **Behaviour of the ritual:** case-insensitive and trimmed; `Escape` or *Cancel* disarms; the control **disarms itself
+  after every attempt**, so the same slip twice cannot delete twice. A failed delete surfaces the toast and re-arms
+  rather than leaving a half-state.
+- **Unchanged:** `clear_data` — same command, same transaction, same `VACUUM` + checkpoint (D-027), same preference
+  reset. This is a UI guard, not a storage change.
+- **Verified in the installed build**, both themes: the section and row read correctly in light and dark; the input
+  carries the prompt; the final button is visibly and programmatically **disabled** until the word matches; with the
+  wrong text typed it stays disabled; *Cancel* returns the button to idle. The screenshots are from the built app, and
+  the delete was never actually confirmed — the live database was backed up first (278 MB) and left untouched.
+- **Tests:** `DeleteDataControl.test.tsx`, six cases over the state machine — first click does not delete, mismatch keeps
+  the button disabled, case/space tolerance, cancel, self-disarm after a delete, Escape. Proven red by making the first
+  click call the handler: **6 of 6 fail**.
+- **Accepted cost:** friction on a rare, irreversible action. Two clicks and a word is the right price for deleting
+  everything you have ever recorded; if it ever feels heavy, the answer is a nicer explanation, not a shorter ritual.

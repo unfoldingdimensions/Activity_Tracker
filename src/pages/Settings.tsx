@@ -1,6 +1,6 @@
 import { Button } from '../components/Button';
 import { EditorialIntro } from '../components/shared/EditorialIntro';
-import { Settings as SettingsIcon, Moon, Sun, Play, Pause, Download } from 'lucide-react';
+import { Settings as SettingsIcon, Moon, Sun, Play, Pause, Download, Trash2 } from 'lucide-react';
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useTheme } from '../context/useTheme';
 import { useSettings } from '../hooks/useSettings';
@@ -12,6 +12,7 @@ import { PageHeader } from '../components/shared/PageHeader';
 import { useToast } from '../components/ui/Toast';
 import { APP_VERSION } from '../constants/config';
 import { SegTabs } from '../components/ui/SegTabs';
+import { DeleteDataControl } from '../components/settings/DeleteDataControl';
 import { Toggle } from '../components/ui/Toggle';
 import { Chip } from '../components/ui/Chip';
 import { Bar } from '../components/ui/Bar';
@@ -329,23 +330,23 @@ export function Settings() {
             return;
         }
 
-        if (confirm('Are you sure you want to delete all activity history? This cannot be undone.')) {
-            setIsClearing(true);
-            try {
-                await clearData();
-                // Reset local preferences and in-session settings to defaults
-                localStorage.removeItem('user_settings');
-                localStorage.removeItem('activity_tracker_goals');
-                updateSettings({ dashboardDefaultRange: 'past_hour', trackWindowTitles: true });
-                // Invalidate all queries to refresh UI
-                await queryClient.invalidateQueries();
-                showToast('success', 'All activity history has been permanently deleted.');
-            } catch (error) {
-                console.error('Failed to clear data:', error);
-                showToast('error', 'Failed to clear data. Please try again.');
-            } finally {
-                setIsClearing(false);
-            }
+        // The second deliberate action happens in DeleteDataControl, where a stray click cannot produce it. The native
+        // confirm() that used to live here accepted a synthetic Enter, which is exactly how L-22 happened.
+        setIsClearing(true);
+        try {
+            await clearData();
+            // Reset local preferences and in-session settings to defaults
+            localStorage.removeItem('user_settings');
+            localStorage.removeItem('activity_tracker_goals');
+            updateSettings({ dashboardDefaultRange: 'past_hour', trackWindowTitles: true });
+            // Invalidate all queries to refresh UI
+            await queryClient.invalidateQueries();
+            showToast('success', 'All activity history has been permanently deleted.');
+        } catch (error) {
+            console.error('Failed to clear data:', error);
+            showToast('error', 'Failed to clear data. Please try again.');
+        } finally {
+            setIsClearing(false);
         }
     };
 
@@ -873,25 +874,22 @@ export function Settings() {
                             )
                         }
                     />
+                </Section>
+
+                {/* ============ Danger zone ============
+                    Its own group, after the section that holds export: the two used to sit 80 px apart inside one card,
+                    and a synthetic click aimed at "JSON / CSV" hit "Delete everything" and cleared three months of
+                    data (L-22). Separation is half the fix; the typed phrase is the other half. */}
+                <Section
+                    title="Danger zone"
+                    desc="Irreversible. Deleting asks for a word to be typed, not just a click."
+                    icon={<Trash2 size={20} className="text-[var(--accent-negative)]" />}
+                >
                     <Row
                         label="Clear all activity history"
-                        caption="Deletes every record and restores defaults"
+                        caption="Deletes every recorded second, app record and window title, then restores defaults"
                         destructive
-                        control={
-                            isFlat ? (
-                                <button
-                                    onClick={handleClearData}
-                                    disabled={isClearing}
-                                    className="px-3 py-1.5 border border-[var(--accent-negative)] text-[var(--accent-negative)] font-mono text-[10px] uppercase tracking-[0.08em] hover:bg-[var(--accent-negative)] hover:text-white transition-colors disabled:opacity-60"
-                                >
-                                    {isClearing ? 'Deleting…' : 'Delete everything'}
-                                </button>
-                            ) : (
-                                <Button variant="destructive" size="sm" onClick={handleClearData} loading={isClearing}>
-                                    Delete everything
-                                </Button>
-                            )
-                        }
+                        control={<DeleteDataControl onConfirm={handleClearData} busy={isClearing} />}
                     />
                 </Section>
 
