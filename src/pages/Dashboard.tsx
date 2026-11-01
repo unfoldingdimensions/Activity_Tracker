@@ -98,9 +98,7 @@ export function Dashboard() {
                         isLoading={isLoading}
                     />
 
-                    <DailyDigest digest={digest} isLoading={isLoading} />
-
-                    {/* Main split: focus flow + KPI row | app usage side */}
+                    {/* Main split: the shape of the day | where it went */}
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] items-start gap-4 py-6 px-8 border-b border-[var(--border)]">
                         <div className="min-w-0 pr-0 lg:pr-7">
                             <FocusFlowChart data={timelineData} isLoading={isLoading} minHeight={300} title="Focus flow · share of each interval" />
@@ -108,6 +106,9 @@ export function Dashboard() {
                         </div>
                         <AppUsageSide appUsage={appUsage} isLoading={isLoading} />
                     </div>
+
+                    {/* Day totals: read after the shape, not before it */}
+                    <DailyDigest digest={digest} isLoading={isLoading} />
 
                     {/* Two-up: input intensity | work patterns */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 py-6 px-8 border-b border-[var(--border)]">
@@ -162,9 +163,7 @@ export function Dashboard() {
                     isLoading={isLoading}
                 />
 
-                <DailyDigest digest={digest} isLoading={isLoading} />
-
-                {/* Main split: focus flow + KPI row | app usage side */}
+                {/* Main split: the shape of the day | where it went */}
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 items-start">
                     <motion.div
                         variants={containerVariants}
@@ -183,6 +182,9 @@ export function Dashboard() {
                     </motion.div>
                     <AppUsageSide appUsage={appUsage} isLoading={isLoading} />
                 </div>
+
+                {/* Day totals: read after the shape, not before it */}
+                <DailyDigest digest={digest} isLoading={isLoading} />
 
                 {/* Two-up: input intensity | work patterns */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -1227,3 +1227,25 @@ fail (the value exists, the path is right, the command launches) are each checke
 - **What it leaves behind:** the side column still runs ~54 px past the fold with six rows and the filter hint, so the
   last row is clipped by the viewport rather than by the panel. That is a question about what the first screen shows,
   not about this panel, and it is answered by D-060.
+
+## D-060 · The day totals follow the chart, they do not precede it
+
+**2026-11-02 · Active · [ui] · third item of the hierarchy pass**
+
+- **The defect:** between the four 46 px metrics and the chart sat a five-cell strip of 13 px mono numbers — focus time,
+  deep sessions, peak hour, top app, vs yesterday. The eye was asked to read a second verdict row **before** it reached
+  the shape of the day, and two of those five cells were already on screen elsewhere: *top app* repeated row one of the
+  app-usage panel and *deep sessions* repeated the deep-work band's own header.
+- **The reading order it produced (flat, 1280×800 CSS):** metrics 183–331 → strip 331–423 → chart 487–787 → app panel
+  447–854, i.e. the panel ran **54 px past the fold** and the chart's axis sat at 763 with the strip eating the room
+  above it.
+- **The fix:** move `DailyDigest` below the split, so the first screen reads **verdict → shape → where it went** and the
+  totals arrive as supporting detail. No number is deleted, no component changes shape; both skins keep the same
+  composition.
+- **Measured after (flat):** chart band **423 → 331**, chart surface **487–787 → 396–696**, app panel **447–854 →
+  355–762** — now **38 px inside** the fold, with the flow-score row at 716–802. Page height unchanged at 1486: this is
+  an order change, not a content change.
+- **Glass measured the same way:** chart **564–924 → 452–812**, 112 px higher and 12 px from the fold instead of 124.
+- **Left as it stands, and named:** the flow-score row under the chart ends at **802**, **2 px** past the fold — its
+  bottom rule is clipped, no text is. Tightening the chart by 2 px to hide that would fit one window size and break the
+  moment the window is resized; the honest statement is that the rule sits on the fold line.
