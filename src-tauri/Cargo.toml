@@ -75,3 +75,11 @@ windows = { version = "0.58", features = [
 
 
 
+
+# Release artifacts ship as a single binary, so size beats compile time. `strip` drops the symbol
+# tables, and `lto` + one codegen unit let the linker discard generic instantiations that only exist
+# across crate boundaries — measured 36.3 MB -> see D-041 for the number this build produced.
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "symbols"

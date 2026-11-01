@@ -699,3 +699,35 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   temp_store=2 (MEMORY)`) so an installed build can be checked without a debugger.
 - **Gate:** `cargo run --example pragma_check` opens a database through the real `init_database` and asserts all
   three values. Proven red by deleting the `synchronous` line: *FAIL synchronous is NORMAL=1 (got 2)*.
+
+## D-041 · Release builds are LTO'd, single-unit and stripped
+
+**2026-11-01 · Active · [build] · implements T5 of D-033/D-034**
+
+- **Before:** no `[profile.release]`, so the default — 16 codegen units, thin LTO off, symbols kept.
+  Binary **36.3 MB**, installer 8.65 MB.
+- **After:** `lto = "fat"`, `codegen-units = 1`, `strip = "symbols"`. Binary **11.2 MB** (−69 %), installer
+  **4.75 MB** (−45 %). Same source, same features; the linker can now discard generic instantiations that
+  only existed across crate boundaries.
+- **Behaviour checked, because a size win that costs latency is not a win:**
+
+  | | before | after |
+  |---|---|---|
+  | launch → first recorded snapshot (median of 3) | 272 ms | **281 ms** |
+  | same, minimum | 258 ms | 259 ms |
+  | same, first launch after a deploy | 1185 ms | 1468 ms |
+  | tracker process, hidden, 30 s | 0.89 % of one core | **0.52 %** |
+  | window rendering | — | captured at 1618×1047: sidebar, header, four cards, chart, app list, no blanks or errors |
+
+  Startup and CPU are inside the noise this machine produces (D-038 measured the same state at 59 % and 75 % one
+  day apart for the *webviews*); the dashboard capture is the real "no behavioural change" evidence.
+- **Cost, recorded deliberately:** a release build goes from ~45 s to **4 min 46 s**, and every developer pays it on
+  every `npm run tauri build`. Worth it for an artifact that ships, not for an inner loop — `cargo build` (dev
+  profile) is unchanged.
+- **`strip = "symbols"` consequence:** a release panic has no symbol names. Symbols live in the build tree, not in
+  the shipped file; if a user ever reports a crash, rebuild the same commit to symbolise it. Nothing in this app
+  catches or reports panics today, so nothing observable changes.
+- **Not adopted:** `panic = "abort"`. It would shave a little more, but it changes behaviour — a panic in the
+  tracker thread would take the process down instead of unwinding past it — and this is a recorder.
+- **Bundle inspected** as required: NSIS still carries 8 files including `WebView2Loader.dll` (D-023); the
+  installer got smaller because the exe did, not because anything was dropped.
