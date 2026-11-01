@@ -1209,3 +1209,21 @@ fail (the value exists, the path is right, the command launches) are each checke
 - **What this commit deliberately does not fix:** the row is still **658 px** tall because the app column is 609, so
   there is dead space under the chart. The cause is the side panel listing every app twice (next finding), and the fix
   belongs there rather than in a second chart height.
+
+## D-059 · The app panel stopped listing the same five apps twice
+
+**2026-11-02 · Active · [ui] · second item of the hierarchy pass**
+
+- **The defect, measured:** the 300 px side panel rendered two stacked lists of the same data. The bar list showed six
+  apps with time and share (`deepseek harness 1h 41m · 50%`, `opera 53m · 27%`, …); a second block headed "Today's apps"
+  repeated the **first five of them with identical durations** — same names, same numbers, 183 px of column. Under
+  `AGENTS.md` §3 that is duplication (one fact, two renderings) and under §4 it is the "over the top detailed UI"
+  indicator: a panel showing what it has already shown.
+- **The fix:** delete the second list. The bars already carry app name, duration and share, and they are interactive
+  (click to filter); the list carried no state of its own.
+- **Measured after (flat skin, same window and range):** panel **609 → 407 px**, the split row **658 → 496 px**,
+  page **1649 → 1486 px**. Nothing else moved: the six bars, the filter hint and the distraction-guard bar are
+  untouched. The glass panel carries the same block and was not re-measured in this pass.
+- **What it leaves behind:** the side column still runs ~54 px past the fold with six rows and the filter hint, so the
+  last row is clipped by the viewport rather than by the panel. That is a question about what the first screen shows,
+  not about this panel, and it is answered by D-060.

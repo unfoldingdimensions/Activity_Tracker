@@ -109,19 +109,6 @@ export function AppUsageSide({ appUsage, isLoading = false }: AppUsageSideProps)
                 </div>
             </div>
 
-            {/* Today's apps */}
-            <div className="border-t border-[var(--border)] pt-4">
-                <h3 className="section-title text-[var(--foreground)]">Today's apps</h3>
-                <div className="mt-3 space-y-2.5 font-mono text-[12px]">
-                    {rows.slice(0, 5).map((app) => (
-                        <div key={app.name} className="flex justify-between">
-                            <span className="font-bold text-[var(--foreground)]">{app.name.replace(/\.exe$/i, '')}</span>
-                            <span className="text-[var(--muted-foreground)]">{formatDuration(app.value)}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
             {/* Distraction guard */}
             {limitEntry && (
                 <div className="border-t border-[var(--border)] pt-4">
