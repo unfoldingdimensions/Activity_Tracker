@@ -385,6 +385,17 @@ impl Tracker {
         self.settings.lock().unwrap().clone()
     }
 
+    /// Every process name in history, so the icon backfill knows what to cover.
+    ///
+    /// Held only for the length of one query: the same mutex the 1 Hz loop needs.
+    pub fn distinct_app_names(&self) -> Result<Vec<String>, String> {
+        let conn = self
+            .db
+            .lock()
+            .map_err(|e| format!("database mutex poisoned: {e}"))?;
+        database::distinct_app_names(&conn).map_err(|e| format!("query failed: {e}"))
+    }
+
     /// Whether the tracking loop is currently running
     pub fn is_running(&self) -> bool {
         *self.is_running.lock().unwrap()

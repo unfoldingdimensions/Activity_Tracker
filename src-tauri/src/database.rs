@@ -3,6 +3,21 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use chrono::{Timelike, TimeZone};
 
+/// Every process name that appears anywhere in history — the set the icon cache is expected to cover.
+///
+/// Both tables: an app with usage rows but no window events (or the reverse) still shows up in the UI with an icon
+/// slot, and a name that only ever produced events would otherwise be letter-tiled forever.
+pub fn distinct_app_names(conn: &Connection) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare(
+        "SELECT process_name FROM app_usage
+         UNION
+         SELECT process_name FROM window_events
+         ORDER BY 1",
+    )?;
+    let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+    rows.collect()
+}
+
 /// Initialize the SQLite database with the activity tracking schema
 pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
     let db_path = app_data_dir.join("activity.db");

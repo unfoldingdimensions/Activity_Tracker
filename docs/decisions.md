@@ -816,3 +816,48 @@ fail (the value exists, the path is right, the command launches) are each checke
 - **Test:** `src/utils/__tests__/iconCache.test.ts` — four invariants: never past the limit, evicts the *oldest*
   (proven red by making eviction take the newest: 2 of 4 fail), a read counts as use, and a duplicate store does not
   grow the map.
+
+## D-045 · An app's icon is looked up beyond the running process table
+
+**2026-11-01 · Active · [data]**
+
+- **The defect:** `get_app_icon` had exactly two ways to turn a stored process name into an executable — a process with
+  that name running *right now*, or the file sitting in `System32` / `C:\Windows`. Everything else fell back to a
+  letter tile for good, because the UI caches the failure. Measured against the real database: **14 icons on disk for
+  124 apps in history.**
+- **The fix:** `src-tauri/src/icon_paths.rs`, one resolver shared by the UI path and a startup backfill:
+  1. in-memory LRU of paths already resolved
+  2. a running process with that name (unchanged)
+  3. the registry — `App Paths`, and the `DisplayIcon` of every uninstall entry
+  4. the `InstallLocation` of every uninstall entry, probed for that exact file name
+  5. **Start Menu shortcuts** (`IShellLinkW` + `IPersistFile`) — the only place Windows records a target for an app
+     nested four levels deep (`…\Epic Games\Launcher\Portal\Binaries\Win64\EpicGamesLauncher.exe`)
+  6. a one-time bounded sweep of the directories programs install into (`%LOCALAPPDATA%`, its `Programs`, both
+     `Program Files`), two levels deep, **3000 directories maximum**
+- **Measured** with `cargo run --example icon_audit` against the live database:
+
+  | | apps resolved |
+  |---|---|
+  | before — running process or System32/C:\Windows | **25/124 (20 %)** |
+  | after — registry + Start Menu + install dirs | **56/124 (45 %)** |
+  | icons actually on disk | **14 → 48** (the backfill added 34) |
+
+  Verified in the running app: the sidebar renders Hermes' real icon next to the app name, and a contact sheet of the
+  extracted PNGs shows 7-Zip, Assassin's Creed, Blender, Chrome, EA, Epic, Excel, Explorer, VSCode-family and others —
+  real logos, not placeholders.
+- **The 68 that remain are honest misses, not unfinished work.** 37 are installers and versioned downloads
+  (`zcode-3.17.1-win-x64.exe`, `hermes-setup.exe`) whose binary existed for one run and is gone. The other 31 are apps
+  no longer installed here, or MSIX packages whose files live under `C:\Program Files\WindowsApps` — a directory whose
+  listing needs elevation (`Get-ChildItem` returns 0 entries; verified). No icon exists to extract in either case.
+  Of the 56 that *do* resolve, 10 are Windows shell internals with no icon resource at all (`sihost.exe`,
+  `searchhost.exe`, `LockApp.exe`, …).
+- **A miss is remembered, not retried.** A name that resolves to nothing gets a zero-byte `{stem}.missing` file beside
+  the PNGs and the backfill skips it — otherwise every launch would repeat the sweep for 68 names. The marker never
+  outranks a PNG, so an app installed later still gets its icon the first time the UI asks.
+- **The first version was 116 s, and that is why the sweep is a map.** Walking the install roots *per missing name*
+  cost 116.5 s to backfill 124 apps; collecting the same directories **once** into a `basename → path` map brought it
+  to **920 ms** for the same set, with coverage within two apps. The map is a lazy static, so a session pays for it only
+  if some icon is actually missing.
+- **Not done:** MSIX icons through the shell's App User Model ID (`IShellItemImageFactory`). It would cover Photos,
+  Widgets, Clipchamp, Terminal and the Store build of ChatGPT — five rows — and is a second COM surface for a cosmetic
+  gain. Recorded here so the next session does not "discover" it as new work.

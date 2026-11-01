@@ -10,6 +10,7 @@ mod tracker;
 mod visibility;
 mod windows_api;
 mod icons;
+mod icon_paths;
 mod input_monitor;
 
 
@@ -335,6 +336,48 @@ pub fn run() {
             app.manage(AppState {
                 tracker: Mutex::new(tracker),
             });
+
+            // Icons for apps that are not running have nothing on disk, and the UI then shows a letter tile for
+            // them for the rest of time — measured 14 icons for 124 apps (D-045). Resolve and extract the missing
+            // ones on their own thread: startup is not held up, and the capture loop's mutex is taken for one
+            // short read rather than for the whole sweep.
+            {
+                let handle = app.handle().clone();
+                let icon_dir = {
+                    let program_data = std::env::var("ProgramData")
+                        .unwrap_or_else(|_| r"C:\ProgramData".to_string());
+                    std::path::PathBuf::from(program_data)
+                        .join("ActivityTracker")
+                        .join("icons")
+                };
+                std::thread::spawn(move || {
+                    let started = std::time::Instant::now();
+                    let names = {
+                        let state = handle.state::<AppState>();
+                        let tracker = match state.tracker.lock() {
+                            Ok(tracker) => tracker,
+                            Err(_) => {
+                                log::warn!("Icons: tracker state is poisoned; skipping the backfill");
+                                return;
+                            }
+                        };
+                        match tracker.distinct_app_names() {
+                            Ok(names) => names,
+                            Err(err) => {
+                                log::warn!("Icons: cannot list the apps in history: {err}");
+                                return;
+                            }
+                        }
+                    };
+                    let total = names.len();
+                    let (cached, added, unresolved) = icons::backfill_icons(names, &icon_dir);
+                    log::info!(
+                        "Icons: {total} apps in history — {cached} already cached, {added} added, \
+                         {unresolved} unresolved, in {:?}",
+                        started.elapsed()
+                    );
+                });
+            }
 
             // Initialize tray
             let handle = app.handle().clone();

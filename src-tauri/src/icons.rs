@@ -1,10 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::fs;
-use std::sync::Mutex;
-use std::collections::VecDeque;
 use base64::{Engine as _, engine::general_purpose};
-use sysinfo::{System, ProcessRefreshKind, UpdateKind, ProcessesToUpdate};
-use once_cell::sync::Lazy;
 use windows::Win32::UI::Shell::ExtractIconExW;
 use windows::Win32::UI::WindowsAndMessaging::{HICON, DestroyIcon, ICONINFO, GetIconInfo};
 use windows::Win32::Graphics::Gdi::{
@@ -13,126 +9,15 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::core::HSTRING;
 
-const MAX_CACHE_SIZE: usize = 500;
+use crate::icon_paths;
 
-struct LruCache {
-    order: VecDeque<String>,
-    data: std::collections::HashMap<String, PathBuf>,
-}
-
-impl LruCache {
-    fn new() -> Self {
-        Self {
-            order: VecDeque::new(),
-            data: std::collections::HashMap::new(),
-        }
-    }
-    
-    fn get(&mut self, key: &str) -> Option<PathBuf> {
-        if let Some(path) = self.data.get(key) {
-            // Move to front (most recently used)
-            self.order.retain(|k| k != key);
-            self.order.push_front(key.to_string());
-            Some(path.clone())
-        } else {
-            None
-        }
-    }
-    
-    fn insert(&mut self, key: String, value: PathBuf) {
-        if self.data.contains_key(&key) {
-            // Update existing
-            self.order.retain(|k| k != &key);
-        } else if self.order.len() >= MAX_CACHE_SIZE {
-            // Evict least recently used
-            if let Some(lru_key) = self.order.pop_back() {
-                self.data.remove(&lru_key);
-            }
-        }
-        self.order.push_front(key.clone());
-        self.data.insert(key, value);
-    }
-}
-
-struct IconSystem {
-    sys: Mutex<System>,
-    path_cache: Mutex<LruCache>,
-}
-
-impl IconSystem {
-    fn new() -> Self {
-        Self {
-            sys: Mutex::new(System::new_all()), 
-            path_cache: Mutex::new(LruCache::new()),
-        }
-    }
-
-    fn find_exe_path(&self, process_name: &str) -> Option<PathBuf> {
-        // Process names are stored lowercase (D-021) while Windows reports them with
-        // the casing baked into the binary, and sysinfo's processes_by_name() is a
-        // case-sensitive substring match — so every comparison here is lowercased.
-        let wanted = process_name.to_lowercase();
-
-        // 1. Check Cache
-        {
-            let mut cache = self.path_cache.lock().unwrap();
-            if let Some(path) = cache.get(&wanted) {
-                if path.exists() {
-                    return Some(path);
-                }
-            }
-        }
-
-        // 2. Refresh Processes (Lightweight)
-        {
-            let mut sys = self.sys.lock().unwrap();
-            sys.refresh_processes_specifics(
-                ProcessesToUpdate::All, 
-                true,
-                ProcessRefreshKind::nothing().with_exe(UpdateKind::Always)
-            );
-            
-            for process in sys.processes().values() {
-                if process.name().to_string_lossy().to_lowercase() != wanted {
-                    continue;
-                }
-                if let Some(exe_path) = process.exe() {
-                    if exe_path.exists() {
-                        // Cache it using LRU
-                        let mut cache = self.path_cache.lock().unwrap();
-                        cache.insert(wanted.clone(), exe_path.to_path_buf());
-                        return Some(exe_path.to_path_buf());
-                    }
-                }
-            }
-        }
-
-        // 3. Fallback: look in common locations
-        let common_paths = [
-            PathBuf::from("C:\\Windows\\System32").join(&wanted),
-            PathBuf::from("C:\\Windows").join(&wanted),
-        ];
-
-        for path in common_paths {
-            if path.exists() {
-                let mut cache = self.path_cache.lock().unwrap();
-                cache.insert(wanted.clone(), path.clone());
-                return Some(path);
-            }
-        }
-        
-        None
-    }
-}
-
-static ICON_SYSTEM: Lazy<IconSystem> = Lazy::new(|| IconSystem::new());
 
 /// Cached PNG for a process, tolerating files written under the old mixed-case naming.
 ///
 /// The store is lowercase since D-021, but the cache directory still holds files the
 /// previous naming produced ("Hermes.png" for "Hermes.exe"). Without this lookup, an
-/// app that is not currently running has no fallback: `find_exe_path` can only see
-/// running processes, so its icon would silently disappear from the Timeline.
+/// app that is not currently running would have to be re-resolved every time it shows
+/// up in the Timeline.
 fn cached_icon_path(cache_dir: &Path, clean_name: &str) -> Option<PathBuf> {
     let exact = cache_dir.join(format!("{}.png", clean_name));
     if exact.exists() {
@@ -165,7 +50,7 @@ pub fn get_app_icon_base64(process_name: &str, cache_dir: &Path) -> Option<Strin
     }
 
     // 2. Find Executable Path (Cached in memory)
-    let exe_path = ICON_SYSTEM.find_exe_path(process_name)?;
+    let exe_path = icon_paths::resolve(process_name)?;
 
     // 3. Extract Icon
     let icon_data = extract_icon_to_png(&exe_path)?;
@@ -321,6 +206,58 @@ unsafe fn hicon_to_png(hicon: HICON) -> Option<Vec<u8>> {
     } else {
         None
     }
+}
+/// Write the icon of every app that does not have one yet, so the UI never shows a letter tile for an app it has
+/// history for.
+///
+/// Called once after startup on a background thread. Returns `(already, added, unresolved)` — the numbers are logged
+/// so a machine where the resolve fails wholesale is visible rather than silently letter-tiled.
+pub fn backfill_icons<I>(names: I, cache_dir: &Path) -> (usize, usize, usize)
+where
+    I: IntoIterator<Item = String>,
+{
+    if let Err(err) = fs::create_dir_all(cache_dir) {
+        log::warn!("Icons: cannot create the cache directory {cache_dir:?}: {err}");
+        return (0, 0, 0);
+    }
+
+    let (mut already, mut added, mut unresolved) = (0, 0, 0);
+    for process_name in names {
+        let stem = Path::new(&process_name)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_lowercase())
+            .unwrap_or_else(|| process_name.to_lowercase());
+        let icon_path = cache_dir.join(format!("{stem}.png"));
+        let missing_marker = cache_dir.join(format!("{stem}.missing"));
+
+        if cached_icon_path(cache_dir, &stem).is_some() {
+            already += 1;
+            continue;
+        }
+        // A name that resolved to nothing last time will resolve to nothing this time too, and the sweep it takes to
+        // find that out is the expensive part — so it is recorded. The marker does not outrank a PNG, so an app that
+        // is later installed and run still gets its icon the first time the UI asks for it.
+        if missing_marker.exists() {
+            unresolved += 1;
+            continue;
+        }
+        match icon_paths::resolve(&process_name).and_then(|exe| extract_icon_to_png(&exe)) {
+            Some(data) => {
+                match fs::write(&icon_path, &data) {
+                    Ok(()) => added += 1,
+                    Err(err) => {
+                        log::warn!("Icons: could not write {icon_path:?}: {err}");
+                        unresolved += 1;
+                    }
+                }
+            }
+            None => {
+                unresolved += 1;
+                let _ = fs::write(&missing_marker, b"");
+            }
+        }
+    }
+    (already, added, unresolved)
 }
 
 
