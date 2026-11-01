@@ -1187,6 +1187,7 @@ fail (the value exists, the path is right, the command launches) are each checke
   with a test; anything that genuinely needs a window keeps being proven by a runnable example or live invocation.
 - **Cost:** the §1.5 checklist's SQL step now reads `core/src/database.rs`, and a contributor has to know the workspace
   exists. One crate, one manifest, one lock file, one profile — paid once.
-- **Pending, and only `AGENTS.md`:** its §1.5 step 1 still names `src-tauri/src/database.rs` and §1.6 still says "Rust
-  tests exist but cannot run on this machine yet", citing `cargo test --lib`. Both paragraphs are now wrong. The write
-  needs approval and has not been made; `docs/architecture.md` and `docs/flow.md` were corrected in this commit.
+- **`AGENTS.md` followed in its own commit**, with approval: §1.5 step 1 now names `core/src/database.rs`, §1.6 says
+  Rust tests run in `core` and that a `#[test]` left in `src-tauri` does not run at all, and the gate line carries the
+  current counts plus `npm run test:rust`. `docs/architecture.md` and `docs/flow.md` moved with the code in the commit
+  before it.

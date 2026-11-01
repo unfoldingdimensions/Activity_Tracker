@@ -22,7 +22,7 @@ matching doc **in the same commit**. A stale doc is a defect. Decisions are appe
 - Every `timestamp` column is **UTC** ISO-8601, milliseconds, literal `Z` (`windows_api.rs:137-139`).
 - `app_usage.date` is the **local** calendar date (`windows_api.rs:142-144`).
 - Local day boundaries convert to a UTC range at read time; per-hour buckets are grouped in UTC then
-  re-bucketed to local hours (`database.rs:302-359`, single-day only).
+  re-bucketed to local hours (`core/src/database.rs:302-359`, single-day only).
   Mixing the two returns empty sets with no error — that has already happened once (`useDashboardData.ts:373`).
 
 ## 1.2 One metric, one owner
@@ -51,7 +51,8 @@ a total, a cursor, or a visible "showing N of M".
 
 ## 1.5 Adding a backend capability touches five files, in order
 
-1. `src-tauri/src/database.rs` — the SQL, with the index it needs.
+1. `core/src/database.rs` — the SQL, with the index it needs. (The workspace's Tauri-free crate; the app reads it
+   through `pub use activity_core::database`, so `crate::database::…` is unchanged.)
 2. `src-tauri/src/commands.rs` — the command, locking state and mapping errors.
 3. `src-tauri/src/lib.rs` — register it in `generate_handler!`.
 4. `src/api/tauri.ts` — the typed binding (**the only place `invoke` belongs**).
@@ -70,8 +71,10 @@ not copy them; correct them when you are in the file.
   `%ProgramData%\ActivityTracker\logs\activity-tracker.log`, three files × 2 MB, stdout in debug builds only.
   Anything per-tick belongs at `debug!` — an error path that appears only in debug builds is not an error path
   (`docs/learning.md` L-09).
-- Gate commands: `npm run test:run`, `npm run lint`, `npm run build` (`tsc -b && vite build`). They are green
-  as of 2026-10-31: 101 tests / 10 files, lint and build clean.
+- Gate commands: `npm run test:run`, `npm run test:rust`, `npm run lint`, `npm run build` (`tsc -b && vite build`),
+  and `cargo check --workspace --all-targets` for backend changes. Green as of 2026-11-02: **133 frontend tests / 17
+  files**, **18 Rust tests** in `core`, lint and build clean, zero cargo warnings, `npm run tauri build` producing the
+  NSIS installer.
 - **Release artifacts come from `npm run tauri build`** (or `cargo build --release --features
   tauri/custom-protocol`). A bare `cargo build --release` produces a **dev-mode** binary —
   `tauri::is_dev()` is `!cfg!(feature = "custom-protocol")` — which boots `devUrl`
@@ -85,11 +88,12 @@ not copy them; correct them when you are in the file.
   `src-tauri/WebView2Loader.dll` and declared in `bundle.resources`; without it every install launches with
   "cannot proceed because WebView2Loader.dll was not found" (D-023). `bundle.targets` is `["nsis"]` because the
   MSI step needs WiX, which is not available offline here.
-- **Rust tests exist but cannot run on this machine yet.** `database.rs` carries the first Rust tests
-  (`#[cfg(test)]`, backfill + schema). `cargo check --all-targets` is clean, but `cargo test --lib` fails at
-  **process load** with `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139) before any test output — a GNU-toolchain
-  loader problem, not an assertion failure. Until the harness loads, Rust tests are documentation: pin the
-  behaviour with something that actually executes, and say which you did (`docs/learning.md` L-11).
+- **Rust tests run — in `core`, and nowhere else.** `cargo test -p activity-core` (or `npm run test:rust`) executes 18
+  tests in 0.02 s. The other half of that sentence is the trap: `cargo test -p activity-tracker-v2` still dies at
+  **process load** with `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139) before any test output, because that binary links
+  Tauri → wry → WebView2. So a `#[test]` written in `src-tauri` does not run at all — it reads like a passing test and
+  is a comment block. Put the logic in `core` and the test beside it; anything that genuinely needs an `AppHandle` is
+  proven by a runnable example or live invocation, and the commit says which (D-057, L-11, L-25).
 - `@tauri-apps/*` npm packages and the `tauri` crate must stay on matching majors; builds need the
   `E:\DevTools` toolchain and the redirected cargo target.
 - Capture loop = 1 Hz on one thread with one mutexed SQLite connection. Anything that holds that mutex for
@@ -121,7 +125,7 @@ can review, bisect or revert.
 - **Docs go with the change**, never in a trailing "update docs" commit.
 - **No half-work**: an unfinished change stays uncommitted or on a branch. Never land a fix followed by a
   "finish it" commit for the same finding.
-- **Verify before committing**: `npm run test:run`, `npm run lint`, `npm run build` green, and for backend
+- **Verify before committing**: `npm run test:run`, `npm run test:rust`, `npm run lint`, `npm run build` green, and for backend
   changes `cargo build`. State in the commit body what you ran.
 - **The commit is the unit of the decision log too.** If the commit implements or supersedes a `D-0xx`, name it
   in the body.
