@@ -1,9 +1,7 @@
 import { useState, useEffect, memo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '../../utils/isTauri';
-
-// Memory cache to avoid repeated invokes for the same process
-const iconCache: Record<string, string> = {};
+import { cacheIcon, getCachedIcon } from '../../utils/iconCache';
 
 interface AppIconProps {
     processName: string;
@@ -20,14 +18,14 @@ export const AppIcon = memo(function AppIcon(props: AppIconProps) {
 });
 
 function AppIconInner({ processName, className = '', size = 24, fallbackText }: AppIconProps) {
-    const [iconData, setIconData] = useState<string | null>(() => iconCache[processName] || null);
+    const [iconData, setIconData] = useState<string | null>(() => getCachedIcon(processName) ?? null);
     const [error, setError] = useState(false);
 
     useEffect(() => {
         if (!processName) return;
 
         // Cache hit: initial state already used it; nothing to do.
-        if (iconCache[processName]) return;
+        if (getCachedIcon(processName)) return;
 
         let isMounted = true;
 
@@ -37,7 +35,7 @@ function AppIconInner({ processName, className = '', size = 24, fallbackText }: 
             try {
                 const data = await invoke<string | null>('get_app_icon', { processName });
                 if (data && isMounted) {
-                    iconCache[processName] = data;
+                    cacheIcon(processName, data);
                     setIconData(data);
                 } else if (isMounted) {
                     setError(true);

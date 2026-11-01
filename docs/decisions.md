@@ -797,3 +797,22 @@ started:
 
 A reboot is still the only way to see a *real* logon, and it is not worth automating: the three things that can
 fail (the value exists, the path is right, the command launches) are each checked above.
+
+## D-044 · The icon cache is bounded at 150 entries
+
+**2026-11-01 · Active · [perf] · implements T6 of D-033/D-034**
+
+- **Before:** `AppIcon.tsx` kept icons in a module-level plain object that nothing ever evicted — one base64 PNG
+  (≈ 2.6 KB) per app ever rendered, for the life of the window.
+- **After:** `src/utils/iconCache.ts` holds them in a `Map` with a **150-entry LRU cap**. A read refreshes recency,
+  so the icon on screen is the last thing evicted; a re-store of an existing key does not grow the cache.
+- **Why 150 and not "however many there are":** measured distinct apps all-time is **122**, so the cap never evicts
+  in practice while still bounding the case where it would. This is a boundedness invariant, **not** a memory
+  saving: the whole set is ~0.4 MB inside a 6.5 MB JS heap, and no screen-time number moves (T0.2).
+- **Two caches, two owners, on purpose:** the backend keeps an LRU of resolved *paths* (500 entries, `icons.rs`
+  `MAX_CACHE_SIZE`) because it maps a process name to an executable; the frontend keeps the rendered *bitmaps*
+  because it maps a process name to a data URL. They cannot share a store across the IPC boundary, and 150 covers
+  the 122 measured apps.
+- **Test:** `src/utils/__tests__/iconCache.test.ts` — four invariants: never past the limit, evicts the *oldest*
+  (proven red by making eviction take the newest: 2 of 4 fail), a read counts as use, and a duplicate store does not
+  grow the map.
