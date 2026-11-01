@@ -28,7 +28,7 @@ pub fn show_main_window(app_handle: tauri::AppHandle, path: Option<String>) {
         if let Some(p) = path {
             let _ = window.emit("navigate", NavigatePayload { path: p });
         }
-        let _ = window.show();
+        crate::visibility::show(&window);
         let _ = window.unminimize();
         let _ = window.set_focus();
     }
@@ -40,7 +40,7 @@ pub fn hide_tray_window(app_handle: tauri::AppHandle) {
     log::info!("hide_tray_window command invoked");
     if let Some(window) = app_handle.get_webview_window("tray") {
         log::info!("Found tray window, hiding it");
-        let _ = window.hide();
+        crate::visibility::hide(&window);
     } else {
         log::warn!("Tray window not found");
     }

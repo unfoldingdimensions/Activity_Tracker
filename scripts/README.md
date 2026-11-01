@@ -13,6 +13,8 @@
 
   Every target's URL names its window (`/` main, `/tray` popup, `/timeline` …), which is how the two renderers are told apart. **Unset the variable and restart afterwards** — the debug port is open to any local process while the app runs.
 
+- `t16-probe.mjs [--port 9222]` — the same debug port, asking a different question: for each page it prints `document.visibilityState`, how many `requestAnimationFrame` callbacks land in 2 s, and how many animations are still running. A hidden window that reports `visible` with ~480 frames is rendering for nobody (D-042). The counter is installed, waited on outside the page, then read back — awaiting a rAF promise inside a hidden page never resolves, which is the result, not a bug.
+
 Full manual baseline procedure (checkpoints + DevTools heap snapshots): `.hermes/plans/baseline-protocol.md`.
 
 ## Baseline protocol (three states, one row each)

@@ -7,6 +7,7 @@ mod commands;
 mod database;
 mod export;
 mod tracker;
+mod visibility;
 mod windows_api;
 mod icons;
 mod input_monitor;
@@ -15,6 +16,7 @@ mod input_monitor;
 use commands::AppState;
 use std::sync::Mutex;
 use tauri::Manager;
+use visibility::{hide as hide_window, show as show_window, show_webview};
 
 /// Bring the main window to the front — for the tray "Show" item and for a second launch.
 ///
@@ -47,6 +49,9 @@ fn reveal_main_window(app: &tauri::AppHandle) {
         let _ = ShowWindow(hwnd, SW_SHOW);
         let _ = SetForegroundWindow(hwnd);
     }
+    // The window above was shown with Win32 directly, so the webview has to be told separately —
+    // otherwise a window hidden by `hide_window` comes back blank (D-042).
+    show_webview(&window);
 
     log::info!(
         "Reveal: visible={:?} minimized={:?}",
@@ -58,7 +63,7 @@ fn reveal_main_window(app: &tauri::AppHandle) {
 #[cfg(not(windows))]
 fn reveal_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
+        show_window(&window);
         let _ = window.unminimize();
         let _ = window.set_focus();
     }
@@ -112,7 +117,7 @@ fn tray_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
     window.on_window_event(move |event| {
         if let tauri::WindowEvent::Focused(false) = event {
             log::debug!("Tray window lost focus - hiding");
-            let _ = hiding.hide();
+            hide_window(&hiding);
         }
     });
 
@@ -130,7 +135,7 @@ fn toggle_tray_window(app: &tauri::AppHandle) {
     };
 
     if window.is_visible().unwrap_or(false) {
-        let _ = window.hide();
+        hide_window(&window);
         return;
     }
 
@@ -146,7 +151,7 @@ fn toggle_tray_window(app: &tauri::AppHandle) {
         });
     }
 
-    let _ = window.show();
+    show_window(&window);
     let _ = window.set_focus();
 }
 
@@ -370,7 +375,7 @@ pub fn run() {
             if let Some(main_window) = app.get_webview_window("main") {
                 // Start minimized to tray when the setting is enabled
                 if start_minimized {
-                    let _ = main_window.hide();
+                    hide_window(&main_window);
                 }
 
                 let main_window_clone = main_window.clone();
@@ -379,11 +384,11 @@ pub fn run() {
                         tauri::WindowEvent::CloseRequested { api, .. } => {
                             // Hide window instead of closing
                             api.prevent_close();
-                            let _ = main_window_clone.hide();
+                            hide_window(&main_window_clone);
                         }
                         tauri::WindowEvent::Resized(_) => {
                             if main_window_clone.is_minimized().unwrap_or(false) {
-                                let _ = main_window_clone.hide();
+                                hide_window(&main_window_clone);
                             }
                         }
                         _ => {}

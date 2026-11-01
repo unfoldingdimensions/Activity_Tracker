@@ -731,3 +731,39 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
   tracker thread would take the process down instead of unwinding past it — and this is a recorder.
 - **Bundle inspected** as required: NSIS still carries 8 files including `WebView2Loader.dll` (D-023); the
   installer got smaller because the exe did, not because anything was dropped.
+
+## D-042 · Hiding a window also hides its webview
+
+**2026-11-01 · Active · [perf] · implements T16 of D-033/D-034**
+
+- **The defect:** with the main window hidden, the app burned **55.4 % of one core** — gpu-process 34.3 %, renderer
+  20.4 %, app 0.7 %. Visible and hidden measured the same, which is the tell: nothing throttled.
+- **The cause, measured rather than guessed:** `WebviewWindow::hide()` calls only `self.window.hide()`
+  (`tauri-2.9.5/src/webview/webview_window.rs:1933`), so WebView2's controller keeps `IsVisible = true`. Chromium
+  therefore never marks the page hidden. Probe over CDP with the window `IsWindowVisible == false`:
+  **`visibilityState=visible`, 481 rAF in 2 s (240 fps), 5 animations running.** The page was rendering a dashboard
+  nobody could see, and `--disable-features=CalculateNativeWinOcclusion` (tested in D-038) is not the lever.
+- **The fix:** `src-tauri/src/visibility.rs` — `hide()` hides the webview and then the window, `show()` shows the
+  webview and then the window (webview first on show, so the first frame is already rendered). Every hide/show call
+  site goes through it: the Win32 reveal path, the tray toggle, the tray blur handler, `CloseRequested`, the
+  minimise handler, startup-hidden, `show_main_window` and `hide_tray_window`. Nothing calls `window.hide()`
+  directly any more.
+
+  | state | gpu | renderer | total (60 s sample) |
+  |---|---|---|---|
+  | window hidden, before | 34.32 % | 20.42 % | **55.42 %** |
+  | window hidden, after | 0.00 % | 0.03 % | **0.31 %** |
+  | window visible, after | 31.56 % | 17.19 % | **49.69 %** (50.00 % before — unchanged) |
+
+  Same state after the fix: `visibilityState=hidden`, **1 rAF in 2 s**, animations frozen by the compositor rather
+  than deleted. Visible again: `visibilityState=visible`, 481 rAF/2 s, dashboard captured at 1618×1047 with every
+  element rendered, and the tray popup captured at 493×685 with its cards, app row and "Open full app" link intact
+  — the failure mode of hiding a webview wrongly is a blank window, so both were checked by eye.
+- **Not the fix:** deleting the `repeat: Infinity` animations. They are designed elements (the streak flame,
+  `StatusDot`), and a hidden page cannot animate anyway — the bug was never that the animation existed.
+- **What remains true:** with the window *visible* the app still spends ~50 % of one core on animated compositing at
+  240 Hz. That is a visible UI doing visible work, and no measurement here says it is wrong; it is recorded so the
+  next session does not mistake it for the old bug.
+- **How to re-check:** `node scripts/t16-probe.mjs` with the app started under
+  `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222` prints `visibilityState`, rAF count over
+  2 s, and running animations for each page; the CPU side needs a per-process sample over ≥ 60 s.

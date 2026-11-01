@@ -134,6 +134,10 @@ binding: a second derivation of the same number is a defect, not an optimisation
 - **One resident WebView2 window at startup** (main, `tauri.conf.json`); the tray popup is built on first click
   (`lib.rs` `tray_window()`), so a session that never opens it never pays its renderer (D-035). After the popup has
   been opened once it stays resident for the rest of the session — it is hidden, not destroyed.
+- **Visibility is two things, and they have one owner.** `visibility::hide/show` hides the window *and* the webview
+  inside it; `WebviewWindow::hide()` alone leaves WebView2's controller believing the page is visible, and the
+  hidden page then renders at 240 rAF/s for nobody — 55 % of one core measured, 0.3 % after the fix (D-042). No
+  caller may call `window.hide()` / `window.show()` directly.
 - **God files**: `pages/Settings.tsx` 910, `tracker.rs` 846, `pages/Timeline.tsx` 595, `pages/Tools.tsx` 570.
 - **No Rust test suite.** Zero `#[cfg(test)]` in `src-tauri/src`; all 88 tests are frontend.
 - **Logs** live at `%ProgramData%\ActivityTracker\logs\activity-tracker.log`, bounded at three files of 2 MB.
