@@ -958,3 +958,24 @@ fail (the value exists, the path is right, the command launches) are each checke
 - **Not exercised:** 100 % display scaling. This machine runs at 125 % and the sizing is now viewport-relative — the
   content no longer has an absolute height that could disagree with the window — so the mechanism that failed is gone
   rather than merely retuned. Worth a glance on a 100 % machine if one appears.
+
+## D-049 · A tray click closes the popup it just blurred
+
+**2026-11-01 · Active · [ui] · implements T11 of D-033/D-034**
+
+- **The defect:** with the popup open, a click on the tray icon left it open — measured `before=True after=True` on a
+  physical click. The click blurs the popup first, the blur handler hides it, and then the *same* click's
+  `toggle_tray_window()` finds it hidden and shows it again, so only a click somewhere else dismissed it. Pre-existing:
+  the old config-declared window behaved the same; it became visible once the popup started being created on demand
+  (D-035).
+- **The fix:** the blur handler records when it hid the popup (`note_self_hide`), and `toggle_tray_window` returns
+  early when that was less than **250 ms** ago — the click's own blur already closed it, so re-showing it is exactly
+  the bug. The window is small on purpose: it must cover the gap between the blur and the click handler, not a human
+  hesitation.
+- **Measured:** five rounds of click-open-then-click-again on the installed build, each reading the popup's real
+  visibility from Win32 in the same process that clicked (a second process would steal focus and make the reading
+  ambiguous): **5/5 rounds `after 1st click visible=True, after 2nd click visible=False`**.
+- **Still true:** losing focus to anything else closes the popup, as before — the guard only suppresses the re-show
+  that follows a self-hide, it does not keep the popup open.
+- **Accepted trade-off:** clicking the tray twice inside 250 ms leaves the popup closed rather than flashing open and
+  shut. A double-click on a tray icon should not be interpreted as "open and immediately close and reopen".

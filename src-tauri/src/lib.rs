@@ -19,6 +19,29 @@ use std::sync::Mutex;
 use tauri::Manager;
 use visibility::{hide as hide_window, show as show_window, show_webview};
 
+/// When the tray popup last hid itself because it lost focus, and what counts as "this click did it".
+///
+/// A tray click blurs the popup *before* the click handler runs, so the handler cannot tell "the popup was open and my
+/// own click closed it" from "the popup was already closed" by looking at visibility alone (D-049). Too short a window
+/// reopens the popup the user just dismissed; too long swallows a genuine second open.
+static LAST_SELF_HIDE: Mutex<Option<std::time::Instant>> = Mutex::new(None);
+const SELF_HIDE_GRACE: std::time::Duration = std::time::Duration::from_millis(250);
+
+fn note_self_hide() {
+    if let Ok(mut slot) = LAST_SELF_HIDE.lock() {
+        *slot = Some(std::time::Instant::now());
+    }
+}
+
+fn recently_self_hidden() -> bool {
+    LAST_SELF_HIDE
+        .lock()
+        .ok()
+        .and_then(|slot| *slot)
+        .map(|at| at.elapsed() < SELF_HIDE_GRACE)
+        .unwrap_or(false)
+}
+
 /// Bring the main window to the front — for the tray "Show" item and for a second launch.
 ///
 /// Tauri's own `show()` / `unminimize()` are not enough here: the main window is created
@@ -118,6 +141,7 @@ fn tray_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
     window.on_window_event(move |event| {
         if let tauri::WindowEvent::Focused(false) = event {
             log::debug!("Tray window lost focus - hiding");
+            note_self_hide();
             hide_window(&hiding);
         }
     });
@@ -134,6 +158,15 @@ fn toggle_tray_window(app: &tauri::AppHandle) {
     let Some(window) = tray_window(app) else {
         return;
     };
+
+    // A click on the tray icon blurs the popup first, and the blur handler above hides it — so by the time this
+    // handler runs, a popup that was open reads as *hidden* and would be shown again, leaving it up with only a click
+    // elsewhere to dismiss it (measured: before=true after=true on a physical click). If the hide just happened, this
+    // click's own blur is what closed it: leave it closed.
+    if recently_self_hidden() {
+        log::debug!("Tray click follows the popup's own blur-hide - leaving it closed");
+        return;
+    }
 
     if window.is_visible().unwrap_or(false) {
         hide_window(&window);
