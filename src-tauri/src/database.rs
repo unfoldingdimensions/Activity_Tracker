@@ -11,6 +11,29 @@ pub fn init_database(app_data_dir: PathBuf) -> Result<Connection> {
     // Enable WAL mode for better concurrency
     conn.pragma_update(None, "journal_mode", "WAL")?;
 
+    // `synchronous=NORMAL` under WAL: the loop commits once a second, and with FULL every commit
+    // waited on an fsync — measured **1.30 ms median per commit against 0.01 ms** on a copy of the
+    // live database (D-040). A power cut can lose the last commit; it cannot corrupt the file,
+    // because WAL recovery only ever discards a partially written frame.
+    conn.pragma_update(None, "synchronous", "NORMAL")?;
+
+    // Keep sorts and temp b-trees in memory. The largest are the per-hour re-bucketing and the
+    // export's ORDER BY, and the database shares a disk with the 1 Hz writer.
+    conn.pragma_update(None, "temp_store", "MEMORY")?;
+
+    // `synchronous` is per-connection, not a property of the file: this is the app's only writer, so
+    // this is the only place it needs setting. Logged so a running install can be checked without a
+    // debugger.
+    let synchronous: u32 = conn.query_row("PRAGMA synchronous", [], |row| row.get(0))?;
+    let temp_store: u32 = conn.query_row("PRAGMA temp_store", [], |row| row.get(0))?;
+    log::info!(
+        "SQLite pragmas: journal_mode=WAL synchronous={} ({}) temp_store={} ({})",
+        synchronous,
+        if synchronous == 1 { "NORMAL" } else { "other" },
+        temp_store,
+        if temp_store == 2 { "MEMORY" } else { "other" }
+    );
+
     init_schema(&conn)?;
 
     // `achievements` used AUTOINCREMENT, which burned an id on every duplicate that

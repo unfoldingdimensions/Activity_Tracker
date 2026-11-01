@@ -658,3 +658,44 @@ otherwise documented · `[commit abc1234]` · `[plan]` · `[owner]` a decision t
 - **Not changed:** the range view keeps D-017's fetch-the-range-and-batch-it behaviour, because its 200,000-event
   guard already refuses to render a partial range. Both views now share the same limit control, so the label means
   the same thing in both.
+
+## D-040 · `synchronous=NORMAL` and `temp_store=MEMORY` on the writer
+
+**2026-11-01 · Active · [data] · implements T4 of D-033/D-034**
+
+- **Before:** WAL with SQLite's default `synchronous=FULL`, so every one of the loop's ~86,400 daily commits waited
+  on an fsync. `temp_store` was left at FILE.
+- **Measured on a copy of the live database** (300 single-row commits, then the five hot reads; the live file is
+  never opened for writing):
+
+  | | commit median | commit p95 |
+  |---|---|---|
+  | `synchronous=FULL` | **1.30 ms** | 1.74 ms |
+  | `synchronous=NORMAL` | **0.01 ms** | 0.04 ms |
+
+  | read | FULL | NORMAL | delta |
+  |---|---|---|---|
+  | daily stats | 69.28 ms | 70.32 ms | +1.5 % |
+  | app usage 30d | 0.12 ms | 0.13 ms | +4.6 % |
+  | timeline page | 1.21 ms | 1.23 ms | +1.7 % |
+  | drill-down page | 0.11 ms | 0.11 ms | −0.1 % |
+  | focus calendar | 0.95 ms | 0.94 ms | −1.2 % |
+
+  Reads are within noise (±5 %), which matches D-033's finding that the pragma is a write-side and disk-churn
+  change, not a UI change. At one commit a second the fsync time falls from ~1.3 ms to ~0.01 ms per second —
+  roughly **110 s of fsync per day** returned, on a laptop that runs this from a battery.
+- **Wording of the trade-off:** under WAL, `NORMAL` means a commit is durable against a process crash but the
+  **last few commits can be lost on power loss**; the database file cannot be corrupted, because recovery only
+  ever discards a partially written WAL frame. For a once-a-second activity recorder, losing the last second or
+  two of a power-cut is the correct trade — recorded here rather than assumed.
+- **`temp_store=MEMORY`** keeps the per-hour re-bucketing and the export's sorts off the disk the 1 Hz writer is
+  using. No measurable read change (the hot set already fits the page cache); it is kept for the write path and
+  for the export, and it is a one-line, reversible setting.
+- **Not adopted:** `cache_size` and `mmap_size` — measured **0 %** in D-033 because the hot working set already
+  fits the default 2 MB cache. Adding them would be a setting with a story and no number.
+- **`synchronous` is per-connection, not a property of the file.** `init_database` opens the app's only writer, so
+  it is the only place the pragma needs setting; `commands.rs`'s export connection is read-only and commits
+  nothing. The app logs the effective values at startup (`SQLite pragmas: journal_mode=WAL synchronous=1 (NORMAL)
+  temp_store=2 (MEMORY)`) so an installed build can be checked without a debugger.
+- **Gate:** `cargo run --example pragma_check` opens a database through the real `init_database` and asserts all
+  three values. Proven red by deleting the `synchronous` line: *FAIL synchronous is NORMAL=1 (got 2)*.

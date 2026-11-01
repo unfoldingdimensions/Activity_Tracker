@@ -67,8 +67,8 @@ still draining, and `is_running` is a cooperative stop flag — the loop exits o
 ## 4. Storage
 
 File: `%ProgramData%\ActivityTracker\activity.db` — machine-wide, shared across Windows profiles
-(`lib.rs:39-44`). WAL journal, `page_size` 4096, no freelist. Measured 2026-10-31: **283 MB /
-3.05 M rows / 4 MB WAL**.
+(`lib.rs:39-44`). WAL journal, `page_size` 4096, no freelist, `synchronous=NORMAL` and `temp_store=MEMORY` set by
+`init_database` on the app's only writer (D-040). Measured 2026-10-31: **283 MB / 3.05 M rows / 4 MB WAL**.
 
 Retention is deliberately **off** — `retention_days = 0`, ~1.2 GB/year accepted by the owner (D-032). The
 cleanup thread runs but skips its deletes; `clear all data` is the only bulk delete.
