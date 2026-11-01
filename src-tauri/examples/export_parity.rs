@@ -13,8 +13,7 @@
 //! implementation (Vecs + `serde_json::to_string_pretty`) before it was deleted. `export.rs` is
 //! included by path so this binary links no tauri code.
 
-#[path = "../src/export.rs"]
-mod export;
+use activity_core::export;
 
 use rusqlite::Connection;
 use std::fs;

@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 use base64::{Engine as _, engine::general_purpose};
 use windows::Win32::UI::Shell::ExtractIconExW;
@@ -9,41 +9,18 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::core::HSTRING;
 
-use crate::icon_paths;
+use crate::{icon_cache, icon_paths};
 
-
-/// Cached PNG for a process, tolerating files written under the old mixed-case naming.
-///
-/// The store is lowercase since D-021, but the cache directory still holds files the
-/// previous naming produced ("Hermes.png" for "Hermes.exe"). Without this lookup, an
-/// app that is not currently running would have to be re-resolved every time it shows
-/// up in the Timeline.
-fn cached_icon_path(cache_dir: &Path, clean_name: &str) -> Option<PathBuf> {
-    let exact = cache_dir.join(format!("{}.png", clean_name));
-    if exact.exists() {
-        return Some(exact);
-    }
-
-    let wanted = format!("{}.png", clean_name.to_lowercase());
-    fs::read_dir(cache_dir)
-        .ok()?
-        .flatten()
-        .find(|entry| entry.file_name().to_string_lossy().to_lowercase() == wanted)
-        .map(|entry| entry.path())
-}
 
 /// Get the icon for an application, returning it as a base64 encoded PNG
 pub fn get_app_icon_base64(process_name: &str, cache_dir: &Path) -> Option<String> {
     // `.exe` is stripped case-insensitively ("Hermes.EXE" and "hermes.exe" are one app),
-    // and the canonical cache file is lowercase.
-    let clean_name = Path::new(process_name)
-        .file_stem()
-        .map(|stem| stem.to_string_lossy().to_lowercase())
-        .unwrap_or_else(|| process_name.to_lowercase());
+    // and the canonical cache file is lowercase (D-021).
+    let clean_name = icon_cache::cache_stem(process_name);
     let icon_path = cache_dir.join(format!("{}.png", clean_name));
 
     // 1. Check Cache on Disk (Fastest)
-    if let Some(path) = cached_icon_path(cache_dir, &clean_name) {
+    if let Some(path) = icon_cache::cached_icon_path(cache_dir, &clean_name) {
         if let Ok(data) = fs::read(&path) {
             return Some(format!("data:image/png;base64,{}", general_purpose::STANDARD.encode(data)));
         }
@@ -244,7 +221,7 @@ where
         let icon_path = cache_dir.join(format!("{stem}.png"));
         let missing_marker = cache_dir.join(format!("{stem}.missing"));
 
-        if cached_icon_path(cache_dir, &stem).is_some() {
+        if icon_cache::cached_icon_path(cache_dir, &stem).is_some() {
             already += 1;
             continue;
         }
@@ -275,53 +252,4 @@ where
         }
     }
     (already, added, unresolved)
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A scratch directory that does not collide with the real icon cache.
-    fn temp_cache(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("at-icons-{}-{}", tag, std::process::id()));
-        let _ = fs::remove_dir_all(&dir);
-        fs::create_dir_all(&dir).unwrap();
-        dir
-    }
-
-    #[test]
-    fn reuses_a_cache_file_written_under_the_old_mixed_case_name() {
-        // Names are lowercase since D-021, but the cache still holds "Hermes.png".
-        // An app that is not running has no other source, so this lookup must work.
-        let dir = temp_cache("mixed");
-        fs::write(dir.join("Hermes.png"), b"png").unwrap();
-
-        let found = cached_icon_path(&dir, "hermes");
-
-        assert_eq!(found, Some(dir.join("Hermes.png")));
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn prefers_the_exact_lowercase_file_and_returns_none_when_absent() {
-        let dir = temp_cache("exact");
-        fs::write(dir.join("chrome.png"), b"png").unwrap();
-
-        assert_eq!(cached_icon_path(&dir, "chrome"), Some(dir.join("chrome.png")));
-        assert_eq!(cached_icon_path(&dir, "opera"), None, "a missing icon must not resolve to another app's file");
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn strips_any_case_of_extension() {
-        // "EXCEL.EXE" and "excel.exe" must land on the same cache entry.
-        for name in ["EXCEL.EXE", "excel.exe", "Excel.Exe"] {
-            let stem = Path::new(name)
-                .file_stem()
-                .map(|s| s.to_string_lossy().to_lowercase())
-                .unwrap();
-            assert_eq!(stem, "excel");
-        }
-    }
 }

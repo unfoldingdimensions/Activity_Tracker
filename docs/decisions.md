@@ -1143,3 +1143,50 @@ fail (the value exists, the path is right, the command launches) are each checke
 - **Tooling note:** a `--clip-shot` mode for `scripts/ui-dom.mjs` (CDP `Page.captureScreenshot` clipped to one element)
   was written for this and **reverted** — `Page.enable` never answered on this WebView2 target and an untested mode is
   worse than none.
+
+## D-057 · The logic that does not need a window lives in a crate of its own
+
+**2026-11-01 · Active · [build] · supersedes the L-11 workaround**
+
+- **The problem this removes:** every `#[cfg(test)]` block in `src-tauri` was documentation. The test binary links the
+  whole Tauri → wry → WebView2 stack and dies at process load with `STATUS_ENTRYPOINT_NOT_FOUND` (`0xC0000139`,
+  `-1073741511`) before `main` runs, so nothing ever executed. Proven again today: the freshly built
+  `app_lib-*.exe` exits `-1073741511` with no output, while `cargo test --example export_parity` runs fine.
+- **The shape:** the repository is now a **workspace** with two members — `src-tauri` (the app) and `core`
+  (`activity-core`: `database`, `export`, `settings_keys`, `icon_paths`, `icon_cache`). Nothing in `core` may import
+  `tauri`; that is the rule that keeps the split meaningful, and it is stated at the top of `core/src/lib.rs`.
+- **What moved:** `database.rs`, `export.rs`, `icon_paths.rs`, `settings_keys.rs` — and the pure half of `icons.rs`
+  (`cache_stem`, `cached_icon_path` and their three tests), which is path arithmetic, not Win32. What stayed: `commands.rs`,
+  `tracker.rs`, `visibility.rs`, `windows_api.rs`, `icons.rs` (the `ExtractIconExW` path), `input_monitor.rs` — everything
+  that needs an `AppHandle` or a window handle.
+- **Nothing else changed shape:** `src-tauri/src/lib.rs` does `pub use activity_core::{database, export, icon_cache,
+  icon_paths, settings_keys};`, so every existing `crate::database::…` path resolves unchanged. The examples stopped
+  `#[path]`-including source files and now depend on the crate, which deletes the trick that existed only to dodge this.
+- **Three traps, all load-bearing:**
+  - `[profile.release]` **moved to the workspace root**. Cargo ignores a member's profile once a workspace exists and
+    only warns — the fat-LTO, one-codegen-unit, stripped build from D-041 would have silently reverted to defaults.
+  - The **lock file moved** to the root and was seeded from `src-tauri/Cargo.lock`, so no dependency re-resolved. A
+    fresh resolve needs the registry index, and this machine's route to it times out (`spurious network error … transfer
+    too slow`); builds therefore run with `CARGO_NET_OFFLINE=true` when that happens.
+  - `.cargo/config.toml` (which pins `target-dir` to `E:/DevTools/activity-tracker/target`, C: being full) **moved to the
+    root** so `tauri build`, the examples and `cargo test -p activity-core` all resolve it from any directory.
+- **Proof it works:** `cargo test -p activity-core` → **18 tests, 0 failed**, in 0.01 s. It was zero before.
+- **What the newly-runnable suite immediately found — two tests that were wrong, not two bugs in the code:**
+  - `refused_achievements_do_not_burn_ids` looped five times asserting the unlock was *refused*, which contradicted its
+    own comment ("the first unlock lands, the repeats are the duplicates"). The shipping code was right; the test was
+    inverted and had never been executed. Corrected to assert the first unlock succeeds, then five refusals, then ids
+    1 and 2.
+  - `reuses_a_cache_file_written_under_the_old_mixed_case_name` asserted the returned path still said `Hermes.png`. On
+    NTFS that is unobservable: `hermes.png`.exists() is true as soon as `Hermes.png` exists, so the exact-path shortcut
+    answers first. The test now asserts the outcome (the file is found and its bytes read back) and says plainly that the
+    directory scan under it is a guard for case-sensitive storage this machine cannot exercise.
+  That is the argument for the split in one line: a test that has never run is a claim nobody checked, and here two of
+  them were the opposite of what the code does.
+- **What is still untestable, and now does not matter:** `cargo test -p activity-tracker-v2` still fails at load exactly
+  as before. `src-tauri` now contains **no `#[test]`**, so nothing is stranded there. New backend rules belong in `core`
+  with a test; anything that genuinely needs a window keeps being proven by a runnable example or live invocation.
+- **Cost:** the §1.5 checklist's SQL step now reads `core/src/database.rs`, and a contributor has to know the workspace
+  exists. One crate, one manifest, one lock file, one profile — paid once.
+- **Pending, and only `AGENTS.md`:** its §1.5 step 1 still names `src-tauri/src/database.rs` and §1.6 still says "Rust
+  tests exist but cannot run on this machine yet", citing `cargo test --lib`. Both paragraphs are now wrong. The write
+  needs approval and has not been made; `docs/architecture.md` and `docs/flow.md` were corrected in this commit.

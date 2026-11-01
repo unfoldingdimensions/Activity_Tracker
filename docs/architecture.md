@@ -27,10 +27,21 @@ src/api/tauri.ts                THE invoke() boundary — every command signatur
         ↕ Tauri IPC (26 commands)
 src-tauri/src/commands.rs       thin command layer: lock state, call the domain, map errors
 src-tauri/src/tracker.rs        the 1 Hz loop, gamification, limits, cleanup scheduling
-src-tauri/src/database.rs       ALL SQL: schema, inserts, reads, aggregates
 src-tauri/src/windows_api.rs    the Win32 boundary (foreground window, process name, idle seconds)
-src-tauri/src/icons.rs          icon extraction + on-disk cache (base64 to the UI)
+src-tauri/src/icons.rs          icon extraction (ExtractIconExW → PNG), the Win32 half
+        ↕ plain Rust calls, no IPC and no window handle
+core/src/database.rs            ALL SQL: schema, inserts, reads, aggregates
+core/src/export.rs              streaming CSV/JSON writers
+core/src/icon_paths.rs          exe lookup: registry, Start Menu, bounded sweeps, MSIX manifests
+core/src/icon_cache.rs          cache file naming and lookup
+core/src/settings_keys.rs       validation of the settings map that arrives as JSON
 ```
+
+**Two crates, one rule.** `core` (`activity-core`) is a workspace member that links no Tauri, no WebView2 and no window
+toolkit, because a test binary that links them cannot load on this machine. That is where a backend rule gets a
+`#[test]` that actually runs (`cargo test -p activity-core`, 18 tests, D-057); anything that needs an `AppHandle` stays
+in `src-tauri` and is proven by a runnable example or a live invocation instead. `src-tauri/src/lib.rs` re-exports the
+moved modules, so `crate::database::…` reads the same as before.
 
 Two files currently bypass the `api/tauri.ts` boundary and import `invoke` directly —
 `src/components/shared/AppIcon.tsx:2` and `src/pages/TrayPopup.tsx:4`. That is a layering violation to
@@ -95,7 +106,7 @@ query parameters — must fold case the same way.
 
 `window_events.active_seconds` was added 2026-10-31 (D-018). Rows written after that store it
 directly; rows recorded earlier are filled once at startup from `activity_snapshots` by
-`backfill_window_event_active_seconds` (`database.rs`), before the tracking loop starts. `NULL` means
+`backfill_window_event_active_seconds` (`core/src/database.rs`), before the tracking loop starts. `NULL` means
 "not backfilled yet", and the frontend falls back to `duration_seconds` — so an un-backfilled row
 renders without crashing, only less precisely.
 
@@ -104,7 +115,7 @@ renders without crashing, only less precisely.
 - `app_usage.date` is the **local** calendar date (`windows_api.rs:142-144`).
 - Local day boundaries are converted to a UTC range at read time (`tracker.rs:733-749`).
 - Per-hour timeline buckets are grouped in UTC in SQL and re-bucketed into *local hours* in Rust
-  (`database.rs:302-359`). That function's buckets are keyed by hour only, so it is correct for a single
+  (`core/src/database.rs:302-359`). That function's buckets are keyed by hour only, so it is correct for a single
   local day and wrong for multi-day ranges.
 
 ## 5. Command surface (27, `lib.rs:177-205`)
@@ -139,7 +150,10 @@ binding: a second derivation of the same number is a defect, not an optimisation
   hidden page then renders at 240 rAF/s for nobody — 55 % of one core measured, 0.3 % after the fix (D-042). No
   caller may call `window.hide()` / `window.show()` directly.
 - **God files**: `pages/Settings.tsx` 910, `tracker.rs` 846, `pages/Timeline.tsx` 595, `pages/Tools.tsx` 570.
-- **No Rust test suite.** Zero `#[cfg(test)]` in `src-tauri/src`; all 88 tests are frontend.
+- **Rust tests exist and run — but only in `core`.** `cargo test -p activity-core` executes 18 tests in 0.01 s (D-057);
+  the failure mode to remember is that `cargo test -p activity-tracker-v2` still dies at process load with
+  `STATUS_ENTRYPOINT_NOT_FOUND`, so a `#[test]` written in `src-tauri` **does not run at all**. Put the logic in `core`
+  and the test beside it; never add a test to the app crate and call the rule covered.
 - **Logs** live at `%ProgramData%\ActivityTracker\logs\activity-tracker.log`, bounded at three files of 2 MB.
   Logging is registered in **every** build (D-024); per-tick detail stays at `debug!`, so the file carries app
   switches, cleanup runs, unlocks and errors rather than every second.

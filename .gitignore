@@ -37,3 +37,7 @@ scripts/mem-samples.csv
 # Impeccable live mode: machine-specific state
 .impeccable/live/roots.json
 .impeccable/live/sessions/
+
+# Workspace build output (the real target dir is external, see .cargo/config.toml), and the tooling that is deliberately
+# not tracked.
+/target/

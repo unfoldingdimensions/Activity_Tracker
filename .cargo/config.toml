@@ -1,0 +1,5 @@
+[build]
+# Keep ALL build artifacts on the E: drive (C: is nearly full).
+# This file now sits at the repository root, which is the workspace root, so `tauri dev`, `tauri build` and a plain
+# `cargo test -p activity-core` all resolve it from any directory. Cargo walks up from the working directory.
+target-dir = "E:/DevTools/activity-tracker/target"

@@ -10,12 +10,7 @@
 //! someone deletes a pragma, the durability and fsync assumptions recorded in D-040 stop holding and
 //! this fails instead of quietly costing a millisecond per commit.
 
-#[path = "../src/export.rs"]
-#[allow(dead_code)]
-mod export;
-#[path = "../src/database.rs"]
-#[allow(dead_code)]
-mod database;
+use activity_core::database;
 
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let dir = std::env::temp_dir().join("at-pragma-check");

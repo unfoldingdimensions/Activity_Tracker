@@ -213,3 +213,21 @@ it exists to catch is what exposed it, and the same plant then proved the fixed 
 change would*, confirm the failure names the file, then fix the pattern. A gate whose failure message you have never
 seen is a gate you cannot trust. And when the pattern is about a package name, copy the string from the import rather
 than typing it.
+
+## L-25 · A test that has never run is a claim nobody checked
+
+Bit us: extracting the Tauri-free logic into `activity-core` (D-057) made eighteen `#[cfg(test)]` blocks execute for the
+first time. Two were wrong — and wrong in the way that is invisible to reading:
+
+- one looped five times asserting the unlock was *refused*, while its own comment described the first unlock landing. The
+  code was right; the assertion was inverted.
+- one asserted a returned path kept the casing `Hermes.png`, which cannot be observed on NTFS, where `hermes.png` exists
+  as soon as `Hermes.png` does. It was asserting a branch the platform never takes.
+
+Neither could have been caught by review, because a test that does not run reads exactly like a test that passes.
+'Compiles' is not 'executes', and a suite that cannot load is a comment block with `#[test]` in front of it.
+
+The rule: know which of your tests actually execute, and if a whole layer cannot run, say so where the tests are written
+rather than leaving them to imply coverage that does not exist. When the toolchain blocks them, the fix is to make the
+test binary smaller — move the logic somewhere that links nothing the machine cannot load — not to write more tests in
+the place that cannot run them.

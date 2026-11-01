@@ -1,0 +1,14 @@
+[workspace]
+# Two members: the app (Tauri + React shell) and `activity-core`, the logic that does not need a window. The split exists
+# so the backend rules can be tested: a test binary that links the Tauri stack fails at process load on this machine
+# (L-11), and `cargo test -p activity-core` does not (D-057).
+members = ["src-tauri", "core"]
+resolver = "2"
+
+# Release profile lives at the workspace root: cargo ignores `[profile.*]` in a member once a workspace exists, and would
+# only warn about it. These are the settings from D-041 — fat LTO, one codegen unit, stripped — with their cost recorded
+# there (~4m46s per release build).
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "symbols"

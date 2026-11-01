@@ -18,6 +18,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.5.3", features = [] }
 
 [dependencies]
+# Everything that does not need a window: SQL, export, settings keys, icon lookup (D-057).
+activity-core = { path = "../core" }
+
 # Tauri
 tauri = { version = "2.9.5", features = ["tray-icon", "image-png"] }
 tauri-plugin-log = "2"
@@ -74,14 +77,3 @@ windows = { version = "0.58", features = [
     "Win32_System_Com",
     "Win32_Storage_FileSystem",
 ] }
-
-
-
-
-# Release artifacts ship as a single binary, so size beats compile time. `strip` drops the symbol
-# tables, and `lto` + one codegen unit let the linker discard generic instantiations that only exist
-# across crate boundaries — measured 36.3 MB -> see D-041 for the number this build produced.
-[profile.release]
-lto = "fat"
-codegen-units = 1
-strip = "symbols"

@@ -11,12 +11,7 @@
 //! duplicate, ordering is newest-first, the app filter holds, and an offset past the end is empty
 //! rather than an error.
 
-#[path = "../src/export.rs"]
-#[allow(dead_code)]
-mod export;
-#[path = "../src/database.rs"]
-#[allow(dead_code)]
-mod database;
+use activity_core::database;
 
 use chrono::{Duration, TimeZone, Utc};
 use rusqlite::Connection;

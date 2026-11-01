@@ -8,9 +8,7 @@
 //! Peak working set is read from outside (see the poller) because it cannot be measured after the
 //! fact and the `windows` crate feature for `GetProcessMemoryInfo` is not enabled here.
 
-#[path = "../src/export.rs"]
-#[allow(dead_code)] // the bench only drives the JSON writer; the CSV one is unused here
-mod export;
+use activity_core::export;
 
 use rusqlite::{Connection, OpenFlags};
 use std::time::Instant;

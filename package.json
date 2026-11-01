@@ -13,6 +13,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:rust": "cargo test -p activity-core",
     "test:ui": "vitest --ui"
   },
   "dependencies": {

@@ -7,9 +7,7 @@
 //! machine, so this is the executable check that the resolver covers what it claims — it is also the number quoted
 //! in D-045.
 
-#[path = "../src/icon_paths.rs"]
-#[allow(dead_code)]
-mod icon_paths;
+use activity_core::icon_paths;
 
 use std::path::PathBuf;
 

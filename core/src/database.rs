@@ -1258,6 +1258,8 @@ mod tests {
     fn refused_achievements_do_not_burn_ids() {
         let conn = Connection::open_in_memory().unwrap();
         init_schema(&conn).unwrap();
+        // The first unlock is the one that lands; the repeats are the duplicates the loop produces every tick.
+        assert!(unlock_achievement_with_reward(&conn, "early_bird", "2026-10-31T00:00:00.000Z", 0).unwrap());
         for _ in 0..5 {
             assert!(!unlock_achievement_with_reward(&conn, "early_bird", "2026-10-31T00:00:00.000Z", 0).unwrap());
         }

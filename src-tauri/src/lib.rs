@@ -4,15 +4,15 @@
 //! Uses safe, non-invasive Windows APIs for monitoring.
 
 mod commands;
-mod database;
-mod export;
-mod settings_keys;
 mod tracker;
 mod visibility;
 mod windows_api;
 mod icons;
-mod icon_paths;
 mod input_monitor;
+
+// The logic that does not need a window lives in `activity-core`, which is a crate of its own so its tests can run
+// (D-057). Re-exported at this level, so every existing `crate::database::…` path keeps working unchanged.
+pub use activity_core::{database, export, icon_cache, icon_paths, settings_keys};
 
 
 use commands::AppState;

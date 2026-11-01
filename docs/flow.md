@@ -86,10 +86,10 @@ retention) is therefore live within one second; nothing requires a restart excep
 
 | User-visible number | Single source of truth | Computed in |
 |---|---|---|
-| Screen time / active time | `activity_snapshots` where `is_idle = 0` | `database.rs:228-239`, `273-284` |
+| Screen time / active time | `activity_snapshots` where `is_idle = 0` | `core/src/database.rs:228-239`, `273-284` |
 | Idle time | `activity_snapshots` where `is_idle = 1` | same |
-| Keystrokes / clicks / distance | `input_activity` sums | `database.rs:242-250` |
-| Time per app (day or range) | `app_usage.total_seconds` | `database.rs:206-216`, `440-454` |
+| Keystrokes / clicks / distance | `input_activity` sums | `core/src/database.rs:242-250` |
+| Time per app (day or range) | `app_usage.total_seconds` | `core/src/database.rs:206-216`, `440-454` |
 | Focus score | `app_usage` seconds × `classifyApp` — denominator is **classified app time**, with `ignore` apps removed from both sides | `utils/focusScore.ts` |
 | Focus Flow chart | window events `active_seconds` × `classifyApp` — denominator is **each interval's wall time**, so idle appears as its own segment | `useDashboardData.ts:204-287` |
 | Deep-work sessions | window events, **`active_seconds`** | `utils/focusSessions.ts` |
@@ -121,12 +121,12 @@ quietly becomes two.
   `retention_days` (`tracker.rs:396-427`). `0` means keep forever — the current setting — so nothing is ever
   deleted and the file grows monotonically (~3.6 MB/day measured). `app_usage` is never pruned.
 - **Export**: `export_data` streams all three event tables out row by row on a **read-only connection of its
-  own** (`src/export.rs`, `commands.rs:49-95`), writing CSV (three sections) or JSON to a path chosen by the
+  own** (`src/core/src/export.rs`, `commands.rs:49-95`), writing CSV (three sections) or JSON to a path chosen by the
   native dialog. The tracker's mutex is held only to read the database path, so the 1 Hz recorder keeps running;
   memory is flat regardless of history size (D-037). Output format is pinned by
   `tests/fixtures/export-golden.*` and checked by `cargo run --example export_parity`.
 - **Clear**: `clear_data` deletes all activity rows, resets `user_stats`, runs `VACUUM`, and removes the icon
-  cache directory (`commands.rs:441-461`, `database.rs:604-616`).
+  cache directory (`commands.rs:441-461`, `core/src/database.rs:604-616`).
 
 ## 7. Known distortions (read before trusting a screenshot)
 
