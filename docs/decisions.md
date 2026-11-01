@@ -861,3 +861,38 @@ fail (the value exists, the path is right, the command launches) are each checke
 - **Not done:** MSIX icons through the shell's App User Model ID (`IShellItemImageFactory`). It would cover Photos,
   Widgets, Clipchamp, Terminal and the Store build of ChatGPT — five rows — and is a second COM surface for a cosmetic
   gain. Recorded here so the next session does not "discover" it as new work.
+
+## D-046 · Packaged apps get their logo from the package manifest
+
+**2026-11-01 · Active · [data] · extends D-045**
+
+- **Why D-045 still missed Claude:** Claude — like Terminal, Photos, Widgets, Clipchamp and the Store build of ChatGPT —
+  is an MSIX package. Its executable lives under `C:\Program Files\WindowsApps\<Package>\app\Claude.exe`, and the
+  tracker's history names it `claude.exe`, which the uninstall registry has never heard of and which the install-dir
+  sweep cannot reach (the package folder is not listable from `WindowsApps`). Extraction itself was never the problem:
+  `ExtractIconExW` returns 2 icons from that path when handed it. **Resolution** was, and it needs the exe *running* to
+  find it — so Claude's icon existed only for as long as Claude was open in that session, and there was no
+  `claude.png` on disk to fall back to.
+- **Fix:** read the logo the package declares for itself.
+  1. `HKCU\Software\Classes\Local Settings\…\AppModel\Repository\Packages\<Package>` (no elevation) → the
+     **`PackageRootFolder`** value. Not `PackageRoot` — reading the wrong value name is why the first attempt added
+     nothing at all, silently.
+  2. the root's `AppxManifest.xml`, readable by path even though listing `WindowsApps` is denied (the ACL allows
+     traversing a named package)
+  3. each `<Application Executable="…">` paired with its `<uap:VisualElements Square44x44Logo="…">`
+  4. the manifest's unqualified asset name mapped to a shipped variant — exact first, then preferring
+     `targetsize-44`, `targetsize-48`/`scale-200`, `targetsize-32`/`scale-150`, `targetsize-24`/`scale-125`,
+     `targetsize-16`/`scale-100`, so a 24 px list does not get a 16 px asset or a 150 px tile
+  5. the PNG is read directly; `extract_icon_to_png` returns the file when the path is already an image
+- **Measured:** coverage **56/124 → 62/124**; icons on disk **48 → 54** (`claude`, `photos`, `widgets`,
+  `windowsterminal`, `mspcmanager`, `appinstaller`). `claude.png` is an 88×88 RGBA logo — the real asset, not a
+  downscaled placeholder. Backfill **1.24 s** (it reads 227 package manifests once).
+- **`.missing` markers are versioned now** (`RESOLVER_VERSION`, currently `2`). A marker written by an older resolver is
+  ignored and the name is retried. Without this, D-045's marker for `claude` would have outlived the strategy that
+  fixes it — which is exactly how the icon looked like a regression rather than a miss.
+- **Still unresolved, and why (26 real apps):** `forzahorizon6`, `chatgpt`, `clipchamp`, `radeonsoftware`,
+  `eadesktop` — packaged or launcher-managed apps whose executable is not named in any manifest this user's repository
+  exposes; `mintty.exe` and `git-credential-manager.exe` live four levels under `C:\Program Files\Git`, past the
+  two-level sweep; the rest (`recordly`, `shotkit`, `openmotion`, `svgenie`, `video2x`, `qemu`, `warm`, `openshot`,
+  `aloha`, `amdbugreportform`, `freebuff`, `mo rec`, `link2ea`, `ealaunchhelper`, `riveearlyaccess`, `workbuddyai`)
+  have no binary on this machine any more.

@@ -89,9 +89,18 @@ pub fn amber_tray_icon_png(app: &tauri::AppHandle) -> Option<Vec<u8>> {
     Some(png)
 }
 
-fn extract_icon_to_png(exe_path: &Path) -> Option<Vec<u8>> {
+fn extract_icon_to_png(path: &Path) -> Option<Vec<u8>> {
+    // A packaged app resolves to its own logo PNG rather than an executable: there is nothing to extract, and reading
+    // the file is both simpler and sharper than asking the shell for a scaled tile.
+    if path
+        .extension()
+        .map(|ext| ext.eq_ignore_ascii_case("png"))
+        .unwrap_or(false)
+    {
+        return fs::read(path).ok();
+    }
     unsafe {
-        let path_hstring = HSTRING::from(exe_path.to_str()?);
+        let path_hstring = HSTRING::from(path.to_str()?);
         let mut large_icon = [HICON::default(); 1];
         let mut small_icon = [HICON::default(); 1];
         
@@ -207,6 +216,11 @@ unsafe fn hicon_to_png(hicon: HICON) -> Option<Vec<u8>> {
         None
     }
 }
+/// Bumped whenever the resolver gains a strategy. A `.missing` marker written by an older resolver is then ignored and
+/// the name is retried — otherwise adding a strategy would never reach the names it was added for, and the cache would
+/// quietly keep a wrong answer.
+const RESOLVER_VERSION: &str = "2";
+
 /// Write the icon of every app that does not have one yet, so the UI never shows a letter tile for an app it has
 /// history for.
 ///
@@ -235,9 +249,12 @@ where
             continue;
         }
         // A name that resolved to nothing last time will resolve to nothing this time too, and the sweep it takes to
-        // find that out is the expensive part — so it is recorded. The marker does not outrank a PNG, so an app that
-        // is later installed and run still gets its icon the first time the UI asks for it.
-        if missing_marker.exists() {
+        // find that out is the expensive part — so it is recorded, together with the resolver that decided it. The
+        // marker does not outrank a PNG, so an app that is later installed and run still gets its icon from the UI path.
+        if fs::read_to_string(&missing_marker)
+            .map(|version| version.trim() == RESOLVER_VERSION)
+            .unwrap_or(false)
+        {
             unresolved += 1;
             continue;
         }
@@ -253,7 +270,7 @@ where
             }
             None => {
                 unresolved += 1;
-                let _ = fs::write(&missing_marker, b"");
+                let _ = fs::write(&missing_marker, RESOLVER_VERSION);
             }
         }
     }

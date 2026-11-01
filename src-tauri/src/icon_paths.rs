@@ -83,6 +83,8 @@ struct InstalledPrograms {
     start_menu: HashMap<String, PathBuf>,
     /// lowercased executable file name -> path, from one bounded sweep of the install roots
     program_exes: HashMap<String, PathBuf>,
+    /// lowercased executable file name -> the packaged app's own logo PNG
+    appx_logos: HashMap<String, PathBuf>,
 }
 
 impl InstalledPrograms {
@@ -144,6 +146,7 @@ impl InstalledPrograms {
             install_dirs,
             start_menu: start_menu_exes(),
             program_exes: program_dir_exes(),
+            appx_logos: appx_logos(),
         }
     }
 
@@ -154,6 +157,7 @@ impl InstalledPrograms {
             install_dirs: Vec::new(),
             start_menu: HashMap::new(),
             program_exes: HashMap::new(),
+            appx_logos: HashMap::new(),
         }
     }
 }
@@ -252,6 +256,7 @@ fn from_install_dirs(file_name: &str) -> Option<PathBuf> {
         .get(file_name)
         .cloned()
         .or_else(|| INSTALLED.program_exes.get(file_name).cloned())
+        .or_else(|| INSTALLED.appx_logos.get(file_name).cloned())
 }
 
 /// Where everything the user can launch from the Start Menu actually lives.
@@ -371,6 +376,143 @@ fn collect_link_files(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
             out.push(path);
         }
     }
+}
+
+/// Icons for packaged (MSIX/Store) apps: `executable name -> the package's own logo PNG`.
+///
+/// These apps have no executable a caller could extract an icon from — the binary lives under
+/// `C:\Program Files\WindowsApps\<Package>\…`, which `ExtractIconExW` cannot read even when the file can be opened, and
+/// the name in the tracker is the packaged executable (`claude.exe`, `windowsterminal.exe`) rather than anything the
+/// registry's uninstall list knows about. The package manifest states the logo itself, so it is read from there.
+///
+/// The package list comes from the per-user AppModel repository, which needs no elevation. Each `PackageRoot` is
+/// readable by path even though listing `WindowsApps` is denied — the directory ACL allows traversing a named package.
+#[cfg(windows)]
+fn appx_logos() -> HashMap<String, PathBuf> {
+    use winreg::enums::{HKEY_CURRENT_USER, KEY_READ};
+    use winreg::RegKey;
+
+    const PACKAGES: &str =
+        r"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages";
+
+    let mut map = HashMap::new();
+    let Ok(key) = RegKey::predef(HKEY_CURRENT_USER).open_subkey_with_flags(PACKAGES, KEY_READ) else {
+        return map;
+    };
+
+    for name in key.enum_keys().flatten() {
+        let Ok(entry) = key.open_subkey_with_flags(&name, KEY_READ) else {
+            continue;
+        };
+        let Ok(root) = entry.get_value::<String, _>("PackageRootFolder") else {
+            continue;
+        };
+        let root = PathBuf::from(root.trim());
+        let Ok(manifest) = std::fs::read_to_string(root.join("AppxManifest.xml")) else {
+            continue;
+        };
+        for (exe, logo) in manifest_icons(&manifest) {
+            let logo_path = resolve_assets(&root, &logo);
+            if let Some(path) = logo_path {
+                map.entry(exe.to_lowercase()).or_insert(path);
+            }
+        }
+    }
+    map
+}
+
+#[cfg(not(windows))]
+fn appx_logos() -> HashMap<String, PathBuf> {
+    HashMap::new()
+}
+
+/// Pull `(executable, logo)` pairs out of an `AppxManifest.xml`.
+///
+/// Deliberately a scan rather than an XML parser: the manifest is a flat, machine-generated document and the only
+/// thing needed is the executable each `<Application>` names and the logo its `<uap:VisualElements>` declares. A
+/// parser dependency for two attributes would be the larger commitment.
+fn manifest_icons(manifest: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for chunk in manifest.split("<Application ").skip(1) {
+        let Some(exe) = attribute(chunk, "Executable=\"") else {
+            continue;
+        };
+        // Every Application carries its own VisualElements; the first logo attribute wins.
+        let logo = attribute(chunk, "Square44x44Logo=\"")
+            .or_else(|| attribute(chunk, "Square150x150Logo=\""))
+            .or_else(|| attribute(chunk, "Logo=\""));
+        let Some(logo) = logo else { continue };
+        let exe_name = exe
+            .rsplit(['\\', '/'])
+            .next()
+            .unwrap_or(&exe)
+            .to_string();
+        out.push((exe_name, logo.replace('\\', "/")));
+    }
+    out
+}
+
+fn attribute(chunk: &str, prefix: &str) -> Option<String> {
+    let start = chunk.find(prefix)? + prefix.len();
+    let rest = &chunk[start..];
+    let end = rest.find('"')?;
+    let value = rest[..end].trim();
+    if value.is_empty() {
+        None
+    } else {
+        Some(value.to_string())
+    }
+}
+
+/// Turn a manifest logo path into a file that exists.
+///
+/// Manifests name the unqualified asset (`Assets\Square44x44Logo.png`) while the package ships qualified variants
+/// (`…targetsize-44.png`, `…scale-150.png`). The assets folder can be listed, so the closest variant is chosen rather
+/// than guessed: exact name first, then the same stem with any qualifier, preferring the one sized for the taskbar.
+fn resolve_assets(root: &Path, logo: &str) -> Option<PathBuf> {
+    let base = root.join(logo);
+    if base.is_file() {
+        return Some(base);
+    }
+    let dir = base.parent()?;
+    let stem = base.file_stem()?.to_string_lossy().to_string();
+    let entries = std::fs::read_dir(dir).ok()?;
+    let mut candidates: Vec<PathBuf> = entries
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .map(|name| name.to_string_lossy().starts_with(&format!("{stem}.")))
+                .unwrap_or(false)
+                && path
+                    .extension()
+                    .map(|ext| ext.eq_ignore_ascii_case("png"))
+                    .unwrap_or(false)
+        })
+        .collect();
+    candidates.sort_by_key(|path| {
+        let name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_lowercase();
+        // A 24 px list wants something at or just above 44 px; a 16 px asset is visibly soft and a 150 px tile is
+        // wasted bytes, so the order is explicit rather than "any qualified variant".
+        if name.contains("targetsize-44") {
+            0
+        } else if name.contains("targetsize-48") || name.contains("scale-200") {
+            1
+        } else if name.contains("targetsize-32") || name.contains("scale-150") {
+            2
+        } else if name.contains("targetsize-24") || name.contains("scale-125") {
+            3
+        } else if name.contains("targetsize-16") || name.contains("scale-100") {
+            4
+        } else {
+            5
+        }
+    });
+    candidates.into_iter().next()
 }
 
 /// One bounded sweep of the directories programs actually install into, mapping every executable found.
