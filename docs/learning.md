@@ -203,3 +203,13 @@ clicks only when the thing you are testing is the OS interaction itself, and pri
 was simply not the code that had been written. Nothing in the output said "old binary".
 **Rule:** stop the process, then copy, then start — and never swallow the copy's stderr. When a UI change does not show
 up, compare the installed binary's mtime against the build output before doubting the change.
+
+### L-25 · A source-level gate needs its pattern proven against a real violation
+The new API-boundary test walked `src/` looking for `from '@tauri-apps/api/core'`, but its pattern was written
+`@tauri/apps/api/core` — a slash where the package has a hyphen. It compiled, it ran, it passed, and it would have
+passed forever: package names look enough like paths that the mistake does not read as one. Planting the very violation
+it exists to catch is what exposed it, and the same plant then proved the fixed version.
+**Rule:** for a check that scans text, the red test is not optional and not a formality — break the rule *the way a real
+change would*, confirm the failure names the file, then fix the pattern. A gate whose failure message you have never
+seen is a gate you cannot trust. And when the pattern is about a package name, copy the string from the import rather
+than typing it.

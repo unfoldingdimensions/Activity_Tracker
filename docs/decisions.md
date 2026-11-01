@@ -979,3 +979,29 @@ fail (the value exists, the path is right, the command launches) are each checke
   that follows a self-hide, it does not keep the popup open.
 - **Accepted trade-off:** clicking the tray twice inside 250 ms leaves the popup closed rather than flashing open and
   shut. A double-click on a tray icon should not be interpreted as "open and immediately close and reopen".
+
+## D-050 · `invoke` lives in one file, and a test now says so
+
+**2026-11-01 · Active · [ui] · implements T14 of D-033/D-034**
+
+- **Before:** `TrayPopup.tsx:4` and `AppIcon.tsx:2` imported `invoke` straight from `@tauri-apps/api/core`, and three
+  commands — `show_main_window`, `hide_tray_window`, `get_app_icon` — had no typed binding at all. AGENTS.md §1.5 says
+  the typed binding is the only place `invoke` belongs, and said to correct these "when you are in the file"; T2, T6
+  and T13 all edited those files and none of them did.
+- **After:** `src/api/tauri.ts` gains `showMainWindow(path?)`, `hideTrayWindow()` and `getAppIcon(name)`; both components
+  import from there. `grep -rn "@tauri-apps/api/core" src/` now matches only `src/api/tauri.ts` and the mock in
+  `src/test/setup.ts`, which is the opposite of a call site.
+- **A rule that was only advice until it was a test.** `src/api/__tests__/apiBoundary.test.ts` reads every `.ts`/`.tsx`
+  under `src/` and fails naming any file outside the API layer that imports the module. Two cases: the glob finds the
+  sources it is meant to police (a silent empty glob would make the second case vacuous), then the boundary itself.
+  Sources are read through Vite (`import.meta.glob(..., { query: '?raw' })`) rather than `fs` — the app's tsconfig
+  deliberately has no Node types, and a layering test is not a reason to hand every component `process` and `fs`.
+- **The first version of that gate could never fail.** Its pattern was `from '@tauri/apps/api/core'` — a slash where the
+  package has a hyphen — so it compiled, ran and passed for every violation it was written to catch. Planting the
+  import it exists to catch is what surfaced it (L-25). With the pattern fixed it fails with
+  `expected [ "/src/components/shared/AppIcon.tsx" ] to deeply equal []`.
+- **Behaviour checked on the installed build**, since the point of the refactor is that nothing changed: an app icon
+  still renders through the wrapper (`<img src="data:image/png;base64,iVBORw0KGgo…" alt="deepseek harness.exe">`),
+  the popup's close button adds a `hide_tray_window command invoked` line to the log, and *Open full app* brings the
+  main window up (`Reveal: visible=Ok(true)`) with the popup hidden.
+- **Not changed:** the command names, their payloads or their behaviour. This is a call-site and binding change.

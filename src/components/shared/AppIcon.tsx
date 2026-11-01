@@ -1,7 +1,7 @@
 import { useState, useEffect, memo } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '../../utils/isTauri';
 import { cacheIcon, getCachedIcon } from '../../utils/iconCache';
+import { getAppIcon } from '../../api/tauri';
 
 interface AppIconProps {
     processName: string;
@@ -33,7 +33,7 @@ function AppIconInner({ processName, className = '', size = 24, fallbackText }: 
             // Browser dev mode has no Tauri icon backend; keep the letter tile.
             if (!isTauri()) return;
             try {
-                const data = await invoke<string | null>('get_app_icon', { processName });
+                const data = await getAppIcon(processName);
                 if (data && isMounted) {
                     cacheIcon(processName, data);
                     setIconData(data);

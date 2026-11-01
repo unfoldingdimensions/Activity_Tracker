@@ -252,3 +252,29 @@ export async function getUserStats(): Promise<UserStats | null> {
 export async function getUnlockedAchievements(): Promise<string[]> {
     return invoke<string[]>('get_unlocked_achievements');
 }
+
+/**
+ * Show the main window, optionally navigating it to a route first.
+ *
+ * The backend emits a `navigate` event carrying the path before showing the window, so it arrives on the requested
+ * page rather than flashing whichever one it was last on.
+ */
+export async function showMainWindow(path?: string): Promise<void> {
+    return invoke<void>('show_main_window', { path: path ?? null });
+}
+
+/**
+ * Hide the tray popup. The backend owns the window, so closing the popup is a command, not a UI state change.
+ */
+export async function hideTrayWindow(): Promise<void> {
+    return invoke<void>('hide_tray_window');
+}
+
+/**
+ * Icon for a process, as a `data:image/png;base64,…` URL, or `null` when this machine has no icon for it.
+ *
+ * `null` is a normal answer — the caller draws a letter tile — so it is not an error.
+ */
+export async function getAppIcon(processName: string): Promise<string | null> {
+    return invoke<string | null>('get_app_icon', { processName });
+}

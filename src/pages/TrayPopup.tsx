@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Maximize2, Activity, MousePointer, Keyboard, Zap, X, Settings as SettingsIcon, Flame, Clock3, TrendingUp } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
+import { hideTrayWindow, showMainWindow } from '../api/tauri';
 
 // Hooks & Context
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -30,7 +30,7 @@ export function TrayPopup() {
 
     const handleClosePopup = async () => {
         try {
-            await invoke('hide_tray_window');
+            await hideTrayWindow();
         } catch (error) {
             console.error('Failed to hide tray window:', error);
         }
@@ -38,7 +38,7 @@ export function TrayPopup() {
 
     const openMainWindow = async (path: string = '/') => {
         try {
-            await invoke('show_main_window', { path: path });
+            await showMainWindow(path);
 
             // Wait slightly for the main window to show
             await new Promise(resolve => setTimeout(resolve, 50));
