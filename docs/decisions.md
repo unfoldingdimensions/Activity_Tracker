@@ -1249,3 +1249,28 @@ fail (the value exists, the path is right, the command launches) are each checke
 - **Left as it stands, and named:** the flow-score row under the chart ends at **802**, **2 px** past the fold — its
   bottom rule is clipped, no text is. Tightening the chart by 2 px to hide that would fit one window size and break the
   moment the window is resized; the honest statement is that the rule sits on the fold line.
+
+## D-061 · The tray popup is as tall as the skin that draws it
+
+**2026-11-02 · Active · [ui] · fourth item of the hierarchy pass**
+
+- **The defect, measured on the installed build at 380 px wide:** the popup window was a fixed **380×540** while its
+  content measured **372 px** flat and **593 px** glass. A page pinned to `height: 100%` with `overflow: hidden`
+  (D-048) cannot make 372 px fill 540, so the flat popup ended **168 px above the bottom edge** — the popup was mostly
+  empty below its own button — and the glass one had to give up **53 px**, the same number D-048 measured as the page's
+  overflow before it was pinned. Pinning stopped the page growing; it did not give the content the room.
+- **The second cause:** `StartupProvider` wraps every surface in `<div className="animate-fade-in">` with no height, so
+  the popup's own `h-full` resolved against an auto height and the popup never filled its window even when the window
+  was the right size. The wrapper is now `h-full`.
+- **The fix:** the height is chosen from the stored skin in `tray_window_height()` — **flat 380 px, glass 600 px** — used
+  at creation and re-applied with `set_size` on every show, so switching skin between opens cannot leave the popup the
+  wrong height. `core/src/settings_keys.rs` exports `VISUAL_THEME` rather than letting the window code retype the key,
+  and a test pins that the key it reads is one `set_settings` accepts: a renamed key would otherwise leave the popup
+  permanently flat with nothing failing.
+- **Measured after:** flat `innerHeight 380`, popup fills 380, no dead space at the bottom (screenshot); glass
+  `innerHeight 600`, popup fills 600, the LVL line and the card's bottom edge fully visible (screenshot). Switching the
+  stored skin with the popup already created moved the same window from 380 to 600 on the next open.
+- **Not changed:** what the popup says. It still carries six readings and a level/streak line; trimming that is a
+  separate judgement about what a glance surface should answer.
+- **Cost:** the window height now depends on a frontend setting read through the tracker's settings cache, which is one
+  more thing the backend knows about the UI. It is one key, exported and tested, rather than a literal in two places.

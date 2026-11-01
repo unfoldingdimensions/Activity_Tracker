@@ -29,6 +29,13 @@ pub const KEYS: &[&str] = &[
     "font_pair",
 ];
 
+/// The key the tray popup's window height is chosen from.
+///
+/// Exported rather than retyped: the popup is 380 px tall for the flat skin and 600 for glass, and a second literal
+/// in the window code would keep reading "visual_theme" happily after this list renamed it — the popup would simply
+/// be the wrong height, with nothing to fail.
+pub const VISUAL_THEME: &str = "visual_theme";
+
 pub fn is_known(key: &str) -> bool {
     KEYS.contains(&key)
 }
@@ -66,6 +73,16 @@ mod tests {
         for key in ["visual_theme", "font_pair", "retention_days", "idle_threshold"] {
             assert!(is_known(key), "{key} must be accepted");
         }
+    }
+
+    /// The tray popup's height is chosen from this key, so a key that is not accepted would leave the popup flat
+    /// forever with nothing failing: the setting would be rejected at the boundary and the default would win.
+    #[test]
+    fn the_key_the_popup_reads_is_an_accepted_key() {
+        assert!(
+            is_known(VISUAL_THEME),
+            "tray_window_height reads {VISUAL_THEME}, which set_settings must accept"
+        );
     }
 
     #[test]

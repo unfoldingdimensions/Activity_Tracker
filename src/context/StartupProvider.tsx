@@ -43,7 +43,7 @@ export const StartupProvider: React.FC<{ children: React.ReactNode }> = ({ child
             {/* Mount app content only after the splash: mounting inside a
                 display:none wrapper makes Recharts measure 0x0 and warn. */}
             {isReady && (
-                <div className="animate-fade-in">
+                <div className="animate-fade-in h-full">
                     {children}
                 </div>
             )}

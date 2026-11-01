@@ -103,6 +103,25 @@ fn reveal_main_window(app: &tauri::AppHandle) {
 const TRAY_WINDOW_LABEL: &str = "tray";
 const TRAY_WINDOW_PATH: &str = "/tray";
 
+/// The popup is only as tall as the skin that draws it.
+///
+/// Measured on the installed build at 380 px wide: the flat composition needs **372 px** and the glass one
+/// **593 px**. One fixed 540 px window therefore gave the flat skin 168 px of empty space under its footer and
+/// clipped the last 53 px of the glass skin — no single number is right for both.
+fn tray_window_height(app: &tauri::AppHandle) -> f64 {
+    let mut theme = String::from("flat");
+    if let Some(state) = app.try_state::<AppState>() {
+        if let Ok(tracker) = state.tracker.lock() {
+            if let Some(value) = tracker.get_settings_snapshot().get(crate::settings_keys::VISUAL_THEME) {
+                if let Some(skin) = value.as_str() {
+                    theme = skin.to_string();
+                }
+            }
+        }
+    }
+    if theme == "glass" { 600.0 } else { 380.0 }
+}
+
 /// The popup window, created on first call and reused after that.
 ///
 /// Returns `None` only if Chromium refuses to create the window — logged, not panicked, because
@@ -119,7 +138,7 @@ fn tray_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
         tauri::WebviewUrl::App(TRAY_WINDOW_PATH.into()),
     )
     .title("Activity Tracker")
-    .inner_size(380.0, 540.0)
+    .inner_size(380.0, tray_window_height(app))
     .decorations(false)
     .transparent(true)
     .always_on_top(true)
@@ -176,6 +195,9 @@ fn toggle_tray_window(app: &tauri::AppHandle) {
 
     // Position bottom right
     use tauri_plugin_positioner::{Position, WindowExt};
+    // The skin can change between opens, so the height is re-applied rather than fixed at creation — otherwise
+    // a switch from flat to glass would leave the popup 220 px too short for its own content.
+    let _ = window.set_size(tauri::LogicalSize::new(380.0, tray_window_height(app)));
     let _ = window.move_window(Position::BottomRight);
 
     // Manually offset up by ~50-60 pixels to avoid taskbar overlap
