@@ -12,7 +12,17 @@
 import { WebSocket } from 'ws';
 
 const BASE = process.env.CDP_BASE ?? 'http://127.0.0.1:9222';
-const expression = process.argv.slice(2).join(' ');
+
+// `--page tray` targets the tray popup instead of the main window: it is a separate webview with its own URL
+// (`/tray`), and a question about the popup is not answerable from the main window's DOM.
+const args = process.argv.slice(2);
+let pageFilter = null;
+const pageFlag = args.indexOf('--page');
+if (pageFlag >= 0) {
+    pageFilter = args[pageFlag + 1];
+    args.splice(pageFlag, 2);
+}
+const expression = args.join(' ');
 
 if (!expression) {
     console.error('usage: node scripts/ui-dom.mjs "<javascript expression>"');
@@ -20,9 +30,11 @@ if (!expression) {
 }
 
 const targets = await (await fetch(`${BASE}/json`)).json();
-const page = targets.filter((t) => t.type === 'page').find((t) => !t.url.includes('/tray'));
+const page = targets
+    .filter((t) => t.type === 'page')
+    .find((t) => (pageFilter ? t.url.includes(pageFilter) : !t.url.includes('/tray')));
 if (!page) {
-    console.error('no main page target — is the app running with --remote-debugging-port=9222?');
+    console.error(`no page target matching ${pageFilter ?? "the main window"} — is the app running with --remote-debugging-port=9222?`);
     process.exit(1);
 }
 
