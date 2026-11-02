@@ -1388,3 +1388,33 @@ fail (the value exists, the path is right, the command launches) are each checke
 - **Tests:** two Rust cases in `activity-core` — the age of a snapshot written five seconds ago lands in 4–6 s, and an
   unreadable timestamp yields `None` rather than an invented age; five frontend cases pin `describeSampleAge`'s
   thresholds, the never-negative rule, and unknown-is-stale. Suites: **168 frontend / 22 files**, **21 Rust**.
+
+## D-066 · The docs are brought back to what the code does
+
+**2026-11-03 · Active · [docs] · closes the two divergences D-063 flagged**
+
+- **`docs/flow.md` §4 said three readers use `active_seconds`; they do not.** The Focus Flow chart
+  (`useDashboardData.ts` `processEvents`), deep-work sessions (`utils/focusSessions.ts`) and the sub-day app split
+  (`useDashboardData.ts` app-usage overlap) all measure with **`duration_seconds`** — the wall-clock span. Only the
+  Timeline log and the per-app drill-down read through `utils/windowEvents.ts:withActiveDurations`, which is where
+  `active_seconds` actually lands. §1 and §2 now say which field each reader uses and why.
+- **D-018's "fixed" row overstated its reach:** it claimed the Focus Flow chart, deep work and the sub-day split were
+  switched to active seconds. They were not, and the row now names only the two readers the change actually moved.
+- **A distortion that had no row is now recorded** (§7): a deep-work session counts the whole elapsed block, so a
+  30-minute focus window with 20 minutes idle still reports 30 minutes; the sub-day split adds idle minutes to the app.
+  This is documentation of current behaviour, not a fix — flagged `open` with the call sites, so the next change to
+  session detection starts from the truth.
+- **`docs/architecture.md`:** the command count (26 → **27**, for `seconds_since_last_snapshot`), the `settings` row
+  count (14 → **15**, for `baseline_days`), the Rust test count (18 → **21**) in both places it appears, the god-file
+  line counts re-measured (`tracker.rs` 1005, `Settings.tsx` 895, `Timeline.tsx` 660), the utils description, the tray
+  builder row (named functions instead of a line range that rots), and the popup's per-skin height (D-061).
+- **References that had already rotted were replaced with names:** `commands.rs:49-95` → `commands.rs` `export_data`,
+  `commands.rs:142-148` → `get_settings`, `commands.rs:152-178` → `set_settings`, `commands.rs:441-461` →
+  `clear_data`, `commands.rs:500-523` → `get_app_icon`, `lib.rs:177-205` → `generate_handler!`. Function names survive
+  the next insertion; line numbers did not survive this one.
+- **`README.md` / `PRODUCT.md`:** the Focus Flow bullet and the settings bullet now name the baseline line and its
+  window; PRODUCT's settings list was also missing the visual theme and the font pair, which have shipped for weeks.
+- **Not touched, on purpose:** `docs/decisions.md` entries quote the counts that were true when they were written
+  (D-052's "14 accepted keys", D-065's file count) — the log is append-only, so this entry supersedes the numbers
+  rather than editing them. `AGENTS.md` needs a separate approval to change (its gate line still says 133 tests / 17
+  files / 18 Rust; the real numbers are **168 / 23 / 21**).

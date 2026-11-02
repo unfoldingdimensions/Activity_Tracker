@@ -34,14 +34,14 @@ Activity Tracker answers the question *"where did my day actually go?"* — from
 - **Real-time tracking** — foreground window/app monitoring, global keystroke and click counts, mouse distance, idle detection with a configurable threshold.
 - **Historical analysis** — date-range filters (Today, Yesterday, This Week, Previous Week, This Month), chronological log, app-wise aggregation, and a GitHub-style 52-week focus calendar.
 - **The Pulse** — a high-level daily overview: focus score, screen time, deep-work sessions, peak hour, top app, and deltas vs. yesterday.
-- **Focus Flow** — a continuous 24-hour timeline of focus intensity with strict interval alignment.
+- **Focus Flow** — a continuous 24-hour timeline of focus intensity with strict interval alignment, and a dotted *usual* line showing the median for each hour over the last 7, 14 or 30 days.
 - **Deep Work Sessions** — contiguous focus blocks (≥ 25 min) with duration, dominant app, and interruptions.
 - **Two reading modes** — *data* (numbers-led) or *editorial* (a serif prose narrative of your day). Same queries, same numbers, different presentation.
 - **Energy Vampire** — honest power-draw estimates per app (wattage bands × time), clearly labeled as estimates, not hardware measurements.
 - **Gamification** — XP, levels, streaks, and six achievements (Early Bird, Night Owl, Deep Diver, Consistency King, Month Marathon, Century Club) with native notifications on unlock.
 - **Distraction Guard** — per-app daily time limits; one native notification per day, an in-app alert, and an amber tray icon when a limit is crossed.
 - **Smart branding** — process names are cleaned automatically (`visual_studio_code.exe` → `Visual Studio Code`), with support for common acronyms.
-- **Machine-wide settings** — launch on startup, start minimized to tray, idle threshold, app blacklist, per-app Focus/Distraction/Ignore classification, sensitive-title redaction, data retention (30/90/180 days or forever).
+- **Machine-wide settings** — launch on startup, start minimized to tray, idle threshold, app blacklist, per-app Focus/Distraction/Ignore classification, sensitive-title redaction, data retention (30/90/180 days or forever), chart baseline window (off / 7 / 14 / 30 days).
 - **Data export** — full history as JSON or CSV via the native save dialog.
 - **Premium UI** — Plus Jakarta Sans typography, glassmorphism, spotlight hover effects, dark/light/system themes, and smooth transitions.
 

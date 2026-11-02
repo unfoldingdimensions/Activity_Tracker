@@ -17,7 +17,7 @@ Order matters: each step below depends on state read earlier in the same tick (`
    - `activity_snapshots` — always, 1 row per tick.
    - `input_activity` — only when keystrokes or clicks > 0.
    - `app_usage` — `+1 s` for the foreground process, **only when not idle and not blacklisted**.
-   - `window_events` — written **only when the process changes**: the previous period is closed with a back-dated start timestamp, `duration_seconds` = the wall-clock span, and `active_seconds` = a counter incremented only on non-idle ticks (`tracker.rs:532-560`). Readers use active seconds; the span is kept so the difference stays explicable.
+   - `window_events` — written **only when the process changes**: the previous period is closed with a back-dated start timestamp, `duration_seconds` = the wall-clock span, and `active_seconds` = a counter incremented only on non-idle ticks (`tracker.rs:532-560`). Which field a reader uses depends on the question it asks: the Timeline log and the per-app drill-down show **active** seconds (`utils/windowEvents.ts:withActiveDurations`, falling back to the span on rows written before 2026-10-31), while the Focus Flow chart, deep-work sessions and the sub-day app split use the **wall-clock span** — the chart draws idle as its own series, and a session is an elapsed block.
    - Gamification (only when not idle): achievements, `+10 XP` per 60 active seconds, level, streak.
 8. **Distraction guard** — at most once a minute, compare today's `app_usage` against `app_limits`; one native notification per app per day, an in-app event, and an amber tray icon (`tracker.rs:57-132`, `686-691`).
 9. **Tray reset** — at local day change, restore the default tray icon.
@@ -59,7 +59,8 @@ query returns rows, which takes priority for the chart.
 
 
 Sub-day ranges (past 1 h / 6 h / 12 h) compute app usage **client-side** by overlapping window events with
-the range (`useDashboardData.ts:184-193`) — so they inherit the window-event distortions entirely.
+the range (`useDashboardData.ts:184-193`), using `duration_seconds` (the wall-clock span) — so they inherit the
+window-event distortions entirely.
 
 **Screens and their inputs**
 
@@ -75,10 +76,10 @@ the range (`useDashboardData.ts:184-193`) — so they inherit the window-event d
 
 ## 3. Settings flow
 
-Read: `get_settings` → the tracker's in-memory cache (`commands.rs:142-148`); the frontend merges defaults,
+Read: `get_settings` → the tracker's in-memory cache (`commands.rs` `get_settings`); the frontend merges defaults,
 so the backend only ever returns explicitly stored keys.
 Write: `set_settings` → persist each key to the `settings` table, then `apply_setting` on the live cache
-(`commands.rs:152-178`). Anything the loop reads per tick (idle threshold, blacklist, redaction keywords,
+(`commands.rs` `set_settings`). Anything the loop reads per tick (idle threshold, blacklist, redaction keywords,
 retention) is therefore live within one second; nothing requires a restart except process-level settings
 (autostart, start-minimised) handled by their plugins.
 
@@ -91,10 +92,10 @@ retention) is therefore live within one second; nothing requires a restart excep
 | Keystrokes / clicks / distance | `input_activity` sums | `core/src/database.rs:242-250` |
 | Time per app (day or range) | `app_usage.total_seconds` | `core/src/database.rs:206-216`, `440-454` |
 | Focus score | `app_usage` seconds × `classifyApp` — denominator is **classified app time**, with `ignore` apps removed from both sides | `utils/focusScore.ts` |
-| Focus Flow chart | window events `active_seconds` × `classifyApp` — denominator is **each interval's wall time**, so idle appears as its own segment | `useDashboardData.ts:204-287` |
+| Focus Flow chart | window events **`duration_seconds`** (wall-clock span) × `classifyApp` — denominator is **each interval's wall time**, so idle appears as its own segment | `useDashboardData.ts:204-287` |
 | "Usual" line on the chart | the **same** series over the previous N days (setting `baseline_days`, default 7), reduced per local hour-of-day by **median**; hours with fewer than 3 days of data are omitted | `utils/focusBaseline.ts`, `hooks/useFocusBaseline.ts` |
-| Deep-work sessions | window events, **`active_seconds`** | `utils/focusSessions.ts` |
-| Timeline rows and durations | window events, **`active_seconds`** (falls back to `duration_seconds` when NULL) | `utils/windowEvents.ts`, `pages/Timeline.tsx` |
+| Deep-work sessions | window events, **`duration_seconds`** (wall-clock span; 2-minute gap splits a session, 25 minutes minimum) | `utils/focusSessions.ts` |
+| Timeline rows and durations | window events normalised by `withActiveDurations` — **`active_seconds`**, falling back to `duration_seconds` when NULL | `utils/windowEvents.ts`, `hooks/queries/useTimeline.ts`, `pages/Timeline.tsx` |
 | Focus calendar (52 weeks) | `get_all_app_usage` → per-day sums | `hooks/useFocusCalendar.ts` |
 | XP / level / streak | `user_stats` | `tracker.rs:622-681`, `formatters.ts:217-227` |
 
@@ -122,19 +123,20 @@ quietly becomes two.
   `retention_days` (`tracker.rs:396-427`). `0` means keep forever — the current setting — so nothing is ever
   deleted and the file grows monotonically (~3.6 MB/day measured). `app_usage` is never pruned.
 - **Export**: `export_data` streams all three event tables out row by row on a **read-only connection of its
-  own** (`src/core/src/export.rs`, `commands.rs:49-95`), writing CSV (three sections) or JSON to a path chosen by the
+  own** (`core/src/export.rs`, `commands.rs` `export_data`), writing CSV (three sections) or JSON to a path chosen by the
   native dialog. The tracker's mutex is held only to read the database path, so the 1 Hz recorder keeps running;
   memory is flat regardless of history size (D-037). Output format is pinned by
   `tests/fixtures/export-golden.*` and checked by `cargo run --example export_parity`.
 - **Clear**: `clear_data` deletes all activity rows, resets `user_stats`, runs `VACUUM`, and removes the icon
-  cache directory (`commands.rs:441-461`, `core/src/database.rs:604-616`).
+  cache directory (`commands.rs` `clear_data`, `core/src/database.rs` `clear_database`).
 
 ## 7. Known distortions (read before trusting a screenshot)
 
 | # | Distortion | Reaches | Ref |
 |---|---|---|---|
 | ~~P0~~ **fixed** | Range events were capped at 5,000 newest, so the old part of any long range rendered empty. Now every page is collected; verified 20,990 rows over 30 days in 11 pages, none duplicated or skipped | was: Focus Flow, deep work, digest on This Month | D-017 |
-| ~~P1~~ **fixed** | Wall-clock duration included idle, overstating focus surfaces by the idle share (49.4% of event time measured). New events store `active_seconds`; rows recorded before 2026-10-31 are backfilled from `activity_snapshots` at startup — the SQL reproduces the 49.5% idle share independently | was: Focus Flow, deep work, Timeline, sub-day app split | D-018 |
+| ~~P1~~ **fixed** | Wall-clock duration included idle, overstating focus surfaces by the idle share (49.4% of event time measured). New events store `active_seconds`; rows recorded before 2026-10-31 are backfilled from `activity_snapshots` at startup — the SQL reproduces the 49.5% idle share independently | was: the Timeline log and the per-app drill-down, which read through `withActiveDurations` | D-018 |
+| **open** | Three readers still measure with the wall-clock span, so idle inside a focus window counts there: the Focus Flow chart draws it as its own segment (by design), but a **deep-work session counts the whole elapsed block** — a 30-minute focus window with 20 minutes idle still reports 30 minutes — and the sub-day app split adds idle minutes to the app | Deep-work sessions, sub-day app usage, the digest's session count | `utils/focusSessions.ts:75,88`, `useDashboardData.ts:187` |
 | ~~P1~~ **fixed** | Elevated and packaged windows resolved to `"Unknown"` (45.2 h measured) and were then scored as distraction. Names now resolve through `QueryFullProcessImageNameW` on a `PROCESS_QUERY_LIMITED_INFORMATION` handle, and historical `"Unknown"` rows are classified `ignore` so they stop counting against the ratio | was: focus score, top-app list | D-020 |
 | ~~P1~~ **fixed** | Two quantities shared the label "focus score": the card's focus-app share, and an active-vs-idle clock ratio that `formatStatsForCards` still computed (invisible only because the caller overwrote it). One owner now: `utils/focusScore.ts`, with the active/idle ratio removed | Dashboard card, tray popup | D-019 |
 | ~~P1~~ **fixed** | One app split across `Claude.exe` and `claude.exe`: 31 of 69 days carried both, 35.9 h divided between them, the Activity page showed two rows and the per-app drill-down matched only one casing. Identity is lowercase at the Win32 boundary now, with an idempotent fold of history (39 rows merged, 39,980 events relabelled, totals preserved) | was: Activity rows, Timeline drill-down, top-app list | D-021 |

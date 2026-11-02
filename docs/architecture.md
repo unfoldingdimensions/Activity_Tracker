@@ -22,9 +22,9 @@ Size: ~14.2k LOC in the two source trees (`src/` TS/TSX, `src-tauri/src/` Rust).
 src/pages/*                     route screens (Dashboard, Timeline, Activity, Power, Tools, Settings, TrayPopup)
 src/components/{dashboard,...}  presentational components; may call hooks, never invoke()
 src/hooks/**                    data hooks: React Query wrappers + domain derivation
-src/utils/*                     pure functions (classification, formatters, focus sessions, editorial copy)
+src/utils/*                     pure functions (classification, formatters, focus sessions, baseline median, row rules, editorial copy)
 src/api/tauri.ts                THE invoke() boundary — every command signature lives here
-        ↕ Tauri IPC (26 commands)
+        ↕ Tauri IPC (27 commands)
 src-tauri/src/commands.rs       thin command layer: lock state, call the domain, map errors
 src-tauri/src/tracker.rs        the 1 Hz loop, gamification, limits, cleanup scheduling
 src-tauri/src/windows_api.rs    the Win32 boundary (foreground window, process name, idle seconds)
@@ -39,7 +39,7 @@ core/src/settings_keys.rs       validation of the settings map that arrives as J
 
 **Two crates, one rule.** `core` (`activity-core`) is a workspace member that links no Tauri, no WebView2 and no window
 toolkit, because a test binary that links them cannot load on this machine. That is where a backend rule gets a
-`#[test]` that actually runs (`cargo test -p activity-core`, 18 tests, D-057); anything that needs an `AppHandle` stays
+`#[test]` that actually runs (`cargo test -p activity-core`, 21 tests, D-057); anything that needs an `AppHandle` stays
 in `src-tauri` and is proven by a runnable example or a live invocation instead. `src-tauri/src/lib.rs` re-exports the
 moved modules, so `crate::database::…` reads the same as before.
 
@@ -59,8 +59,8 @@ what produced the `"Unknown"` bucket of 45 h (D-020).
 | Tracking loop | 1 s | `tracker.rs:346-707` | snapshots, input rows, `app_usage` upserts, window events, XP/streak/achievements, limit checks |
 | Cleanup thread | checks 60 s, runs every 24 h | `tracker.rs:382-431` | retention deletes (skipped when `retention_days = 0`) |
 | Power sampler | 5 s | `tracker.rs:255-284` | top-15 CPU processes via `sysinfo` |
-| Icon extraction | per request | `commands.rs:500-523` | `spawn_blocking` so icon work never stalls the UI |
-| Tray builder | once | `lib.rs:77-190` | tray icon, menu (Open Dashboard / Quit); the popup window is created on first click, not here (D-035) |
+| Icon extraction | per request | `commands.rs` `get_app_icon` | `spawn_blocking` so icon work never stalls the UI |
+| Tray builder | once | `lib.rs` `tray_window_height()`, `tray_window()` | tray icon, menu (Open Dashboard / Quit); the popup window is created on first click, not here (D-035) |
 | Single-instance guard | once, before anything else | `lib.rs:20-35` | decides whether this process is the instance at all (D-026) |
 
 Shared state is `AppState { tracker: Mutex<Tracker> }` (`commands.rs:15-17`). Inside `Tracker`:
@@ -95,7 +95,7 @@ Two operations reshape the file: `clear_database()` (transaction → `VACUUM` �
 | `app_usage` | 1 row per (local date, process) | `date`, `process_name`, `total_seconds` · `UNIQUE(date, process_name)` | 1,499 after the name fold |
 | `user_stats` | singleton row `id = 1` | `total_xp`, `current_level`, `current_streak`, `last_activity_date` | 1 |
 | `achievements` | 1 row per unlock | `code` UNIQUE, `unlocked_at` | 5 |
-| `settings` | key/value JSON | `key`, `value` | 14 |
+| `settings` | key/value JSON | `key`, `value` | 15 |
 
 Indexes: `timestamp` on the three event tables, `date` on `app_usage`.
 
@@ -118,7 +118,7 @@ renders without crashing, only less precisely.
   (`core/src/database.rs:302-359`). That function's buckets are keyed by hour only, so it is correct for a single
   local day and wrong for multi-day ranges.
 
-## 5. Command surface (27, `lib.rs:177-205`)
+## 5. Command surface (27, `lib.rs` `generate_handler!`)
 
 | Group | Commands |
 |---|---|
@@ -144,13 +144,15 @@ binding: a second derivation of the same number is a defect, not an optimisation
   the startup vacuum in `lib.rs` runs before the loop starts for exactly that reason.
 - **One resident WebView2 window at startup** (main, `tauri.conf.json`); the tray popup is built on first click
   (`lib.rs` `tray_window()`), so a session that never opens it never pays its renderer (D-035). After the popup has
-  been opened once it stays resident for the rest of the session — it is hidden, not destroyed.
+  been opened once it stays resident for the rest of the session — it is hidden, not destroyed. Its height follows the
+  skin that will draw it (`tray_window_height()`: 380 px flat, 600 px glass), re-applied on every show so switching
+  skins cannot leave it the wrong size (D-061).
 - **Visibility is two things, and they have one owner.** `visibility::hide/show` hides the window *and* the webview
   inside it; `WebviewWindow::hide()` alone leaves WebView2's controller believing the page is visible, and the
   hidden page then renders at 240 rAF/s for nobody — 55 % of one core measured, 0.3 % after the fix (D-042). No
   caller may call `window.hide()` / `window.show()` directly.
-- **God files**: `pages/Settings.tsx` 910, `tracker.rs` 846, `pages/Timeline.tsx` 595, `pages/Tools.tsx` 570.
-- **Rust tests exist and run — but only in `core`.** `cargo test -p activity-core` executes 18 tests in 0.01 s (D-057);
+- **God files**: `tracker.rs` 1005, `pages/Settings.tsx` 895, `pages/Timeline.tsx` 660, `pages/Tools.tsx` 570.
+- **Rust tests exist and run — but only in `core`.** `cargo test -p activity-core` executes 21 tests in 0.01 s (D-057);
   the failure mode to remember is that `cargo test -p activity-tracker-v2` still dies at process load with
   `STATUS_ENTRYPOINT_NOT_FOUND`, so a `#[test]` written in `src-tauri` **does not run at all**. Put the logic in `core`
   and the test beside it; never add a test to the app crate and call the rule covered.
