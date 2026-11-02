@@ -122,7 +122,7 @@ renders without crashing, only less precisely.
 
 | Group | Commands |
 |---|---|
-| Session / window | `show_main_window`, `hide_tray_window`, `start_tracking`, `stop_tracking`, `is_tracking`, `get_active_window`, `get_idle_seconds` |
+| Session / window | `show_main_window`, `hide_tray_window`, `start_tracking`, `stop_tracking`, `is_tracking`, `seconds_since_last_snapshot`, `get_active_window`, `get_idle_seconds` |
 | Today reads | `get_daily_stats`, `get_app_usage`, `get_activity_timeline`, `get_recent_events` |
 | Range reads | `get_stats_range`, `get_app_usage_range`, `get_timeline_range_paginated`, `get_timeline_range_for_app`, `get_timeline_range_for_app_paginated`, `get_input_history`, `get_input_history_range`, `get_all_app_usage` |
 | Settings | `get_settings`, `set_settings` |

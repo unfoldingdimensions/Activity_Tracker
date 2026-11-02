@@ -122,6 +122,36 @@ pub fn get_all_app_usage(state: State<AppState>) -> Result<Vec<(String, String, 
     crate::database::get_all_app_usage(&conn).map_err(|e| e.to_string())
 }
 
+/// Seconds since the recorder last wrote a snapshot, or `None` when history is empty.
+///
+/// This is the UI's only evidence that capture is *running*: `is_tracking` says the loop was started, not that it is
+/// still writing. A read that fails degrades to `None` with a warning naming the query, because "unknown" must never be
+/// rendered as "fine" (D-065).
+#[tauri::command]
+pub fn seconds_since_last_snapshot(state: State<AppState>) -> Option<i64> {
+    let db = {
+        let Ok(tracker) = state.tracker.lock() else {
+            log::warn!("seconds_since_last_snapshot: tracker lock poisoned");
+            return None;
+        };
+        tracker.db.clone()
+    };
+    let conn = match db.lock() {
+        Ok(conn) => conn,
+        Err(err) => {
+            log::warn!("seconds_since_last_snapshot: database lock failed: {err}");
+            return None;
+        }
+    };
+    match crate::database::seconds_since_last_snapshot(&conn) {
+        Ok(age) => age,
+        Err(err) => {
+            log::warn!("seconds_since_last_snapshot: query failed: {err}");
+            None
+        }
+    }
+}
+
 /// Top-CPU processes sampled by the power thread ([name, cpu%][])
 #[tauri::command]
 pub fn get_cpu_snapshot(state: State<AppState>) -> Vec<(String, f32)> {

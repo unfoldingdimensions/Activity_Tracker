@@ -507,6 +507,7 @@ pub fn run() {
             commands::get_all_app_usage,
             commands::get_cpu_snapshot,
             commands::is_tracking,
+            commands::seconds_since_last_snapshot,
             commands::get_active_window,
             commands::get_app_usage,
             commands::get_daily_stats,

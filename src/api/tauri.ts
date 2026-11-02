@@ -200,6 +200,11 @@ export async function isTracking(): Promise<boolean> {
  */
 export const TRACKING_CHANGED_EVENT = 'tracking-changed';
 
+/** Seconds since the recorder last wrote a snapshot; `null` when nothing has ever been recorded. */
+export async function secondsSinceLastSnapshot(): Promise<number | null> {
+    return invoke<number | null>('seconds_since_last_snapshot');
+}
+
 /** Announce a tracking change to every window this app owns. */
 export async function notifyTrackingChanged(): Promise<void> {
     await emit(TRACKING_CHANGED_EVENT);

@@ -1362,3 +1362,29 @@ fail (the value exists, the path is right, the command launches) are each checke
   still has a real Category column, where repeating it once per app is the point.
 - **Tests:** `timelineRows.test.ts` (8) pins the first-row, unchanged-run and changed-row cases, the exact-repetition
   drop, case/space insensitivity, the desktop exception, and the empty-title fallback. Suite: **163 tests / 21 files**.
+
+## D-065 · The rail shows evidence of recording, not a claim about it
+
+**2026-11-02 · Active · [ui] · second of the two follow-ups agreed after the hierarchy pass**
+
+- **The gap:** the status word came from `is_tracking`, which is true from the moment the loop is started. A loop that
+  is blocked on the database, stuck in a failing tick, or has silently stopped still reads **TRACKING**, and this
+  codebase has already learned the hard way that a green stream in the database is not a working app.
+- **The backend, per AGENTS.md §1.5:** `database::seconds_since_last_snapshot` (one `SELECT MAX(timestamp)` — an index
+  walk on `idx_activity_timestamp`), `commands::seconds_since_last_snapshot`, registered in `lib.rs`, bound in
+  `api/tauri.ts`, consumed by `useRecorderHealth`. `docs/architecture.md`'s command table updated in the same commit.
+- **Honest failure, in the §1.3 sense:** an empty history and a timestamp this build cannot parse both return `None`
+  (logged at `warn` when the query itself fails). `describeSampleAge` renders `null` as *no samples yet* and marks it
+  stale — unknown is never drawn as fine.
+- **Where it shows:** the rail's status block, under the app name — `last sample just now` / `last sample 12s`, in the
+  muted lead, turning **brass** past `STALE_AFTER_SECONDS = 10` (the loop ticks once a second; ten seconds is a stall,
+  not a slow tick). Hidden while paused, where the block already says *Not recording* and a frozen age would be expected
+  rather than alarming.
+- **Measured on the installed build:** while recording, the rail reads **`last sample just now`** and the command returns
+  **0**; after pausing and waiting 12 s the command returns **12** — the number is the age of a real row, not a flag —
+  and the rail swaps to **Not recording** with the age line gone; resuming returns it to **0 / just now**.
+- **Cost:** one integer every five seconds while a surface is mounted, against an indexed `MAX`. The query is disabled
+  while the recorder is paused.
+- **Tests:** two Rust cases in `activity-core` — the age of a snapshot written five seconds ago lands in 4–6 s, and an
+  unreadable timestamp yields `None` rather than an invented age; five frontend cases pin `describeSampleAge`'s
+  thresholds, the never-negative rule, and unknown-is-stale. Suites: **168 frontend / 22 files**, **21 Rust**.

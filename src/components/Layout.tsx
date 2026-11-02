@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { useActiveWindow, useIdleStatus } from '../hooks/useTrackerData';
 import { useTrackingControl } from '../hooks/useTrackingControl';
+import { useRecorderHealth } from '../hooks/useRecorderHealth';
+import { describeSampleAge } from '../utils/recorderHealth';
 import { formatAppName } from '../utils/formatters';
 import { AppIcon } from './shared/AppIcon';
 import { useVisualTheme } from '../hooks/useVisualTheme';
@@ -36,6 +38,8 @@ export function Layout() {
     const { data: activeWindow } = useActiveWindow();
     const { data: idleStatus } = useIdleStatus();
     const { isTracking, isBusy, setTracking } = useTrackingControl();
+    const { secondsAgo } = useRecorderHealth(isTracking);
+    const sample = describeSampleAge(secondsAgo);
 
     useEffect(() => {
         const unlisten = listen<{ path: string }>('navigate', (event) => {
@@ -147,6 +151,13 @@ export function Layout() {
                                             {currentTitle}
                                         </div>
                                     )}
+                                    <div
+                                        className="font-mono text-[9px] uppercase tracking-[0.06em] mt-1.5"
+                                        style={{ color: sample.stale ? 'var(--accent-warning)' : 'var(--muted-foreground)' }}
+                                        title="Age of the newest recorded second — evidence, not a status flag"
+                                    >
+                                        last sample {sample.label}
+                                    </div>
                                 </>
                             ) : (
                                 <div className="font-mono text-[9.5px] text-[var(--muted-foreground)] mt-2">
@@ -233,6 +244,14 @@ export function Layout() {
                                     </div>
                                 ) : (
                                     <div className="text-xs text-[var(--muted-foreground)]">Not recording</div>
+                                )}
+                                {isTracking && (
+                                    <div
+                                        className="text-[10px] font-mono uppercase tracking-wide"
+                                        style={{ color: sample.stale ? 'var(--accent-warning)' : 'var(--muted-foreground)' }}
+                                    >
+                                        last sample {sample.label}
+                                    </div>
                                 )}
                             </div>
                         </div>

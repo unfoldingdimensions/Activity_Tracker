@@ -1,7 +1,25 @@
 use rusqlite::{Connection, Result};
 use std::path::PathBuf;
 use std::collections::HashMap;
-use chrono::{Timelike, TimeZone};
+use chrono::{Timelike, TimeZone, Utc};
+
+/// Seconds since the newest snapshot, or `None` when nothing has been recorded yet.
+///
+/// The loop writes one row per second, so this is the only evidence the UI can offer that capture is *running*: a
+/// boolean says the loop was started, not that it is still writing (D-065). `idx_activity_timestamp` makes `MAX` an
+/// index walk, so asking every few seconds costs microseconds against a table that keeps growing.
+pub fn seconds_since_last_snapshot(conn: &Connection) -> Result<Option<i64>> {
+    let newest: Option<String> =
+        conn.query_row("SELECT MAX(timestamp) FROM activity_snapshots", [], |row| row.get(0))?;
+    let Some(stamp) = newest else {
+        return Ok(None);
+    };
+    match chrono::DateTime::parse_from_rfc3339(&stamp) {
+        Ok(at) => Ok(Some((Utc::now() - at.with_timezone(&Utc)).num_seconds().max(0))),
+        // A timestamp this build cannot read is not evidence of anything; say "unknown" rather than invent an age.
+        Err(_) => Ok(None),
+    }
+}
 
 /// Every process name that appears anywhere in history — the set the icon cache is expected to cover.
 ///
@@ -1048,6 +1066,32 @@ mod tests {
     fn stored_active(conn: &Connection) -> Option<i64> {
         conn.query_row("SELECT active_seconds FROM window_events LIMIT 1", [], |r| r.get(0))
             .unwrap()
+    }
+
+    #[test]
+    fn the_age_of_the_newest_snapshot_is_the_recorders_own_evidence() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+
+        // Nothing recorded ever: there is no age to report, and the UI must say "unknown" rather than "0s".
+        assert_eq!(seconds_since_last_snapshot(&conn).unwrap(), None);
+
+        let five_ago = Utc::now() - chrono::Duration::seconds(5);
+        insert_activity_snapshot(&conn, &five_ago.to_rfc3339_opts(chrono::SecondsFormat::Millis, true), false, 0)
+            .unwrap();
+
+        let age = seconds_since_last_snapshot(&conn).unwrap().unwrap();
+        assert!((4..=6).contains(&age), "expected about 5 seconds, got {age}");
+    }
+
+    #[test]
+    fn a_timestamp_this_build_cannot_read_is_not_given_an_age() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_schema(&conn).unwrap();
+        insert_activity_snapshot(&conn, "yesterday-ish", false, 0).unwrap();
+
+        // Unknown is honest; a fabricated age would read as a stalled recorder.
+        assert_eq!(seconds_since_last_snapshot(&conn).unwrap(), None);
     }
 
     #[test]
