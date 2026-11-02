@@ -1338,3 +1338,27 @@ fail (the value exists, the path is right, the command launches) are each checke
 - **Tests:** `focusBaseline.test.ts` (10) pins the overlap split across hours, `ignore` removal, an even and an odd
   median, the three-day minimum, and that a quiet hour is low rather than missing; `useFocusBaseline.test.tsx` (3) pins
   the disabled path and the median wiring. Suite: **155 tests / 20 files**; Rust **19**.
+
+## D-064 · A Timeline row stops saying the same thing twice
+
+**2026-11-02 · Active · [ui] · first of the two follow-ups agreed after the hierarchy pass**
+
+- **The defect, measured on the installed build (flat, All log):** **49 rendered rows carried 49 category badges** — one
+  `OTHER` per row, in a run where nothing changed — and **25 of 49 title cells (51 %) repeated the app name**, e.g.
+  `Activity Tracker v2` beside `Activity Tracker V2`, `Chrome` beside `Chrome`. Under AGENTS.md §4 that is a pill on
+  every field and one fact stated twice, in the list with the least patience for either.
+- **The badge rule:** show it where the category **changes** — the first row of a group and every boundary after it.
+  `utils/timelineRows.ts:shouldShowCategory` decides, so a third skin cannot invent its own rule. Measured after:
+  **31 badges over 71 rows (44 %)** — every one of them a real focus↔other transition.
+- **The title rule:** `windowTitleCell` keeps `displayWindowTitle`'s job (an empty title still becomes *Desktop* for a
+  shell process, D-028) and adds the degenerate case — a title that resolves to the app name is dropped instead of
+  printed beside the very thing it repeats. Measured after: **0 duplicate title cells**, and the rows that do carry a
+  title still show the useful one (`Oct 26 Masterclass - 1 | Promo - Google Chrome`, `YouTube Music - Opera`).
+- **The guard moved with the rule:** `windowTitle.test.ts` asserted that `Timeline.tsx` contains `displayWindowTitle(`.
+  The page now asks `windowTitleCell(`, which delegates to it — the invariant it protects ("the page never decides what
+  a title looks like") is unchanged, so the assertion names the new call site and the comment says why.
+- **Accepted trade-off:** a reader who scrolls into the middle of a long run sees no badge and has to read back to the
+  last transition to know the category. The alternative — a badge on every row — was the defect. The App-wise view
+  still has a real Category column, where repeating it once per app is the point.
+- **Tests:** `timelineRows.test.ts` (8) pins the first-row, unchanged-run and changed-row cases, the exact-repetition
+  drop, case/space insensitivity, the desktop exception, and the empty-title fallback. Suite: **163 tests / 21 files**.

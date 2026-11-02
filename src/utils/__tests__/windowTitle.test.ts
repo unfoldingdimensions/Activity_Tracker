@@ -47,8 +47,11 @@ describe('displayWindowTitle', () => {
 
     // A third skin added later must not reintroduce the raw fallback. The rule is one
     // owner for the decision, so the page is not allowed to decide for itself.
+    // The row-level decision moved to `windowTitleCell`, which delegates the empty-title rule to
+    // `displayWindowTitle` and adds "and don't repeat the app name" (D-064) — the invariant is the same:
+    // the page asks the title module, never Windows.
     it('is the only place Timeline decides what a title looks like', () => {
-        expect(timelineSource).toContain('displayWindowTitle(');
+        expect(timelineSource).toContain('windowTitleCell(');
         expect(timelineSource).not.toMatch(/window_title\s*\|\|/);
     });
 });

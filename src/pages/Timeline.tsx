@@ -29,7 +29,7 @@ import { containerVariantsFast, itemVariantsSubtle } from '../constants/animatio
 import { formatDuration, formatAppName, toLocalDateString } from '../utils/formatters';
 import { useAppClassifier } from '../hooks/useAppClassifier';
 import { computeFocusSessions } from '../utils/focusSessions';
-import { displayWindowTitle } from '../utils/windowTitle';
+import { shouldShowCategory, windowTitleCell } from '../utils/timelineRows';
 import { DeepWorkSessions } from '../components/dashboard/DeepWorkSessions';
 import { FocusCalendar } from '../components/insights/FocusCalendar';
 import { EditorialIntro } from '../components/shared/EditorialIntro';
@@ -393,7 +393,12 @@ export function Timeline() {
                                             </span>
                                         </div>
                                         <div className="mt-3">
-                                            {group.items.map((event, idx) => (
+                                            {group.items.map((event, idx) => {
+                                                const category = classify(event.process_name);
+                                                const previousCategory =
+                                                    idx > 0 ? classify(group.items[idx - 1].process_name) : null;
+                                                const title = windowTitleCell(event.process_name, event.window_title);
+                                                return (
                                                 <div
                                                     key={`${event.timestamp}-${idx}`}
                                                     className="flex items-center justify-between gap-4 py-2.5 border-b border-[var(--border)]/70 last:border-b-0"
@@ -408,21 +413,26 @@ export function Timeline() {
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-4 min-w-0">
-                                                        <span className="text-[12px] text-[var(--muted-foreground)] truncate max-w-[280px]">
-                                                            {displayWindowTitle(event.process_name, event.window_title)}
-                                                        </span>
-                                                        <span
-                                                            className="font-mono text-[9px] uppercase tracking-[0.1em] px-2 py-0.5 border flex-shrink-0"
-                                                            style={{ borderColor: categoryTone(event.process_name), color: categoryTone(event.process_name) }}
-                                                        >
-                                                            {categoryLabel(event.process_name)}
-                                                        </span>
+                                                        {title && (
+                                                            <span className="text-[12px] text-[var(--muted-foreground)] truncate max-w-[280px]">
+                                                                {title}
+                                                            </span>
+                                                        )}
+                                                        {shouldShowCategory(previousCategory, category) && (
+                                                            <span
+                                                                className="font-mono text-[9px] uppercase tracking-[0.1em] px-2 py-0.5 border flex-shrink-0"
+                                                                style={{ borderColor: categoryTone(event.process_name), color: categoryTone(event.process_name) }}
+                                                            >
+                                                                {categoryLabel(event.process_name)}
+                                                            </span>
+                                                        )}
                                                         <span className="font-mono text-[12px] font-bold text-[var(--foreground)] flex-shrink-0">
                                                             {formatDuration(event.duration_seconds)}
                                                         </span>
                                                     </div>
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 ))}
@@ -529,7 +539,9 @@ export function Timeline() {
                                             {group.time}
                                         </div>
                                         <div className="space-y-3 pl-4 border-l-2 border-[var(--border)]">
-                                            {group.items.map((event, idx) => (
+                                            {group.items.map((event, idx) => {
+                                                const title = windowTitleCell(event.process_name, event.window_title);
+                                                return (
                                                 <motion.div
                                                     key={`${event.timestamp}-${idx}`}
                                                     whileHover={{ x: 4 }}
@@ -550,9 +562,11 @@ export function Timeline() {
 
                                                                 </span>
                                                             </div>
-                                                            <p className="text-sm text-[var(--muted-foreground)] mt-1 truncate max-w-md">
-                                                                {displayWindowTitle(event.process_name, event.window_title)}
-                                                            </p>
+                                                            {title && (
+                                                                <p className="text-sm text-[var(--muted-foreground)] mt-1 truncate max-w-md">
+                                                                    {title}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                         <div className="text-right pl-4 flex-shrink-0">
                                                             <span className="font-mono text-sm font-medium text-[var(--foreground)]">
@@ -561,7 +575,8 @@ export function Timeline() {
                                                         </div>
                                                     </GlassCard>
                                                 </motion.div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </motion.div>
                                 ))
