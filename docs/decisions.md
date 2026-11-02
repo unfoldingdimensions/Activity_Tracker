@@ -1274,3 +1274,34 @@ fail (the value exists, the path is right, the command launches) are each checke
   separate judgement about what a glance surface should answer.
 - **Cost:** the window height now depends on a frontend setting read through the tracker's settings cache, which is one
   more thing the backend knows about the UI. It is one key, exported and tested, rather than a literal in two places.
+
+## D-062 · Pause lives where you are, and the tracking state has one owner
+
+**2026-11-02 · Active · [ui] · first of the two features asked for after the hierarchy pass**
+
+- **The gap:** `start_tracking` / `stop_tracking` / `is_tracking` were already commands, and the only caller was
+  `Settings.tsx`, holding the result in a `useState` seeded once at mount. The two surfaces a user is actually looking
+  at — the rail and the tray popup — could not stop recording, and any second control would have been a second copy of
+  the same fact, free to disagree with Settings.
+- **The shape:** `useTrackingControl` owns one query (`is_tracking`, the backend is the source of truth) and one
+  mutation; the rail's status block, the tray popup and Settings all read it. The status word is decided by
+  `utils/trackingStatus.ts`: **PAUSED outranks IDLE outranks TRACKING** — a stopped loop used to render
+  `IDLE · <last window>`, which reads as "recording, nothing happening". A failed stop leaves the word at TRACKING and
+  surfaces the error; it never reports a pause that did not happen.
+- **Measured, on the installed build:** pausing from the rail froze the write stream — last snapshot
+  `07:29:28.826`, today's rows **15971** before and **15971** six seconds later; resuming from the *tray popup* took
+  it to **15976** then **15981**. A three-minute pause left no rows, as it should.
+- **A defect this verification found, and the fix:** the rail and the popup are separate webviews with separate query
+  caches, so resuming in the popup left the rail still saying **PAUSED / Resume** (measured at 18:36). The mutation now
+  emits a `tracking-changed` event that every hook instance listens to; after the change, resume-from-popup moved the
+  rail to **Pause / Tracking Active** in under 3 s, and pause-from-popup moved it to **Paused / Resume** in the same
+  time. The event name and its emit/listen helpers live in `api/tauri.ts`, not retyped in two components.
+- **A second contradiction, same rule:** with the loop stopped the dashboard still showed *"Session in progress ·
+  Claude · 300m"* next to a rail that said *"Not recording"* (captured in `.hermes/recon/shots/rail-paused-flat.png`).
+  The session banner is the one element on that page claiming "now", so it is no longer rendered while paused.
+- **Tray popup:** paused adds a mono `PAUSED` tag beside the brand, the header gains a pause/resume button, and the
+  primary action becomes **RESUME TRACKING** with *Open full app* demoted to a quiet second row — the popup's job while
+  stopped is to let you restart.
+- **Tests:** `trackingStatus.test.ts` (4) pins the word priority and that a stopped app never pulses; 
+  `useTrackingControl.test.tsx` (5) pins the read, the null-is-not-paused rule, "a failed stop does not report paused",
+  the re-read after success, and that the change is announced for the other window. Suite: **142 tests / 19 files**.

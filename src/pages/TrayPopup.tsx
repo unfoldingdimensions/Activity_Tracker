@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Maximize2, Activity, MousePointer, Keyboard, Zap, X, Settings as SettingsIcon, Flame, Clock3, TrendingUp } from 'lucide-react';
+import { Maximize2, Activity, MousePointer, Keyboard, Zap, X, Settings as SettingsIcon, Flame, Clock3, TrendingUp, Pause, Play } from 'lucide-react';
 import { hideTrayWindow, showMainWindow } from '../api/tauri';
+import { useTrackingControl } from '../hooks/useTrackingControl';
 
 // Hooks & Context
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -17,6 +18,7 @@ import { formatDuration } from '../utils/formatters';
 export function TrayPopup() {
     const theme = useVisualTheme();
     const isFlat = theme === 'flat';
+    const { isTracking, isBusy, setTracking } = useTrackingControl();
     // Always show today in tray popup for consistent behavior
     const selectedRange: TimeRange = 'today';
 
@@ -62,12 +64,25 @@ export function TrayPopup() {
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[var(--border)]">
                     <div className="flex items-center gap-2.5">
-                        <Activity size={14} className="text-[var(--accent-focus)]" />
+                        <Activity size={14} className={isTracking ? 'text-[var(--accent-focus)]' : 'text-[var(--muted-foreground)]'} />
                         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--foreground)]">
                             Activity Tracker
                         </span>
+                        {!isTracking && (
+                            <span className="font-mono text-[9px] uppercase tracking-[0.12em] px-1.5 py-[2px] border border-[var(--border)] text-[var(--muted-foreground)]">
+                                Paused
+                            </span>
+                        )}
                     </div>
                     <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => void setTracking(!isTracking)}
+                            disabled={isBusy}
+                            className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors disabled:opacity-50"
+                            title={isTracking ? 'Pause recording' : 'Resume recording'}
+                        >
+                            {isTracking ? <Pause size={14} /> : <Play size={14} />}
+                        </button>
                         <button
                             onClick={() => openMainWindow('/settings')}
                             className="p-1.5 text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors"
@@ -161,17 +176,35 @@ export function TrayPopup() {
                     )}
                 </div>
 
-                {/* Footer */}
+                {/* Footer — pause is the primary action while the recorder is stopped */}
                 <div className="px-5 pb-4 pt-3 border-t border-[var(--border)]">
                     <button
-                        onClick={() => openMainWindow('/')}
-                        className="w-full py-3 bg-[var(--foreground)] text-[var(--background)] font-mono text-[10px] uppercase tracking-[0.14em] font-bold hover:opacity-90 transition-opacity"
+                        onClick={() => (isTracking ? openMainWindow('/') : void setTracking(true))}
+                        disabled={isBusy}
+                        className="w-full py-3 bg-[var(--foreground)] text-[var(--background)] font-mono text-[10px] uppercase tracking-[0.14em] font-bold hover:opacity-90 transition-opacity disabled:opacity-60"
                     >
                         <span className="flex items-center justify-center gap-2">
-                            <Maximize2 size={13} />
-                            Open full app
+                            {isTracking ? (
+                                <>
+                                    <Maximize2 size={13} />
+                                    Open full app
+                                </>
+                            ) : (
+                                <>
+                                    <Play size={13} />
+                                    Resume tracking
+                                </>
+                            )}
                         </span>
                     </button>
+                    {!isTracking && (
+                        <button
+                            onClick={() => openMainWindow('/')}
+                            className="w-full mt-2 py-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                        >
+                            Open full app
+                        </button>
+                    )}
                     {userStats && (
                         <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
                             LVL {userStats.current_level} · {userStats.current_streak} DAY STREAK
@@ -197,9 +230,24 @@ export function TrayPopup() {
                         <div className="p-2.5 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
                             <Activity size={22} />
                         </div>
-                        <span className="font-display font-black text-xl tracking-tight">Activity</span>
+                        <div className="flex flex-col">
+                            <span className="font-display font-black text-xl tracking-tight">Activity</span>
+                            {!isTracking && (
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--foreground)]">
+                                    Paused
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <div className="flex items-center gap-1.5">
+                        <button
+                            onClick={() => void setTracking(!isTracking)}
+                            disabled={isBusy}
+                            className="p-2.5 hover:bg-[var(--secondary)] rounded-full transition-colors text-[var(--muted-foreground)] hover:text-[var(--foreground)] active:scale-95 disabled:opacity-50"
+                            title={isTracking ? 'Pause recording' : 'Resume recording'}
+                        >
+                            {isTracking ? <Pause size={20} /> : <Play size={20} />}
+                        </button>
                         <button
                             onClick={() => openMainWindow('/settings')}
                             className="p-2.5 hover:bg-[var(--secondary)] rounded-full transition-colors text-[var(--muted-foreground)] hover:text-[var(--foreground)] active:scale-95"
@@ -309,12 +357,30 @@ export function TrayPopup() {
 
                     <div className="grid grid-cols-1 gap-2 mx-2">
                         <button
-                            onClick={() => openMainWindow('/')}
-                            className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-primary-foreground rounded-2xl text-xs font-black tracking-tight hover:shadow-xl hover:shadow-primary/20 transition-all btn-press"
+                            onClick={() => (isTracking ? openMainWindow('/') : void setTracking(true))}
+                            disabled={isBusy}
+                            className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-primary-foreground rounded-2xl text-xs font-black tracking-tight hover:shadow-xl hover:shadow-primary/20 transition-all btn-press disabled:opacity-60"
                         >
-                            <Maximize2 size={14} />
-                            OPEN FULL APP
+                            {isTracking ? (
+                                <>
+                                    <Maximize2 size={14} />
+                                    OPEN FULL APP
+                                </>
+                            ) : (
+                                <>
+                                    <Play size={14} />
+                                    RESUME TRACKING
+                                </>
+                            )}
                         </button>
+                        {!isTracking && (
+                            <button
+                                onClick={() => openMainWindow('/')}
+                                className="w-full py-1 text-[10px] font-black uppercase tracking-widest text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                            >
+                                Open full app
+                            </button>
+                        )}
 
                         {userStats && (
                             <div className="pt-2 flex justify-center border-t border-[var(--border)]/30 mt-2">

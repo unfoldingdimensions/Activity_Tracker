@@ -8,10 +8,12 @@ import {
     Wrench,
 } from 'lucide-react';
 import { useActiveWindow, useIdleStatus } from '../hooks/useTrackerData';
+import { useTrackingControl } from '../hooks/useTrackingControl';
 import { formatAppName } from '../utils/formatters';
 import { AppIcon } from './shared/AppIcon';
 import { useVisualTheme } from '../hooks/useVisualTheme';
 import { StatusDot } from './ui/StatusDot';
+import { statusLabel, statusDotColor, statusPulses } from '../utils/trackingStatus';
 import { cn } from '../utils/cn';
 
 import { useEffect } from 'react';
@@ -33,6 +35,7 @@ export function Layout() {
     const isFlat = theme === 'flat';
     const { data: activeWindow } = useActiveWindow();
     const { data: idleStatus } = useIdleStatus();
+    const { isTracking, isBusy, setTracking } = useTrackingControl();
 
     useEffect(() => {
         const unlisten = listen<{ path: string }>('navigate', (event) => {
@@ -48,6 +51,7 @@ export function Layout() {
     const currentApp = activeWindow?.process_name ? formatAppName(activeWindow.process_name) : 'Unknown';
     const currentTitle = activeWindow?.window_title || '';
     const isIdle = idleStatus?.isIdle || false;
+    const status = statusLabel(isTracking, isIdle);
 
     return (
         <div className="flex h-screen overflow-hidden relative bg-[var(--background)]">
@@ -113,23 +117,40 @@ export function Layout() {
                             })}
                         </nav>
 
-                        {/* Footer - live tracking status */}
+                        {/* Footer - live tracking status + the control that changes it */}
                         <div className="mt-auto px-[22px] pt-[14px] pb-5 border-t border-[var(--border)]">
                             <div className="flex items-center gap-2">
                                 <StatusDot
-                                    color={isIdle ? 'var(--muted-foreground)' : 'var(--accent-focus)'}
-                                    pulsing={!isIdle}
+                                    color={statusDotColor(isTracking)}
+                                    pulsing={statusPulses(isTracking, isIdle)}
                                 />
                                 <span className="font-mono text-[10.5px] tracking-[0.06em] text-[var(--muted-foreground)]">
-                                    {isIdle ? 'IDLE' : 'TRACKING'}
+                                    {status}
                                 </span>
-                                <span className="font-mono text-[10.5px] font-bold ml-auto text-[var(--foreground)]">
-                                    {currentApp}
-                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => void setTracking(!isTracking)}
+                                    disabled={isBusy}
+                                    className="ml-auto font-mono text-[9.5px] uppercase tracking-[0.08em] px-2 py-[3px] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-50"
+                                    title={isTracking ? 'Stop recording activity' : 'Start recording activity'}
+                                >
+                                    {isTracking ? 'Pause' : 'Resume'}
+                                </button>
                             </div>
-                            {currentTitle && (
-                                <div className="font-mono text-[9.5px] text-[var(--muted-foreground)] mt-2 truncate">
-                                    {currentTitle}
+                            {isTracking ? (
+                                <>
+                                    <div className="font-mono text-[10.5px] font-bold text-[var(--foreground)] mt-2 truncate">
+                                        {currentApp}
+                                    </div>
+                                    {currentTitle && (
+                                        <div className="font-mono text-[9.5px] text-[var(--muted-foreground)] mt-1 truncate">
+                                            {currentTitle}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="font-mono text-[9.5px] text-[var(--muted-foreground)] mt-2">
+                                    Not recording
                                 </div>
                             )}
                         </div>
@@ -187,19 +208,32 @@ export function Layout() {
                                         <div
                                             className="status-dot"
                                             style={{
-                                                backgroundColor: isIdle ? 'var(--muted-foreground)' : undefined,
+                                                backgroundColor: isTracking ? undefined : 'var(--muted-foreground)',
                                             }}
                                         />
-                                        {!isIdle && <div className="status-ring" />}
+                                        {statusPulses(isTracking, isIdle) && <div className="status-ring" />}
                                     </div>
                                     <span className="text-xs text-[var(--muted-foreground)]">
-                                        {isIdle ? 'Idle' : 'Tracking Active'}
+                                        {isTracking ? (isIdle ? 'Idle' : 'Tracking Active') : 'Paused'}
                                     </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => void setTracking(!isTracking)}
+                                        disabled={isBusy}
+                                        className="ml-auto px-2 py-1 text-[10px] font-bold rounded-md border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors disabled:opacity-50"
+                                        title={isTracking ? 'Stop recording activity' : 'Start recording activity'}
+                                    >
+                                        {isTracking ? 'Pause' : 'Resume'}
+                                    </button>
                                 </div>
-                                <div className="text-xs text-[var(--muted-foreground)] truncate flex items-center gap-2">
-                                    <AppIcon processName={activeWindow?.process_name || ''} size={14} className="opacity-80" />
-                                    <span className="text-[var(--foreground)] font-bold font-display">{currentApp}</span>
-                                </div>
+                                {isTracking ? (
+                                    <div className="text-xs text-[var(--muted-foreground)] truncate flex items-center gap-2">
+                                        <AppIcon processName={activeWindow?.process_name || ''} size={14} className="opacity-80" />
+                                        <span className="text-[var(--foreground)] font-bold font-display">{currentApp}</span>
+                                    </div>
+                                ) : (
+                                    <div className="text-xs text-[var(--muted-foreground)]">Not recording</div>
+                                )}
                             </div>
                         </div>
                     </>

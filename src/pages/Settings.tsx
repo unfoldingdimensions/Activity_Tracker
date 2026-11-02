@@ -6,7 +6,8 @@ import { useTheme } from '../context/useTheme';
 import { useSettings } from '../hooks/useSettings';
 import { useVisualTheme } from '../hooks/useVisualTheme';
 import { isTauri } from '../utils/isTauri';
-import { startTracking, stopTracking, clearData, isTracking as fetchTrackingState, exportData } from '../api/tauri';
+import { clearData, exportData } from '../api/tauri';
+import { useTrackingControl } from '../hooks/useTrackingControl';
 import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/shared/PageHeader';
 import { useToast } from '../components/ui/Toast';
@@ -174,8 +175,7 @@ export function Settings() {
     const visualTheme = useVisualTheme();
     const isFlat = visualTheme === 'flat';
     const { showToast } = useToast();
-    const [isTracking, setIsTracking] = useState(true);
-    const [isToggling, setIsToggling] = useState(false);
+    const { isTracking, isBusy: isToggling, setTracking } = useTrackingControl();
     const [isClearing, setIsClearing] = useState(false);
     const [blacklistInput, setBlacklistInput] = useState('');
     const [classInput, setClassInput] = useState('');
@@ -192,20 +192,6 @@ export function Settings() {
     useEffect(() => {
         updateSettingsRef.current = updateSettings;
     }, [updateSettings]);
-
-    // Sync toggle with the real backend tracking state
-    useEffect(() => {
-        if (!isTauri()) return;
-        let active = true;
-        fetchTrackingState()
-            .then((tracking) => {
-                if (active) setIsTracking(tracking);
-            })
-            .catch(() => {});
-        return () => {
-            active = false;
-        };
-    }, []);
 
     // Reconcile the launch-on-startup toggle with the OS autostart registry
     useEffect(() => {
@@ -224,27 +210,12 @@ export function Settings() {
     const isDarkMode = theme === 'dark';
 
     const handleTrackingToggle = async () => {
-        if (!isTauri()) {
-            setIsTracking(!isTracking);
-            showToast('info', isTracking ? 'Activity tracking has been paused.' : 'Activity tracking is now active.');
-            return;
-        }
-
-        setIsToggling(true);
         try {
-            if (isTracking) {
-                await stopTracking();
-                showToast('info', 'Activity tracking has been paused.');
-            } else {
-                await startTracking();
-                showToast('success', 'Activity tracking is now active.');
-            }
-            setIsTracking(!isTracking);
+            await setTracking(!isTracking);
+            showToast('info', isTracking ? 'Activity tracking has been paused.' : 'Activity tracking is now active.');
         } catch (error) {
             console.error('Failed to toggle tracking:', error);
             showToast('error', 'Failed to toggle tracking state.');
-        } finally {
-            setIsToggling(false);
         }
     };
 

@@ -19,6 +19,7 @@ import { DailyDigest } from '../components/dashboard/DailyDigest';
 import { DeepWorkSessions } from '../components/dashboard/DeepWorkSessions';
 import { useSettings } from '../hooks/useSettings';
 import { useVisualTheme } from '../hooks/useVisualTheme';
+import { useTrackingControl } from '../hooks/useTrackingControl';
 import { useInputHistory } from '../hooks/useTrackerData';
 import { formatDuration } from '../utils/formatters';
 import { buildDashboardInsights } from '../utils/editorialInsights';
@@ -46,6 +47,8 @@ const RANGE_LABELS: Record<TimeRange, string> = {
 export function Dashboard() {
     const { settings } = useSettings();
     const isFlat = useVisualTheme() === 'flat';
+    // A paused recorder has no session in progress; the banner is the one element on this page that claims "now".
+    const { isTracking } = useTrackingControl();
     // Local state
     const [timeRange, setTimeRange] = useState<TimeRange>(settings.dashboardDefaultRange);
     const [showInputModal, setShowInputModal] = useState(false);
@@ -86,7 +89,7 @@ export function Dashboard() {
                 <EditorialIntro sentence={editorialSentence} insights={insights} />
 
                 <div className="pb-8">
-                    <SessionBanner timeline={timelineData} bucketMinutes={bucketMinutes} />
+                    {isTracking && <SessionBanner timeline={timelineData} bucketMinutes={bucketMinutes} />}
 
                     <MetricBand
                         screenTimeSeconds={rawStats?.total_active_seconds ?? 0}
@@ -151,7 +154,7 @@ export function Dashboard() {
 
             {/* Content — same bands as the flat skin, glass containers */}
             <div className="p-8 pt-6 space-y-6 flex-1">
-                <SessionBanner timeline={timelineData} bucketMinutes={bucketMinutes} />
+                {isTracking && <SessionBanner timeline={timelineData} bucketMinutes={bucketMinutes} />}
 
                 <MetricBand
                     screenTimeSeconds={rawStats?.total_active_seconds ?? 0}

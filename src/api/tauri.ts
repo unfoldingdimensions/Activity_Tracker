@@ -3,6 +3,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import { emit, listen, type UnlistenFn } from '@tauri-apps/api/event';
 
 // Types matching Rust structs
 
@@ -188,6 +189,25 @@ export async function stopTracking(): Promise<void> {
  */
 export async function isTracking(): Promise<boolean> {
     return invoke<boolean>('is_tracking');
+}
+
+/**
+ * Event name every webview listens on for "the recorder changed state".
+ *
+ * The rail and the tray popup are separate webviews with separate React Query caches, so a pause in one left the other
+ * showing the old word until it happened to refetch. One name, exported, emitted by the mutation and listened to by
+ * every hook instance.
+ */
+export const TRACKING_CHANGED_EVENT = 'tracking-changed';
+
+/** Announce a tracking change to every window this app owns. */
+export async function notifyTrackingChanged(): Promise<void> {
+    await emit(TRACKING_CHANGED_EVENT);
+}
+
+/** Subscribe to tracking changes; resolves to the unlisten function. */
+export async function onTrackingChanged(handler: () => void): Promise<UnlistenFn> {
+    return listen(TRACKING_CHANGED_EVENT, () => handler());
 }
 
 /**
