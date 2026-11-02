@@ -72,8 +72,8 @@ not copy them; correct them when you are in the file.
   Anything per-tick belongs at `debug!` — an error path that appears only in debug builds is not an error path
   (`docs/learning.md` L-09).
 - Gate commands: `npm run test:run`, `npm run test:rust`, `npm run lint`, `npm run build` (`tsc -b && vite build`),
-  and `cargo check --workspace --all-targets` for backend changes. Green as of 2026-11-02: **133 frontend tests / 17
-  files**, **18 Rust tests** in `core`, lint and build clean, zero cargo warnings, `npm run tauri build` producing the
+  and `cargo check --workspace --all-targets` for backend changes. Green as of 2026-11-03: **168 frontend tests / 23
+  files**, **21 Rust tests** in `core`, lint and build clean, zero cargo warnings, `npm run tauri build` producing the
   NSIS installer.
 - **Release artifacts come from `npm run tauri build`** (or `cargo build --release --features
   tauri/custom-protocol`). A bare `cargo build --release` produces a **dev-mode** binary —
@@ -88,7 +88,7 @@ not copy them; correct them when you are in the file.
   `src-tauri/WebView2Loader.dll` and declared in `bundle.resources`; without it every install launches with
   "cannot proceed because WebView2Loader.dll was not found" (D-023). `bundle.targets` is `["nsis"]` because the
   MSI step needs WiX, which is not available offline here.
-- **Rust tests run — in `core`, and nowhere else.** `cargo test -p activity-core` (or `npm run test:rust`) executes 18
+- **Rust tests run — in `core`, and nowhere else.** `cargo test -p activity-core` (or `npm run test:rust`) executes 21
   tests in 0.02 s. The other half of that sentence is the trap: `cargo test -p activity-tracker-v2` still dies at
   **process load** with `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139) before any test output, because that binary links
   Tauri → wry → WebView2. So a `#[test]` written in `src-tauri` does not run at all — it reads like a passing test and
