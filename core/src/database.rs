@@ -3,24 +3,6 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use chrono::{Timelike, TimeZone, Utc};
 
-/// Seconds since the newest snapshot, or `None` when nothing has been recorded yet.
-///
-/// The loop writes one row per second, so this is the only evidence the UI can offer that capture is *running*: a
-/// boolean says the loop was started, not that it is still writing (D-065). `idx_activity_timestamp` makes `MAX` an
-/// index walk, so asking every few seconds costs microseconds against a table that keeps growing.
-pub fn seconds_since_last_snapshot(conn: &Connection) -> Result<Option<i64>> {
-    let newest: Option<String> =
-        conn.query_row("SELECT MAX(timestamp) FROM activity_snapshots", [], |row| row.get(0))?;
-    let Some(stamp) = newest else {
-        return Ok(None);
-    };
-    match chrono::DateTime::parse_from_rfc3339(&stamp) {
-        Ok(at) => Ok(Some((Utc::now() - at.with_timezone(&Utc)).num_seconds().max(0))),
-        // A timestamp this build cannot read is not evidence of anything; say "unknown" rather than invent an age.
-        Err(_) => Ok(None),
-    }
-}
-
 /// Every process name that appears anywhere in history — the set the icon cache is expected to cover.
 ///
 /// Both tables: an app with usage rows but no window events (or the reverse) still shows up in the UI with an icon
@@ -1047,6 +1029,24 @@ pub struct UserStats {
     pub current_level: u32,
     pub current_streak: u32,
     pub last_activity_date: Option<String>,
+}
+
+/// Seconds since the newest snapshot, or `None` when nothing has been recorded yet.
+///
+/// The loop writes one row per second, so this is the only evidence the UI can offer that capture is *running*: a
+/// boolean says the loop was started, not that it is still writing (D-065). `idx_activity_timestamp` makes `MAX` an
+/// index walk, so asking every few seconds costs microseconds against a table that keeps growing.
+pub fn seconds_since_last_snapshot(conn: &Connection) -> Result<Option<i64>> {
+    let newest: Option<String> =
+        conn.query_row("SELECT MAX(timestamp) FROM activity_snapshots", [], |row| row.get(0))?;
+    let Some(stamp) = newest else {
+        return Ok(None);
+    };
+    match chrono::DateTime::parse_from_rfc3339(&stamp) {
+        Ok(at) => Ok(Some((Utc::now() - at.with_timezone(&Utc)).num_seconds().max(0))),
+        // A timestamp this build cannot read is not evidence of anything; say "unknown" rather than invent an age.
+        Err(_) => Ok(None),
+    }
 }
 
 #[cfg(test)]
