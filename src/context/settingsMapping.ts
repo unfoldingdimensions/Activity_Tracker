@@ -22,6 +22,7 @@ export const BACKEND_KEYS: Record<keyof UserSettings, string> = {
     writeSummarySentence: 'write_summary_sentence',
     visualTheme: 'visual_theme',
     fontPair: 'font_pair',
+    baselineDays: 'baseline_days',
 };
 
 /**

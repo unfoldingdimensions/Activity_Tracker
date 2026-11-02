@@ -280,6 +280,8 @@ export function useDashboardData(timeRange: TimeRange) {
 
                 return {
                     time: label,
+                    // The bucket's own start, so a reference series can be aligned to it instead of re-parsing the label.
+                    at: ts,
                     focus: actualFocus,
                     distraction: actualDistraction,
                     idle: Math.max(0, idle)
@@ -296,7 +298,7 @@ export function useDashboardData(timeRange: TimeRange) {
         // Fallback for Today: Use pre-aggregated segments and ensure all 24 hours are present
         if (isToday && timelineQuery.data) {
             const hourMap = new Map(timelineQuery.data.map(s => [s.time, s]));
-            const fullDay: { time: string, focus: number, distraction: number, idle: number }[] = [];
+            const fullDay: { time: string, at: number, focus: number, distraction: number, idle: number }[] = [];
 
             for (let h = 0; h < 24; h++) {
                 const hourStr = `${h.toString().padStart(2, '0')}:00`;
@@ -307,8 +309,11 @@ export function useDashboardData(timeRange: TimeRange) {
                 const total = active + idle;
                 const focus = total > 0 ? Math.round((active / total) * 100) : 0;
 
+                const bucketAt = new Date(startTime);
+                bucketAt.setHours(h, 0, 0, 0);
                 fullDay.push({
                     time: hourStr, // Will be formatted by Chart XAxis tickFormatter
+                    at: bucketAt.getTime(),
                     focus: focus,
                     distraction: 0,
                     idle: 100 - focus

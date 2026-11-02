@@ -33,6 +33,12 @@ export interface UserSettings {
     visualTheme: VisualTheme;
     /** Typography pair: swiss / geist / grotesk */
     fontPair: FontPair;
+    /**
+     * Days of history behind the focus chart's "usual" line. `0` turns the line off.
+     *
+     * A reference frame is a judgement about what "normal" means, so the window is the user's, not a constant.
+     */
+    baselineDays: number;
 }
 
 export interface SettingsContextType {

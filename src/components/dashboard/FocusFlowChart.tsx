@@ -10,7 +10,7 @@ import {
     CartesianGrid,
     Legend,
 } from 'recharts';
-import { useState, memo } from 'react';
+import { useState, memo, useMemo } from 'react';
 import { GlassCard } from '../GlassCard';
 import { ChartGradients } from '../charts/ChartGradients';
 import { ChartTooltip } from '../charts/ChartTooltip';
@@ -22,6 +22,8 @@ import { cn } from '../../utils/cn';
 
 export interface FocusFlowDataPoint {
     time: string;
+    /** Bucket start (epoch ms). Used to align a reference series; absent on data built from labels alone. */
+    at?: number;
     focus: number;
     distraction: number;
     idle: number;
@@ -36,6 +38,15 @@ export interface FocusFlowChartProps {
     title?: string;
     /** Minimum height for the chart container */
     minHeight?: number;
+    /**
+     * The "usual" focus share, one entry per data point (`null` where there is no opinion).
+     *
+     * A reference frame, not a measurement of this period: the same series computed over earlier days, aligned by the
+     * bucket's own hour. Only meaningful on hour-by-hour ranges, so the caller decides when to pass it.
+     */
+    baseline?: (number | null)[] | null;
+    /** Legend text for the reference series, e.g. "usual · 7d" — it names its window so it cannot be mistaken for data. */
+    baselineLabel?: string;
 }
 
 type MetricType = 'focus' | 'distraction' | 'idle';
@@ -45,9 +56,20 @@ export const FocusFlowChart = memo(function FocusFlowChart({
     isLoading = false,
     title = 'Focus Flow',
     minHeight = 300,
+    baseline = null,
+    baselineLabel = 'Usual',
 }: FocusFlowChartProps) {
     const [activeMetrics, setActiveMetrics] = useState<Set<MetricType>>(new Set(['focus', 'distraction', 'idle']));
+    const [showUsual, setShowUsual] = useState(true);
     const hasData = data.length > 0;
+    const hasBaseline = !!baseline && baseline.some((value) => value !== null);
+
+    // Recharts reads series from the row objects, so the reference series is merged here rather than mutating the
+    // caller's data — the chart owns its own presentation.
+    const chartData = useMemo(
+        () => (hasBaseline ? data.map((point, i) => ({ ...point, usual: baseline?.[i] ?? null })) : data),
+        [data, baseline, hasBaseline]
+    );
 
     const toggleMetric = (metric: MetricType) => {
         const next = new Set(activeMetrics);
@@ -88,11 +110,33 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                                         isActive ? 'text-[var(--foreground)]' : 'line-through opacity-60 text-[var(--muted-foreground)]'
                                     )}
                                 >
-                                    <span className="w-3 h-[1.5px]" style={{ backgroundColor: m.color }} />
+                                    <span
+                                        className={cn(
+                                            'w-3',
+                                            m.id === 'idle'
+                                                ? 'border-t border-dashed border-[var(--muted-foreground)]'
+                                                : 'h-[1.5px]'
+                                        )}
+                                        style={m.id === 'idle' ? undefined : { backgroundColor: m.color }}
+                                    />
                                     {m.label}
                                 </button>
                             );
                         })}
+                        {hasBaseline && <span className="w-px h-3 self-center bg-[var(--border)]" />}
+                        {hasBaseline && (
+                            <button
+                                onClick={() => setShowUsual((v) => !v)}
+                                className={cn(
+                                    'flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] transition-opacity',
+                                    showUsual ? 'text-[var(--muted-foreground)]' : 'line-through opacity-60 text-[var(--muted-foreground)]'
+                                )}
+                                title="Median of the last days at this hour"
+                            >
+                                <span className="w-3 border-t border-dotted border-[var(--foreground)] opacity-45" />
+                                {baselineLabel}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -101,7 +145,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                         <div className="text-[12px] text-[var(--muted-foreground)]">Loading…</div>
                     ) : hasData ? (
                         <ResponsiveContainer width="100%" height="100%" minHeight={minHeight ?? 250}>
-                            <LineChart data={data} margin={{ top: 10, right: 24, bottom: 0, left: -18 }}>
+                            <LineChart data={chartData} margin={{ top: 10, right: 24, bottom: 0, left: -18 }}>
                                 <CartesianGrid vertical={false} stroke="var(--border)" strokeWidth={1} />
                                 <XAxis
                                     dataKey="time"
@@ -151,6 +195,19 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                                 )}
                                 {activeMetrics.has('idle') && (
                                     <Line type="monotone" dataKey="idle" stroke="var(--muted-foreground)" strokeWidth={1.25} strokeDasharray="3 3" opacity={0.6} dot={false} activeDot={{ r: 3.5 }} isAnimationActive={false} />
+                                )}
+                                {hasBaseline && showUsual && (
+                                    <Line
+                                        type="monotone"
+                                        dataKey="usual"
+                                        stroke="var(--foreground)"
+                                        strokeWidth={1}
+                                        strokeDasharray="2 5"
+                                        opacity={0.45}
+                                        dot={false}
+                                        connectNulls={false}
+                                        isAnimationActive={false}
+                                    />
                                 )}
                             </LineChart>
                         </ResponsiveContainer>
@@ -209,7 +266,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                     <LoadingState message="Loading timeline..." />
                 ) : hasData ? (
                     <ResponsiveContainer width="100%" height="100%" minHeight={minHeight ?? 260}>
-                        <AreaChart data={data} margin={{ top: 5, right: 24, bottom: 5, left: 5 }}>
+                        <AreaChart data={chartData} margin={{ top: 5, right: 24, bottom: 5, left: 5 }}>
                             <CartesianGrid
                                 strokeDasharray="3 3"
                                 vertical={false}
@@ -253,7 +310,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                             />
                             <Tooltip content={<ChartTooltip />} />
                             <Legend
-                                wrapperStyle={{ paddingTop: '16px' }}
+                                wrapperStyle={{ paddingTop: '10px' }}
                                 formatter={(value) => (
                                     <span
                                         style={{
@@ -263,7 +320,7 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                                             fontFamily: 'var(--font-body)',
                                         }}
                                     >
-                                        {value === 'focus' ? 'Focus Session' : value === 'distraction' ? 'Other Activity' : 'Idle / Away'}
+                                        {value === 'focus' ? 'Focus' : value === 'distraction' ? 'Other' : value === 'idle' ? 'Idle' : value}
                                     </span>
 
                                 )}
@@ -302,6 +359,20 @@ export const FocusFlowChart = memo(function FocusFlowChart({
                                     strokeWidth={2}
                                     name="idle"
                                     animationDuration={1500}
+                                />
+                            )}
+                            {hasBaseline && showUsual && (
+                                <Line
+                                    type="monotone"
+                                    dataKey="usual"
+                                    stroke="var(--foreground)"
+                                    strokeWidth={1.5}
+                                    strokeDasharray="2 5"
+                                    opacity={0.45}
+                                    dot={false}
+                                    connectNulls={false}
+                                    name={baselineLabel}
+                                    isAnimationActive={false}
                                 />
                             )}
                         </AreaChart>

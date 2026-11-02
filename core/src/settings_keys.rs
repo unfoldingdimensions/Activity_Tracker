@@ -27,6 +27,7 @@ pub const KEYS: &[&str] = &[
     "write_summary_sentence",
     "visual_theme",
     "font_pair",
+    "baseline_days",
 ];
 
 /// The key the tray popup's window height is chosen from.
@@ -69,7 +70,7 @@ mod tests {
     /// visible diff rather than a setting that quietly never persists.
     #[test]
     fn every_frontend_setting_is_accepted() {
-        assert_eq!(KEYS.len(), 14, "frontend sends 14 keys: {:?}", KEYS);
+        assert_eq!(KEYS.len(), 15, "frontend sends 15 keys: {:?}", KEYS);
         for key in ["visual_theme", "font_pair", "retention_days", "idle_threshold"] {
             assert!(is_known(key), "{key} must be accepted");
         }

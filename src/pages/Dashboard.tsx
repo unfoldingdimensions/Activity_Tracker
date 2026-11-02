@@ -20,6 +20,8 @@ import { DeepWorkSessions } from '../components/dashboard/DeepWorkSessions';
 import { useSettings } from '../hooks/useSettings';
 import { useVisualTheme } from '../hooks/useVisualTheme';
 import { useTrackingControl } from '../hooks/useTrackingControl';
+import { useFocusBaseline } from '../hooks/useFocusBaseline';
+import { alignBaseline } from '../utils/focusBaseline';
 import { useInputHistory } from '../hooks/useTrackerData';
 import { formatDuration } from '../utils/formatters';
 import { buildDashboardInsights } from '../utils/editorialInsights';
@@ -78,6 +80,20 @@ export function Dashboard() {
         [digest, focusSessions, timelineData]
     );
 
+    // The reference frame only means something when the x-axis is hours; on Week/Month it is not offered at all.
+    const hourlyRange =
+        timeRange === 'today' ||
+        timeRange === 'yesterday' ||
+        timeRange === 'past_hour' ||
+        timeRange === 'past_6h' ||
+        timeRange === 'past_12h';
+    const baselineDays = settings.baselineDays ?? 7;
+    const { byHour } = useFocusBaseline(baselineDays, hourlyRange);
+    const baseline = useMemo(
+        () => (hourlyRange && byHour ? alignBaseline(timelineData.map((d) => d.at), byHour) : null),
+        [hourlyRange, byHour, timelineData]
+    );
+
     /* ================= FLAT SKIN — The Pulse ================= */
     if (isFlat) {
         return (
@@ -104,7 +120,7 @@ export function Dashboard() {
                     {/* Main split: the shape of the day | where it went */}
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] items-start gap-4 py-6 px-8 border-b border-[var(--border)]">
                         <div className="min-w-0 pr-0 lg:pr-7">
-                            <FocusFlowChart data={timelineData} isLoading={isLoading} minHeight={300} title="Focus flow · share of each interval" />
+                            <FocusFlowChart data={timelineData} isLoading={isLoading} minHeight={300} title="Focus flow · share of each interval" baseline={baseline} baselineLabel={`usual · ${baselineDays}d`} />
                             <FlowStateMetrics />
                         </div>
                         <AppUsageSide appUsage={appUsage} isLoading={isLoading} />
@@ -178,6 +194,8 @@ export function Dashboard() {
                             isLoading={isLoading}
                             minHeight={360}
                             title={`Focus Flow (${timeRange === 'past_hour' ? 'Past Hour' : timeRange === 'today' ? 'Today' : timeRange === 'yesterday' ? 'Yesterday' : timeRange === 'this_week' ? 'Past Week' : timeRange === 'this_month' ? 'Past Month' : timeRange.replace('past_', 'Past ')})`}
+                            baseline={baseline}
+                            baselineLabel={`usual · ${baselineDays}d`}
                         />
                         <div className="mt-4">
                             <FlowStateMetrics />

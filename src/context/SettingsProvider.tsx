@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS: UserSettings = {
     writeSummarySentence: true,
     visualTheme: 'flat',
     fontPair: 'swiss',
+    baselineDays: 7,
 };
 
 export function SettingsProvider({ children }: { children: ReactNode }) {

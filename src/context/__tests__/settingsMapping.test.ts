@@ -17,6 +17,7 @@ const SETTINGS: UserSettings = {
     writeSummarySentence: true,
     visualTheme: 'flat',
     fontPair: 'swiss',
+    baselineDays: 7,
 };
 
 // The backend rejects unknown keys outright (D-052), so anything that leaks into this object fails the whole save —
@@ -25,7 +26,7 @@ describe('settingsToBackend', () => {
     it('maps every setting to its snake_case backend key', () => {
         const mapped = settingsToBackend(SETTINGS);
 
-        expect(Object.keys(mapped)).toHaveLength(14);
+        expect(Object.keys(mapped)).toHaveLength(15);
         expect(mapped.visual_theme).toBe('flat');
         expect(mapped.retention_days).toBe(90);
         expect(mapped.idle_threshold).toBe(60);
@@ -37,7 +38,7 @@ describe('settingsToBackend', () => {
 
         const mapped = settingsToBackend(stale);
 
-        expect(Object.keys(mapped)).toHaveLength(14);
+        expect(Object.keys(mapped)).toHaveLength(15);
         expect(mapped).not.toHaveProperty('focusGoalHours');
         expect(mapped).not.toHaveProperty('legacyTheme');
     });

@@ -1305,3 +1305,36 @@ fail (the value exists, the path is right, the command launches) are each checke
 - **Tests:** `trackingStatus.test.ts` (4) pins the word priority and that a stopped app never pulses; 
   `useTrackingControl.test.tsx` (5) pins the read, the null-is-not-paused rule, "a failed stop does not report paused",
   the re-read after success, and that the change is announced for the other window. Suite: **142 tests / 19 files**.
+
+## D-063 · The focus chart shows the usual shape of the hour
+
+**2026-11-02 · Active · [ui] · second of the two features asked for after the hierarchy pass**
+
+- **The gap:** the chart showed the shape of today and nothing about what is normal for this user. The only comparison
+  in the app was one delta cell that is `—` on six of the seven ranges.
+- **What the line is:** the **same** series the chart draws — window events × `classifyApp`, share of the hour — over
+  the previous N complete days, reduced per local hour-of-day by **median** (`utils/focusBaseline.ts`). Same owner,
+  different window; it is not a second derivation of focus score. Median rather than mean so one long day cannot
+  define "normal", and hours with fewer than **3** days of data are omitted rather than filled with zero.
+- **The window is the user's, not a constant:** new setting `baseline_days` (the 15th accepted key), default **7**,
+  offered as *Off / 7 / 14 / 30 days* in Settings. Off removes the series entirely.
+- **Measured on the installed build:** Today → one dotted path and a four-item legend; **This Month → zero paths, three
+  legend items** (a per-hour reference has no meaning on a daily axis); Off → zero; back to 7 → one.
+- **A defect this verification caught in its own gating:** with the query disabled for Month, React Query still handed
+  back the cached baseline and the line was drawn — the disabled flag was on the query, not on the result. Both the
+  hook's return and the page's `useMemo` now gate on the range, and a test pins "not hourly ⇒ never fetched".
+- **A glass regression caught by the same pass:** the fourth legend item wrapped and the legend's bottom sat **23 px
+  outside the chart's SVG**. Shorter glass legend labels (*Focus / Other / Idle / usual · 7d* — which also brings the
+  legacy skin's vocabulary in line with the flat one) and a 10 px top padding fixed it: legend **773–807 inside an SVG
+  of 452–812**, one row, four items.
+- **Distinguishable from IDLE:** both are neutral strokes, so the reference is dotted `2 5` at 1 px and 45 % opacity,
+  set apart in the flat legend by a hairline and labelled with its window (`usual · 7d`); the flat IDLE swatch is now
+  dashed like the stroke it stands for. Measured: flat legend on one line at 646 px wide.
+- **Honest failure:** too little history, a failed read, or a non-hourly range all mean *no line* — never an invented
+  one, and never an axis padded past the last data hour (it is built on the chart's own bucket keys).
+- **Doc note, flagged not fixed:** `docs/flow.md` §4 says the Focus Flow chart uses `active_seconds`, while
+  `useDashboardData.processEvents` reads `duration_seconds`. The baseline mirrors the code so the two lines stay
+  comparable; which of the two the doc means is a separate question and a separate commit.
+- **Tests:** `focusBaseline.test.ts` (10) pins the overlap split across hours, `ignore` removal, an even and an odd
+  median, the three-day minimum, and that a quiet hour is low rather than missing; `useFocusBaseline.test.tsx` (3) pins
+  the disabled path and the median wiring. Suite: **155 tests / 20 files**; Rust **19**.

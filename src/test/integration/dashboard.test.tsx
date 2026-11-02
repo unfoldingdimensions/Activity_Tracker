@@ -24,6 +24,7 @@ export const TEST_SETTINGS: UserSettings = {
     writeSummarySentence: true,
     visualTheme: 'glass',
     fontPair: 'swiss',
+        baselineDays: 7,
 };
 
 export function renderDashboard(ui: ReactNode) {

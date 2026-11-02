@@ -797,6 +797,22 @@ export function Settings() {
                         control={<SegTabs options={RANGE_OPTIONS} value={settings.dashboardDefaultRange} onChange={(v) => updateSettings({ dashboardDefaultRange: v })} />}
                     />
                     <Row
+                        label="Chart baseline"
+                        caption="The 'usual' line behind Focus flow, from the median of these days"
+                        control={
+                            <SegTabs
+                                options={[
+                                    { value: '0', label: 'Off' },
+                                    { value: '7', label: '7 days' },
+                                    { value: '14', label: '14 days' },
+                                    { value: '30', label: '30 days' },
+                                ]}
+                                value={String(settings.baselineDays)}
+                                onChange={(v) => updateSettings({ baselineDays: Number(v) })}
+                            />
+                        }
+                    />
+                    <Row
                         label="Dark mode"
                         caption="Switch between light and dark themes"
                         control={<Toggle checked={isDarkMode} onChange={toggleTheme} label="Dark mode" />}

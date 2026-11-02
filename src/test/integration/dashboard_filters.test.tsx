@@ -21,6 +21,7 @@ const TEST_SETTINGS: UserSettings = {
     writeSummarySentence: true,
     visualTheme: 'glass',
     fontPair: 'swiss',
+        baselineDays: 7,
 };
 
 function renderDashboard(ui: ReactNode) {

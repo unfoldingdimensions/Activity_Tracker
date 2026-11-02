@@ -92,6 +92,7 @@ retention) is therefore live within one second; nothing requires a restart excep
 | Time per app (day or range) | `app_usage.total_seconds` | `core/src/database.rs:206-216`, `440-454` |
 | Focus score | `app_usage` seconds × `classifyApp` — denominator is **classified app time**, with `ignore` apps removed from both sides | `utils/focusScore.ts` |
 | Focus Flow chart | window events `active_seconds` × `classifyApp` — denominator is **each interval's wall time**, so idle appears as its own segment | `useDashboardData.ts:204-287` |
+| "Usual" line on the chart | the **same** series over the previous N days (setting `baseline_days`, default 7), reduced per local hour-of-day by **median**; hours with fewer than 3 days of data are omitted | `utils/focusBaseline.ts`, `hooks/useFocusBaseline.ts` |
 | Deep-work sessions | window events, **`active_seconds`** | `utils/focusSessions.ts` |
 | Timeline rows and durations | window events, **`active_seconds`** (falls back to `duration_seconds` when NULL) | `utils/windowEvents.ts`, `pages/Timeline.tsx` |
 | Focus calendar (52 weeks) | `get_all_app_usage` → per-day sums | `hooks/useFocusCalendar.ts` |
